@@ -221,10 +221,12 @@
 			<p class="small muted">雰囲気はまだ判定されていません。</p>
 		{/if}
 	</section>
+	{#if full}
 	<div class="sheet-actions">
 		<a class="btn secondary" href="https://{s.host}/" target="_blank" rel="noopener">サーバーを見る</a>
 		<button class="btn primary" onclick={() => fly('right')}><Icon name="heart" size={15} filled /> いいね</button>
 	</div>
+	{/if}
 	{#if s.description}
 		{#if full}
 			<p class="desc">{s.description}</p>
@@ -792,6 +794,17 @@
 		}
 		.aside .banner {
 			margin: -8px -22px 0;
+		}
+		/* 右パネルは内側スクロールも要らない高さに収める */
+		.aside .facts {
+			grid-template-columns: repeat(3, 1fr);
+			gap: 6px;
+		}
+		.aside .facts div {
+			padding: 6px 8px;
+		}
+		.aside {
+			gap: 8px;
 		}
 		.done {
 			grid-column: 1 / -1;
