@@ -78,7 +78,18 @@
 </div>
 
 <style>
+	/* 宇宙の背景の上に載るので、ライト / ダークに関わらず暗い配色にする */
 	.landing {
+		--fg: #f0f2f5;
+		--fg-muted: rgba(240, 242, 245, 0.62);
+		--panel: rgba(30, 32, 40, 0.78);
+		--panel-2: rgba(255, 255, 255, 0.06);
+		--border: rgba(255, 255, 255, 0.14);
+		--bg: #130e26;
+		--accent-soft: rgba(134, 179, 0, 0.2);
+		--accent-fg: #c9ec5a;
+		--shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
+		color: var(--fg);
 		flex: 1;
 		display: flex;
 		flex-direction: column;
@@ -157,7 +168,7 @@
 	}
 	.github-corner svg {
 		fill: var(--accent);
-		color: var(--bg);
+		color: #130e26;
 	}
 	.github-corner .octo-arm {
 		transform-origin: 130px 106px;

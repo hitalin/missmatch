@@ -17,11 +17,34 @@
 		{ e: '⭐', x: '93%', y: '28%', s: 14, d: 2.8 },
 		{ e: '☄️', x: '40%', y: '6%', s: 26, d: 1.1 }
 	];
+	// 瞬く星（misspace の連合グラフと同じ）。SSR とずれないよう、乱数は固定の種から作る
+	let seed = 7;
+	const rand = () => {
+		seed = (seed * 16807) % 2147483647;
+		return seed / 2147483647;
+	};
+	const STARS = Array.from({ length: 40 }, (_, i) => ({
+		kind: (['accent', 'purple', 'bright', '', ''] as const)[i % 5],
+		x: rand() * 100,
+		y: rand() * 100,
+		size: 0.5 + rand() * 2.5,
+		delay: rand() * 4,
+		duration: 2 + rand() * 4
+	}));
 </script>
 
 <div class="backdrop" aria-hidden="true">
-	<div class="blob a"></div>
-	<div class="blob b"></div>
+	{#each STARS as st, i (i)}
+		<i
+			class="star {st.kind}"
+			style:left="{st.x}%"
+			style:top="{st.y}%"
+			style:--size="{st.size}px"
+			style:--delay="{st.delay}s"
+			style:--duration="{st.duration}s"
+		></i>
+	{/each}
+	<div class="field">
 	{#each PLANETS as p, i (i)}
 		<span
 			class="planet"
@@ -37,6 +60,7 @@
 			>{p.e}</span
 		>
 	{/each}
+	</div>
 </div>
 
 <style>
@@ -48,26 +72,45 @@
 		overflow: hidden;
 		pointer-events: none;
 		user-select: none;
-		/* 中央（検索ボックスのあたり）を抜く */
+		/* misspace の連合グラフと同じ宇宙（ライト・ダークどちらでも暗い） */
+		background:
+			radial-gradient(ellipse 80% 50% at 20% 30%, rgba(134, 179, 0, 0.08) 0%, transparent 50%),
+			radial-gradient(ellipse 60% 40% at 75% 70%, rgba(163, 116, 255, 0.1) 0%, transparent 45%),
+			radial-gradient(ellipse 70% 60% at 50% 50%, rgba(214, 85, 214, 0.06) 0%, transparent 50%),
+			linear-gradient(180deg, #0c0818 0%, #130e26 50%, #0f0a1e 100%);
+	}
+	/* 惑星は中央（検索ボックスのあたり）を抜く */
+	.field {
+		position: absolute;
+		inset: 0;
 		mask-image: radial-gradient(ellipse 38% 42% at 50% 46%, transparent 55%, #000 100%);
 	}
-	.blob {
+	.star {
 		position: absolute;
-		width: 46vmax;
-		height: 46vmax;
+		width: var(--size);
+		height: var(--size);
 		border-radius: 50%;
-		filter: blur(60px);
-		opacity: 0.35;
-		background: radial-gradient(circle, #9ad11b, transparent 65%);
+		background: #fff;
+		opacity: 0.5;
+		box-shadow: 0 0 calc(var(--size) * 2) rgba(255, 255, 255, 0.3);
+		animation: shine var(--duration) ease-in-out var(--delay) infinite;
 	}
-	.blob.a {
-		left: -14vmax;
-		top: -16vmax;
+	.star.accent {
+		background: #86b300;
+		box-shadow: 0 0 calc(var(--size) * 3) rgba(134, 179, 0, 0.5);
 	}
-	.blob.b {
-		right: -16vmax;
-		bottom: -18vmax;
-		background: radial-gradient(circle, #4ab300, transparent 65%);
+	.star.purple {
+		background: #a374ff;
+		box-shadow: 0 0 calc(var(--size) * 3) rgba(163, 116, 255, 0.5);
+	}
+	.star.bright {
+		box-shadow: 0 0 calc(var(--size) * 4) rgba(255, 255, 255, 0.6);
+	}
+	@keyframes shine {
+		50% {
+			opacity: 0.9;
+			scale: 1.2;
+		}
 	}
 	.planet,
 	.spark {
@@ -76,7 +119,7 @@
 	}
 	/* 惑星はゆっくり漂いながら少し傾く、星はまたたく */
 	.planet {
-		filter: drop-shadow(0 12px 18px rgba(0, 0, 0, 0.18));
+		filter: drop-shadow(0 0 18px rgba(163, 116, 255, 0.25));
 		animation: drift 9s ease-in-out var(--d) infinite;
 	}
 	.spark {
@@ -97,7 +140,8 @@
 	}
 	@media (prefers-reduced-motion: reduce) {
 		.planet,
-		.spark {
+		.spark,
+		.star {
 			animation: none;
 		}
 	}
@@ -108,7 +152,7 @@
 	}
 	/* モバイルは四隅の惑星だけ、小さく薄く */
 	@media (max-width: 899px) {
-		.backdrop {
+		.field {
 			mask-image: linear-gradient(to bottom, #000 0, transparent 22%, transparent 78%, #000 100%);
 		}
 		.planet {
