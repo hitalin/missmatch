@@ -318,7 +318,7 @@
 		</div>
 		<p class="hint">左右にスワイプ · タップで詳細 · ← → キー</p>
 	{:else}
-		<div class="panel done">
+		<div class="done">
 			<p class="big"><Icon name={total === 0 && matches.length === 0 ? 'search' : 'sparkle'} size={40} /></p>
 			{#if matches.length === 0}
 				<h2>条件に合うカードがありません</h2>
@@ -500,10 +500,11 @@
 		font-size: 0.72rem;
 		color: var(--fg-muted);
 	}
+	/* 空状態は枠を付けず、丸いアイコンと文だけを置く（いいね / よくないねと同じ） */
 	.done {
 		width: 100%;
 		text-align: center;
-		padding: 36px 20px;
+		padding: 72px 20px;
 		display: flex;
 		flex-direction: column;
 		align-items: center;
@@ -511,8 +512,13 @@
 		margin-top: 20px;
 	}
 	.done .big {
-		margin: 0;
+		width: 72px;
+		height: 72px;
+		margin: 0 auto 4px;
+		border-radius: 50%;
+		background: var(--accent-soft);
 		display: flex;
+		align-items: center;
 		justify-content: center;
 		color: var(--accent);
 	}
@@ -522,6 +528,8 @@
 	}
 	.done p {
 		margin: 0;
+		font-size: 0.9rem;
+		color: var(--fg-muted);
 	}
 
 	/* 詳細シート */
