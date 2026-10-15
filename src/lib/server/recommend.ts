@@ -17,6 +17,9 @@ const SERVERS_KEY = 'servers:v5';
 const SERVERS_TTL_SECONDS = 60 * 60;
 // 1 リクエストで新たに Clef にかける候補の上限（レイテンシとコストの上限になる）
 export const CANDIDATE_LIMIT = 40;
+// 組み立て済みの属性表のキャッシュ。欠けが無くなったときだけ置き、毎回 97〜576 件の KV 読みを避ける
+const PROFILES_TTL_SECONDS = 60 * 5;
+const profilesKey = (scope: Scope) => `profiles:v1:${scope}`;
 const CONCURRENCY = 8;
 
 // `vite dev` などバインディングがない環境向けの代替
@@ -84,6 +87,11 @@ export async function loadProfiles(
 	defer?: (work: Promise<unknown>) => void,
 	scope: Scope = 'open'
 ): Promise<{ profiles: ServerProfile[]; totalCount: number; pendingCount: number }> {
+	const cachedAll = await deps.kv.get(profilesKey(scope));
+	if (cachedAll) {
+		const parsed = JSON.parse(cachedAll) as { profiles: ServerProfile[]; totalCount: number };
+		return { ...parsed, pendingCount: 0 };
+	}
 	const servers = await getServers(deps.kv);
 	const joinable = servers.filter(scope === 'all' ? isListed : isJoinable);
 	const profiles: ServerProfile[] = await Promise.all(
@@ -103,9 +111,13 @@ export async function loadProfiles(
 			for (const p of profiles) p.vibe = byHost.get(p.server.host) ?? p.vibe;
 		}
 	}
-	return {
-		profiles,
-		totalCount: servers.length,
-		pendingCount: defer ? missing.length : 0
-	};
+	const pendingCount = defer ? missing.length : 0;
+	if (pendingCount === 0 && missing.length === 0) {
+		await deps.kv.put(
+			profilesKey(scope),
+			JSON.stringify({ profiles, totalCount: servers.length }),
+			{ expirationTtl: PROFILES_TTL_SECONDS }
+		);
+	}
+	return { profiles, totalCount: servers.length, pendingCount };
 }
