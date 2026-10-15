@@ -69,9 +69,6 @@ export interface Preferences {
 	tone: Lean; // left = ドライ・自由, right = ほのぼの・穏やか
 	community: Lean; // left = 濃い身内, right = 初心者歓迎
 	rules: Lean; // left = ゆるめ, right = しっかり
-	wish: string; // ひとこと（Hinge のプロンプト）
-	affinity: Record<string, number>; // ひとことと各サーバーの噛み合い確率
-	affinityFor: string; // affinity を計算したときの一言
 }
 
 export function defaultPreferences(): Preferences {
@@ -91,10 +88,7 @@ export function defaultPreferences(): Preferences {
 		topics: [],
 		tone: 'any',
 		community: 'any',
-		rules: 'any',
-		wish: '',
-		affinity: {},
-		affinityFor: ''
+		rules: 'any'
 	};
 }
 
@@ -116,10 +110,4 @@ export function paceOf(s: ServerInfo): Pace {
 // デッキを出すのに最低限必要な設定が済んでいるか
 export function isComplete(prefs: Preferences): boolean {
 	return prefs.adult !== null;
-}
-
-// 一言が変わっていなければ、保存済みの噛み合い確率をそのまま使える
-export function hasFreshAffinity(prefs: Preferences): boolean {
-	const wish = prefs.wish.trim();
-	return wish.length > 0 && prefs.affinityFor === wish && Object.keys(prefs.affinity).length > 0;
 }

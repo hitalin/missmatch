@@ -4,7 +4,15 @@
 	import { resolve } from '$app/paths';
 	import { MAX_INTENT_LENGTH } from '$lib/intent';
 	import { isComplete } from '$lib/prefs';
-	import { emptyProfile, loadSavedProfile, persistProfile, type SavedProfile } from '$lib/profile';
+	import {
+		currentSearch,
+		emptyProfile,
+		loadSavedProfile,
+		persistProfile,
+		type SavedProfile,
+		selectSearch
+	} from '$lib/profile';
+	import { newSearch } from '$lib/search';
 
 	// 探す: 検索ボックスだけのランディング。言葉を入れて送ると「さがす」でデッキが並び替わる
 	const EXAMPLES = [
@@ -20,23 +28,15 @@
 
 	onMount(() => {
 		profile = loadSavedProfile();
-		text = profile.prefs.wish;
+		text = currentSearch(profile)?.query ?? '';
 		hasProfile = isComplete(profile.prefs);
 	});
 
+	// 同じ言葉で探したことがあればその検索（いいね・よくないね込み）を開き、無ければ新しく始める
 	function go(wish: string) {
 		const trimmed = wish.trim().slice(0, MAX_INTENT_LENGTH);
-		const changed = trimmed !== profile.prefs.affinityFor;
-		persistProfile({
-			...profile,
-			prefs: {
-				...profile.prefs,
-				wish: trimmed,
-				// 言葉が変わったら噛み合いは「さがす」で読み直す
-				affinity: changed ? {} : profile.prefs.affinity,
-				affinityFor: changed ? '' : profile.prefs.affinityFor
-			}
-		});
+		const existing = profile.searches.find((s) => s.query === trimmed);
+		persistProfile(selectSearch(profile, existing ?? newSearch(trimmed)));
 		goto(resolve('/pick'));
 	}
 	function submit(e: SubmitEvent) {

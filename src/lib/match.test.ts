@@ -13,6 +13,7 @@ import {
 	tasteWeight
 } from './match';
 import { defaultPreferences, type Preferences } from './prefs';
+import { newSearch } from './search';
 import type { Genre } from './types';
 
 const emptyGenre = (): Record<Genre, number> => ({
@@ -119,21 +120,18 @@ describe('scoreProfile', () => {
 	});
 
 	it('検索語があるときは噛み合いが主で、好みは従（好みが完璧でも噛み合わない鯖は下）', () => {
-		const p = prefs({
-			nsfw: 'avoid',
-			topics: ['illust'],
-			tone: 'right',
-			wish: '病み垢',
-			affinityFor: '病み垢',
-			affinity: { 'yami.tld': 0.95, 'other.tld': 0.1 }
-		});
+		const p = prefs({ nsfw: 'avoid', topics: ['illust'], tone: 'right' });
+		const affinity = { 'yami.tld': 0.95, 'other.tld': 0.1 };
 		// yami は好み（創作・ほのぼの・R-18 少なめ）には全く合わないが、文章には噛み合う
 		const yami = scoreProfile(
 			mk({ host: 'yami.tld' }, { genre: { ...emptyGenre(), vent: 0.95 }, tone: 0.3, nsfw: 0.5 }),
-			p
+			p,
+			{},
+			0,
+			affinity
 		);
 		// other は好みには完璧に合うが、文章には噛み合わない
-		const other = scoreProfile(mk({ host: 'other.tld' }), p);
+		const other = scoreProfile(mk({ host: 'other.tld' }), p, {}, 0, affinity);
 		expect(yami.score).toBeGreaterThan(other.score);
 		expect(yami.reasons[0]).toBe('書いてくれた希望と噛み合う');
 		// 噛み合い 0.95 が 75% を占めるので、好みが低くても 71 点以上。逆は 33 点以下
@@ -237,10 +235,10 @@ describe('スワイプからの学習', () => {
 		const taste: Taste = { scale: -1 };
 		const small = mk({ host: 's.tld', usersCount: 10, dru15: 1 });
 		const large = mk({ host: 'l.tld', usersCount: 50000, dru15: 1000 });
-		const before = buildDeck([small, large], prefs(), taste, 0, new Set(), 2).map(
+		const before = buildDeck([small, large], prefs(), taste, 0, newSearch(), 2).map(
 			(m) => m.server.host
 		);
-		const after = buildDeck([small, large], prefs(), taste, 8, new Set(), 2).map(
+		const after = buildDeck([small, large], prefs(), taste, 8, newSearch(), 2).map(
 			(m) => m.server.host
 		);
 		expect(before[0]).toBe('l.tld'); // 同点なら活発な順
@@ -260,7 +258,16 @@ describe('buildDeck', () => {
 			mk({ host: 'b.tld' }, { nsfw: 0.9 }),
 			mk({ host: 'c.tld' })
 		];
-		const deck = buildDeck(profiles, prefs({ nsfw: 'avoid' }), {}, 0, new Set(['a.tld']), 10);
+		const search = { ...newSearch(), liked: ['a.tld'] };
+		const deck = buildDeck(profiles, prefs({ nsfw: 'avoid' }), {}, 0, search, 10);
 		expect(deck.map((m) => m.server.host)).toEqual(['c.tld', 'b.tld']);
+	});
+
+	it('検索の噛み合いで並び、別の検索でスワイプした鯖は除かれない', () => {
+		const profiles = [mk({ host: 'a.tld' }), mk({ host: 'b.tld' })];
+		const search = { ...newSearch('病み垢'), affinity: { 'a.tld': 0.2, 'b.tld': 0.9 }, passed: [] };
+		const deck = buildDeck(profiles, prefs(), {}, 0, search, 10);
+		expect(deck.map((m) => m.server.host)).toEqual(['b.tld', 'a.tld']);
+		expect(deck[0].reasons).toContain('書いてくれた希望と噛み合う');
 	});
 });

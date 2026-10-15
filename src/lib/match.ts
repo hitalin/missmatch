@@ -6,7 +6,8 @@ import {
 	featuresOf,
 	GENRE_FEATURES
 } from './features';
-import { hasFreshAffinity, type Preferences, paceOf, scaleOf } from './prefs';
+import { type Preferences, paceOf, scaleOf } from './prefs';
+import { hasAffinity, type Search, seenHosts } from './search';
 import type { Match, ServerInfo, ServerProfile } from './types';
 import { vibeTags } from './vibe';
 
@@ -86,7 +87,8 @@ export function scoreProfile(
 	p: ServerProfile,
 	prefs: Preferences,
 	taste: Taste = {},
-	swipes = 0
+	swipes = 0,
+	affinity: Record<string, number> = {} // 検索の噛み合い。空なら設定と好みだけで採点
 ): Match {
 	const v = p.vibe;
 	const axes: Axis[] = [];
@@ -150,27 +152,29 @@ export function scoreProfile(
 		.map((a) => a.reason as string);
 
 	let fit = prefFit;
-	if (hasFreshAffinity(prefs)) {
-		const affinity = prefs.affinity[p.server.host] ?? UNKNOWN;
-		fit = AFFINITY_SHARE * affinity + (1 - AFFINITY_SHARE) * prefFit;
-		if (affinity >= 0.6) reasons.unshift('書いてくれた希望と噛み合う');
+	if (Object.keys(affinity).length > 0) {
+		const a = affinity[p.server.host] ?? UNKNOWN;
+		fit = AFFINITY_SHARE * a + (1 - AFFINITY_SHARE) * prefFit;
+		if (a >= 0.6) reasons.unshift('書いてくれた希望と噛み合う');
 	}
 	const score = Math.round(fit * 100);
 	return { server: p.server, vibe: v, score, reasons, tags: v ? vibeTags(v) : [] };
 }
 
-// 次に見せるカード: フィルターを通り、まだスワイプしていないものを相性順に
+// 次に見せるカード: フィルターを通り、この検索でまだスワイプしていないものを相性順に
 export function buildDeck(
 	profiles: ServerProfile[],
 	prefs: Preferences,
 	taste: Taste,
 	swipes: number,
-	seen: Set<string>,
+	search: Search,
 	limit: number
 ): Match[] {
+	const seen = seenHosts(search);
+	const affinity = hasAffinity(search) ? search.affinity : {};
 	return applyFilters(profiles, prefs)
 		.filter((p) => !seen.has(p.server.host))
-		.map((p) => scoreProfile(p, prefs, taste, swipes))
+		.map((p) => scoreProfile(p, prefs, taste, swipes, affinity))
 		.sort((a, b) => b.score - a.score || (b.server.dru15 ?? 0) - (a.server.dru15 ?? 0))
 		.slice(0, limit);
 }

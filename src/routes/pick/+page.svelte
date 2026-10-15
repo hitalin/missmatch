@@ -10,16 +10,27 @@
 	import { featuresOf } from '$lib/features';
 	import { applyIntent } from '$lib/intent';
 	import { applyFilters, buildDeck, learn, scoreProfile, type Taste } from '$lib/match';
-	import { hasFreshAffinity, isComplete, needsAllServers } from '$lib/prefs';
-	import { emptyProfile, loadSavedProfile, persistProfile, type SavedProfile } from '$lib/profile';
+	import { isComplete, needsAllServers } from '$lib/prefs';
+	import {
+		currentSearch,
+		emptyProfile,
+		loadSavedProfile,
+		patchSearch,
+		persistProfile,
+		type SavedProfile,
+		selectSearch
+	} from '$lib/profile';
+	import { hasAffinity, newSearch, seenHosts } from '$lib/search';
 	import type { Match, ServerProfile } from '$lib/types';
 	import type { ClefAnswer } from '$lib/vibe';
 
 	const DECK_SIZE = 10;
 	const SAVE_DEBOUNCE_MS = 250;
 
-	// プロフィール（設定・学習した好み・いいね・パス）はブラウザに保持する
+	// プロフィール（設定・学習した好み・検索ごとのいいね・パス）はブラウザに保持する。
+	// onMount で必ず current の検索を用意するので、それ以降 search は null にならない
 	let profile = $state<SavedProfile>(emptyProfile());
+	const search = $derived(currentSearch(profile) ?? newSearch());
 	let tab = $state<Tab>('discover');
 	let onboarding = $state(true);
 	let hydrated = $state(false);
@@ -39,33 +50,34 @@
 	let deckTotal = $state(0);
 	let celebrate = $state<Match | null>(null);
 
-	// 条件（フィルター・加点・ひとこと）の文字列キー。一言の入力中は変わらない
-	const prefsKey = $derived.by(() => {
-		const { wish: _wish, affinity, affinityFor, ...rest } = profile.prefs;
-		return JSON.stringify({ ...rest, affinity: hasFreshAffinity(profile.prefs) ? affinityFor : '' });
-	});
+	// 条件（フィルター・加点・どの検索か・噛み合い済みか）の文字列キー。変わったらデッキを作り直す
+	const prefsKey = $derived(
+		JSON.stringify({ ...profile.prefs, search: search.id, affinity: hasAffinity(search) })
+	);
 	const ready = $derived(isComplete(profile.prefs));
+	const wishApplied = $derived(hasAffinity(search));
 	function matchesOf(hosts: string[]): Match[] {
 		if (!profiles) return [];
 		const byHost = new Map(profiles.map((p) => [p.server.host, p]));
+		const affinity = wishApplied ? search.affinity : {};
 		return hosts
 			.map((host) => byHost.get(host))
 			.filter((p): p is ServerProfile => p !== undefined)
-			.map((p) => scoreProfile(p, profile.prefs, profile.taste, profile.swipes));
+			.map((p) => scoreProfile(p, profile.prefs, profile.taste, profile.swipes, affinity));
 	}
-	const liked = $derived(matchesOf(profile.liked));
-	const passed = $derived(matchesOf(profile.passed));
+	const liked = $derived(matchesOf(search.liked));
+	const passed = $derived(matchesOf(search.passed));
 
 	// 復元は一度だけ（$effect にすると自分の書き込みで再実行ループになる）。
 	// 探すページで入れた一言がまだ読み取られていなければ、ここで読み取る
 	onMount(() => {
 		const saved = loadSavedProfile();
-		profile = saved;
+		const cur = currentSearch(saved);
+		profile = cur ? saved : selectSearch(saved, newSearch());
 		onboarding = !isComplete(saved.prefs);
 		hydrated = true;
 		loadProfiles();
-		const wish = saved.prefs.wish.trim();
-		if (wish.length >= 2 && !hasFreshAffinity(saved.prefs)) readWish(wish);
+		if (cur && cur.query.length >= 2 && !hasAffinity(cur)) readWish(cur.query);
 	});
 
 	// 保存（入力のたびに書かず、少し待ってまとめる）。
@@ -134,10 +146,7 @@
 				affinity?: Record<string, number>;
 			};
 			const prefs = applyIntent(profile.prefs, data.answers ?? {});
-			profile = {
-				...profile,
-				prefs: { ...prefs, wish: text, affinity: data.affinity ?? {}, affinityFor: text }
-			};
+			profile = patchSearch({ ...profile, prefs }, { affinity: data.affinity ?? {} });
 			tab = 'discover';
 		} catch (e) {
 			readError = e instanceof Error ? e.message : String(e);
@@ -146,14 +155,10 @@
 		}
 	}
 
-	function seenHosts(): Set<string> {
-		return new Set([...profile.liked, ...profile.passed]);
-	}
-
 	function rebuildDeck() {
 		if (!profiles) return;
-		const seen = seenHosts();
-		deck = buildDeck(profiles, profile.prefs, profile.taste, profile.swipes, seen, DECK_SIZE);
+		const seen = seenHosts(search);
+		deck = buildDeck(profiles, profile.prefs, profile.taste, profile.swipes, search, DECK_SIZE);
 		deckTotal = applyFilters(profiles, profile.prefs).filter((p) => !seen.has(p.server.host)).length;
 		deckKey = prefsKey;
 		deckGen += 1;
@@ -162,26 +167,31 @@
 	function swipe(m: Match, action: 'like' | 'pass') {
 		const p = profiles?.find((x) => x.server.host === m.server.host);
 		const taste: Taste = p ? learn(profile.taste, featuresOf(p), action) : profile.taste;
-		profile = {
-			...profile,
-			taste,
-			swipes: profile.swipes + 1,
-			liked: action === 'like' && !profile.liked.includes(m.server.host) ? [...profile.liked, m.server.host] : profile.liked,
-			passed: action === 'pass' && !profile.passed.includes(m.server.host) ? [...profile.passed, m.server.host] : profile.passed
-		};
+		const host = m.server.host;
+		profile = patchSearch(
+			{ ...profile, taste, swipes: profile.swipes + 1 },
+			{
+				liked: action === 'like' && !search.liked.includes(host) ? [...search.liked, host] : search.liked,
+				passed: action === 'pass' && !search.passed.includes(host) ? [...search.passed, host] : search.passed
+			}
+		);
 		if (action === 'like' && m.score >= 70) celebrate = m;
 	}
 
 	function undo(m: Match, action: 'like' | 'pass') {
 		// 直前の学習を同じ量だけ戻し、履歴からも外す（取り消したカードはデッキに戻っている）
 		const p = profiles?.find((x) => x.server.host === m.server.host);
-		profile = {
-			...profile,
-			taste: p ? unlearn(profile.taste, p, action) : profile.taste,
-			swipes: Math.max(0, profile.swipes - 1),
-			liked: profile.liked.filter((h) => h !== m.server.host),
-			passed: profile.passed.filter((h) => h !== m.server.host)
-		};
+		profile = patchSearch(
+			{
+				...profile,
+				taste: p ? unlearn(profile.taste, p, action) : profile.taste,
+				swipes: Math.max(0, profile.swipes - 1)
+			},
+			{
+				liked: search.liked.filter((h) => h !== m.server.host),
+				passed: search.passed.filter((h) => h !== m.server.host)
+			}
+		);
 	}
 
 	// learn の逆操作（同じ量だけ戻す）
@@ -195,19 +205,18 @@
 	}
 
 	function unlike(host: string) {
-		profile = { ...profile, liked: profile.liked.filter((h) => h !== host) };
+		profile = patchSearch(profile, { liked: search.liked.filter((h) => h !== host) });
 	}
 	// よくないねを取り消す（デッキに戻る）
 	function restore(host: string) {
-		profile = { ...profile, passed: profile.passed.filter((h) => h !== host) };
+		profile = patchSearch(profile, { passed: search.passed.filter((h) => h !== host) });
 	}
+	// 検索を外す = 「条件だけ」の検索に移る（言葉付きの検索とそのいいねは残る）
 	function clearWish() {
-		profile = { ...profile, prefs: { ...profile.prefs, wish: '', affinity: {}, affinityFor: '' } };
+		const plain = profile.searches.find((s) => s.query === '') ?? newSearch();
+		profile = selectSearch(profile, plain);
 	}
-	const wishApplied = $derived(hasFreshAffinity(profile.prefs));
-	const wishPending = $derived(
-		reading || (profile.prefs.wish.trim().length >= 2 && !wishApplied)
-	);
+	const wishPending = $derived(reading || (search.query.length >= 2 && !wishApplied));
 
 	function go(next: Tab) {
 		tab = next;
@@ -246,10 +255,10 @@
 				<div class="query" class:applied={wishApplied}>
 					{#if wishPending}
 						<span class="spin" aria-hidden="true"></span>
-						<span class="q">「{profile.prefs.wish.trim()}」を読み取っています…</span>
+						<span class="q">「{search.query}」を読み取っています…</span>
 					{:else if wishApplied}
 						<span class="mark" aria-hidden="true">✦</span>
-						<span class="q">「{profile.prefs.wish}」に合う順</span>
+						<span class="q">「{search.query}」に合う順</span>
 						<a class="change" href={resolve('/')}>変える</a>
 						<button class="x" aria-label="検索を外す" onclick={clearWish}>✕</button>
 					{:else}
@@ -299,8 +308,8 @@
 		</main>
 		<AppNav
 			{tab}
-			likes={profile.liked.length}
-			passed={profile.passed.length}
+			likes={search.liked.length}
+			passed={search.passed.length}
 			discoverEnabled={ready && !!profiles}
 			onchange={go}
 		/>
