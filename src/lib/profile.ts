@@ -40,6 +40,14 @@ export function selectSearch(p: SavedProfile, s: Search): SavedProfile {
 	return { ...p, searches, current: s.id };
 }
 
+// 検索を消す。開いていたものなら、最後に使った検索に移る
+export function deleteSearch(p: SavedProfile, id: string): SavedProfile {
+	const searches = p.searches.filter((s) => s.id !== id);
+	if (p.current !== id) return { ...p, searches };
+	const latest = searches.reduce<Search | null>((a, s) => (!a || s.at > a.at ? s : a), null);
+	return { ...p, searches, current: latest?.id ?? '' };
+}
+
 export function patchSearch(p: SavedProfile, patch: Partial<Search>): SavedProfile {
 	return {
 		...p,

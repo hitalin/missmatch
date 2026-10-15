@@ -1,17 +1,28 @@
 <script lang="ts">
+	import type { Search } from '$lib/search';
+	import SearchList from './SearchList.svelte';
+
 	export type Tab = 'discover' | 'likes' | 'passed' | 'you';
 	let {
 		tab,
 		likes,
 		passed,
 		discoverEnabled,
-		onchange
+		searches,
+		current,
+		onchange,
+		onselect,
+		ondelete
 	}: {
 		tab: Tab;
 		likes: number;
 		passed: number;
 		discoverEnabled: boolean;
+		searches: Search[]; // さがした言葉（デスクトップのレールにだけ出す）
+		current: string;
 		onchange: (t: Tab) => void;
+		onselect: (id: string) => void;
+		ondelete: (id: string) => void;
 	} = $props();
 </script>
 
@@ -58,6 +69,13 @@
 		</svg>
 		<span>あなた</span>
 	</button>
+	<div class="history">
+		<div class="history-head">
+			<span>さがした言葉</span>
+			<a href="/" class="new">+ 新しく</a>
+		</div>
+		<SearchList {searches} {current} {onselect} {ondelete} />
+	</div>
 </nav>
 
 <style>
@@ -124,6 +142,10 @@
 	.badge.dim {
 		background: var(--fg-muted);
 	}
+	/* 一覧はモバイルの下バーには入らない（さがすタブ側に出す） */
+	.history {
+		display: none;
+	}
 	.badge {
 		position: absolute;
 		top: 8px;
@@ -183,6 +205,30 @@
 		.badge {
 			position: static;
 			margin-left: auto;
+		}
+		.history {
+			display: block;
+			margin-top: 18px;
+			padding-top: 14px;
+			border-top: 1px solid var(--border);
+			min-height: 0;
+			overflow-y: auto;
+		}
+		.history-head {
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			padding: 0 10px 6px;
+			font-size: 0.74rem;
+			font-weight: 800;
+			color: var(--fg-muted);
+		}
+		.nav .history-head .new {
+			flex: 0 0 auto;
+			width: auto;
+			padding: 2px 6px;
+			font-size: 0.74rem;
+			color: var(--accent-fg);
 		}
 	}
 </style>

@@ -7,6 +7,7 @@
 	import MatchOverlay from '$lib/components/MatchOverlay.svelte';
 	import Onboarding from '$lib/components/Onboarding.svelte';
 	import SearchBar from '$lib/components/SearchBar.svelte';
+	import SearchList from '$lib/components/SearchList.svelte';
 	import Settings from '$lib/components/Settings.svelte';
 	import { featuresOf } from '$lib/features';
 	import { applyIntent, type AskAxis, chooseAxis, isAxisDefault, unsureAxes } from '$lib/intent';
@@ -14,6 +15,7 @@
 	import { isComplete, needsAllServers } from '$lib/prefs';
 	import {
 		currentSearch,
+		deleteSearch,
 		emptyProfile,
 		loadSavedProfile,
 		patchSearch,
@@ -246,6 +248,20 @@
 		profile = patchSearch(profile, { turns: search.turns.filter((_, i) => i !== index) });
 		if (needsRead(search)) readSearch();
 	}
+	// 過去の検索に移る / 消す
+	let showHistory = $state(false);
+	function openSearch(id: string) {
+		const s = profile.searches.find((x) => x.id === id);
+		if (!s) return;
+		profile = selectSearch(profile, s);
+		showHistory = false;
+		go('discover');
+		if (needsRead(s)) readSearch();
+	}
+	function removeSearch(id: string) {
+		const next = deleteSearch(profile, id);
+		profile = currentSearch(next) ? next : selectSearch(next, newSearch());
+	}
 	// 読み取れなかった軸は 2 つずつ選択肢で聞く（設定で既に決めた軸は聞かない）
 	const asks = $derived(
 		search.unsure.filter((a) => isAxisDefault(profile.prefs, a)).slice(0, 2)
@@ -300,6 +316,18 @@
 				{#if !reading && asks.length > 0}
 					<AskChips axes={asks} onpick={answerAsk} />
 				{/if}
+				{#if profile.searches.length > 1}
+					<!-- モバイルだけ: さがした言葉の一覧（デスクトップはレールに出る） -->
+					<details class="history" bind:open={showHistory}>
+						<summary>さがした言葉（{profile.searches.length}）</summary>
+						<SearchList
+							searches={profile.searches}
+							current={profile.current}
+							onselect={openSearch}
+							ondelete={removeSearch}
+						/>
+					</details>
+				{/if}
 				{#if !profiles}
 					<div class="loading"><div class="pulse">♥</div><p class="muted">サーバー情報を取得中…</p></div>
 				{:else}
@@ -345,7 +373,11 @@
 			likes={search.liked.length}
 			passed={search.passed.length}
 			discoverEnabled={ready && !!profiles}
+			searches={profile.searches}
+			current={profile.current}
 			onchange={go}
+			onselect={openSearch}
+			ondelete={removeSearch}
 		/>
 	{/if}
 
@@ -380,6 +412,16 @@
 		text-decoration: underline;
 		padding: 0;
 	}
+	.history {
+		margin-bottom: 10px;
+		font-size: 0.82rem;
+	}
+	.history summary {
+		cursor: pointer;
+		font-weight: 700;
+		color: var(--fg-muted);
+		padding: 4px 2px;
+	}
 	.loading {
 		text-align: center;
 		padding: 80px 0;
@@ -411,6 +453,9 @@
 		color: var(--fg-muted);
 	}
 	@media (min-width: 900px) {
+		.history {
+			display: none;
+		}
 		.app {
 			max-width: none;
 			margin: 0;

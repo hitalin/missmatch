@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
 	currentSearch,
+	deleteSearch,
 	emptyProfile,
 	parseSavedProfile,
 	patchSearch,
@@ -140,6 +141,21 @@ describe('検索の切り替え', () => {
 		p = patchSearch(p, { passed: ['y.tld'] });
 		expect(currentSearch(p)?.passed).toEqual(['y.tld']);
 		expect(p.searches.find((s) => s.id === a.id)?.passed).toEqual([]);
+	});
+
+	it('deleteSearch は検索を消し、current だったなら最後に使ったものに移る', () => {
+		const a = { ...newSearch('a'), at: 1 };
+		const b = { ...newSearch('b'), at: 2 };
+		const c = { ...newSearch('c'), at: 3 };
+		let p = { ...emptyProfile(), searches: [a, b, c], current: c.id };
+		p = deleteSearch(p, c.id);
+		expect(p.searches.map((s) => s.id)).toEqual([a.id, b.id]);
+		expect(p.current).toBe(b.id);
+		p = deleteSearch(p, a.id); // current でないものを消しても current は変わらない
+		expect(p.current).toBe(b.id);
+		p = deleteSearch(p, b.id);
+		expect(p.searches).toEqual([]);
+		expect(p.current).toBe('');
 	});
 
 	it('currentSearch は検索が無ければ null', () => {
