@@ -23,7 +23,7 @@
 <section class="likes">
 	<h1>{mode === 'liked' ? 'いいね' : 'よくないね'} <span class="count">{matches.length}</span></h1>
 	{#if matches.length === 0}
-		<div class="panel empty">
+		<div class="empty">
 			<p class="big"><Icon name={mode === 'liked' ? 'heart' : 'x'} size={40} /></p>
 			{#if mode === 'liked'}
 				<p>まだありません。「さがす」で気になるサーバーにいいねすると、ここに残ります。</p>
@@ -89,13 +89,20 @@
 		margin: 0;
 		font-size: 0.9rem;
 	}
+	/* 空状態は枠を付けず、アイコンと一文だけを置く */
 	.empty {
 		text-align: center;
-		padding: 40px 20px;
+		padding: 72px 20px;
 		color: var(--fg-muted);
+		font-size: 0.9rem;
 	}
 	.empty .big {
-		margin: 0 0 8px;
+		width: 72px;
+		height: 72px;
+		margin: 0 auto 14px;
+		border-radius: 50%;
+		background: var(--accent-soft);
+		align-items: center;
 		display: flex;
 		justify-content: center;
 		color: var(--accent);

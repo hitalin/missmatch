@@ -113,22 +113,29 @@
 		else if (e.key === 'Backspace') undo();
 	}
 
-	// Clef の判定を右パネルで見せる（左のカードには無い情報）。0..1 の確率をバーにする
+	// Clef の判定を右パネルで見せる（左のカードには無い情報）。
+	// 両極の軸は位置マーカー、片側の軸と話題は 0..1 の塗りで出す
 	const GENRE_TOP = 3;
-	function vibeRows(v: VibeProfile): { label: string; value: number; left?: string; right?: string }[] {
-		const genres = GENRES.map((g) => ({ g, p: v.genre[g] }))
-			.sort((a, b) => b.p - a.p)
-			.slice(0, GENRE_TOP)
-			.map(({ g, p }) => ({ label: GENRE_LABELS[g], value: p }));
+	type Level = { label: string; value: number };
+	function vibeScales(v: VibeProfile): (Level & { left: string; right: string })[] {
 		return [
 			{ label: '空気感', value: v.tone, left: 'ドライ', right: 'ほのぼの' },
-			{ label: 'ルール', value: v.strictness, left: 'ゆるめ', right: 'しっかり' },
-			{ label: '初心者歓迎', value: v.newcomerFriendly },
-			{ label: '身内ノリ', value: v.closedCommunity },
-			{ label: '成人向け', value: v.nsfw },
-			...genres
+			{ label: 'ルール', value: v.strictness, left: 'ゆるめ', right: 'しっかり' }
 		];
 	}
+	function vibeLevels(v: VibeProfile): Level[] {
+		return [
+			{ label: '初心者歓迎', value: v.newcomerFriendly },
+			{ label: '身内ノリ', value: v.closedCommunity },
+			{ label: '成人向け', value: v.nsfw }
+		];
+	}
+	function vibeTopics(v: VibeProfile): Level[] {
+		return GENRES.map((g) => ({ label: GENRE_LABELS[g], value: v.genre[g] }))
+			.sort((a, b) => b.value - a.value)
+			.slice(0, GENRE_TOP);
+	}
+	const pct = (x: number) => `${Math.round(x * 100)}%`;
 
 	const facts = $derived.by(() => {
 		const s = current?.server;
@@ -183,13 +190,15 @@
 		<div><b>{s.dru15 !== null ? formatCount(s.dru15) : '–'}</b><span>アクティブ / 日</span></div>
 	</div>
 	{/if}
+	{#if full}
 	<div class="meta">
-		{#if full}<span class="tag score"><Icon name="heart" size={12} filled /> {m.score}%</span>{/if}
+		<span class="tag score"><Icon name="heart" size={12} filled /> {m.score}%</span>
 		<span class="tag"><i class="dot" style:background={color}></i>{s.softwareName}</span>
 		<span class="tag reg" class:open={s.registration === 'open'} class:closed={s.registration === 'closed'}>
 			{REGISTRATION_LABELS[s.registration]}
 		</span>
 	</div>
+	{/if}
 	{#if m.reasons.length > 0}
 		<ul class="reasons">
 			{#each m.reasons as r (r)}<li><Icon name="check" size={14} />{r}</li>{/each}
@@ -203,17 +212,34 @@
 		{#if m.affinity !== undefined}
 			<div class="row">
 				<span class="k">言葉との噛み合い</span>
-				<span class="bar"><i style:width="{Math.round(m.affinity * 100)}%"></i></span>
-				<span class="v">{Math.round(m.affinity * 100)}%</span>
+				<span class="bar"><i style:width={pct(m.affinity)}></i></span>
+				<span class="v">{pct(m.affinity)}</span>
 			</div>
 		{/if}
 		{#if m.vibe}
-			{#each vibeRows(m.vibe) as r (r.label)}
-				<div class="row" class:two={!!r.left}>
+			{#each vibeScales(m.vibe) as r (r.label)}
+				<div class="row">
 					<span class="k">{r.label}</span>
-					{#if r.left}<span class="end">{r.left}</span>{/if}
-					<span class="bar"><i style:width="{Math.round(r.value * 100)}%"></i></span>
-					{#if r.right}<span class="end">{r.right}</span>{:else}<span class="v">{Math.round(r.value * 100)}%</span>{/if}
+					<span class="scale">
+						<span class="track"><b style:left={pct(r.value)}></b></span>
+						<span class="ends"><span>{r.left}</span><span>{r.right}</span></span>
+					</span>
+					<span class="v"></span>
+				</div>
+			{/each}
+			{#each vibeLevels(m.vibe) as r (r.label)}
+				<div class="row">
+					<span class="k">{r.label}</span>
+					<span class="bar"><i style:width={pct(r.value)}></i></span>
+					<span class="v">{pct(r.value)}</span>
+				</div>
+			{/each}
+			<h4>話題</h4>
+			{#each vibeTopics(m.vibe) as r (r.label)}
+				<div class="row">
+					<span class="k">{r.label}</span>
+					<span class="bar"><i style:width={pct(r.value)}></i></span>
+					<span class="v">{pct(r.value)}</span>
 				</div>
 			{/each}
 			<p class="small muted">投稿 {m.vibe.sampleCount} 件と説明文・ルールから判定</p>
@@ -227,23 +253,14 @@
 		<button class="btn primary" onclick={() => fly('right')}><Icon name="heart" size={15} filled /> いいね</button>
 	</div>
 	{/if}
-	{#if s.description}
-		{#if full}
-			<p class="desc">{s.description}</p>
-		{:else}
-			<details class="more">
-				<summary>説明の全文</summary>
-				<p class="desc plain">{s.description}</p>
-			</details>
-		{/if}
-	{/if}
+	{#if full && s.description}<p class="desc">{s.description}</p>{/if}
 
 	<dl class="facts">
 		{#each facts as f (f.k)}
 			<div><dt>{f.k}</dt><dd>{f.v}</dd></div>
 		{/each}
 	</dl>
-	{#if s.serverRules.length > 0}
+	{#if full && s.serverRules.length > 0}
 		<details>
 			<summary>サーバールール（{s.serverRules.length}）</summary>
 			<ol>
@@ -635,10 +652,6 @@
 		color: var(--accent-fg);
 		font-weight: 700;
 	}
-	.desc.plain {
-		padding-top: 6px;
-		border-top: none;
-	}
 	.desc {
 		margin: 0;
 		padding-top: 10px;
@@ -682,52 +695,81 @@
 		font-size: 0.8rem;
 		margin: 0;
 	}
-	.clef h3 {
+	.clef h3,
+	.clef h4 {
 		margin: 0 0 6px;
 		font-size: 0.66rem;
 		font-weight: 700;
 		letter-spacing: 0.06em;
-		text-transform: uppercase;
 		color: var(--fg-muted);
 	}
+	.clef h4 {
+		margin: 8px 0 4px;
+	}
+	/* 全行を同じ 3 列（ラベル | バー | 値）に揃える */
 	.clef .row {
 		display: grid;
-		grid-template-columns: 5.4em 1fr auto;
+		grid-template-columns: 7.5em minmax(0, 1fr) 3em;
 		align-items: center;
-		gap: 6px;
-		font-size: 0.74rem;
-		padding: 2px 0;
-	}
-	.clef .row.two {
-		grid-template-columns: 5.4em auto 1fr auto;
+		column-gap: 10px;
+		min-height: 22px;
+		font-size: 0.76rem;
 	}
 	.clef .k {
-		color: var(--fg-muted);
 		font-weight: 700;
-		white-space: nowrap;
-	}
-	.clef .end {
-		color: var(--fg-muted);
-		font-size: 0.66rem;
+		overflow: hidden;
+		text-overflow: ellipsis;
 		white-space: nowrap;
 	}
 	.clef .v {
 		font-weight: 700;
-		min-width: 2.6em;
 		text-align: right;
+		font-variant-numeric: tabular-nums;
 	}
-	.clef .bar {
+	.clef .bar,
+	.clef .track {
+		position: relative;
 		display: block;
 		height: 6px;
-		border-radius: 3px;
+		border-radius: 999px;
 		background: var(--panel-2);
+		box-shadow: inset 0 0 0 1px var(--border);
+	}
+	.clef .bar {
 		overflow: hidden;
 	}
 	.clef .bar i {
 		display: block;
 		height: 100%;
-		border-radius: 3px;
+		border-radius: 999px;
 		background: var(--accent-grad);
+	}
+	.clef .row:has(.scale) .k {
+		align-self: start;
+		padding-top: 1px;
+	}
+	.clef .scale {
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
+		padding-top: 4px;
+	}
+	.clef .track b {
+		position: absolute;
+		top: 50%;
+		width: 12px;
+		height: 12px;
+		border-radius: 50%;
+		background: var(--accent);
+		border: 2px solid var(--panel);
+		box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+		transform: translate(-50%, -50%);
+	}
+	.clef .ends {
+		display: flex;
+		justify-content: space-between;
+		font-size: 0.62rem;
+		color: var(--fg-muted);
 	}
 	.clef .small {
 		margin: 6px 0 0;
