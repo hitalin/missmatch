@@ -2,6 +2,7 @@
 	import type { Snippet } from 'svelte';
 	import { MAX_INTENT_LENGTH } from '$lib/intent';
 	import Icon from './Icon.svelte';
+	import Spinner from './Spinner.svelte';
 
 	// 言葉を入れる箱（yamix の ChatInput）: 角丸の箱に textarea、上に補助行、下端の左に道具・右に丸い送信。
 	// Enter で送信、Shift+Enter で改行。高さは中身に合わせて伸びる
@@ -84,7 +85,7 @@
 	<div class="tools">
 		<div class="left">{#if left}{@render left()}{/if}</div>
 		<button class="send" type="button" disabled={!ready} aria-label="送る" onclick={submit}>
-			{#if disabled}<span class="spin"></span>{:else}<Icon name="send" size={16} />{/if}
+			{#if disabled}<Spinner size={16} label="読み取っています" />{:else}<Icon name="send" size={16} />{/if}
 		</button>
 	</div>
 </div>
@@ -148,6 +149,7 @@
 		color: var(--fg-muted);
 	}
 	.send {
+		--spinner-color: #fff;
 		width: 30px;
 		height: 30px;
 		border-radius: 50%;
@@ -166,22 +168,11 @@
 	.send:hover:not(:disabled) {
 		transform: translateY(-1px);
 	}
+	.send:disabled:not(:has(.spinner)) {
+		opacity: 0.35;
+	}
 	.send:disabled {
 		box-shadow: none;
-		opacity: 0.35;
 		cursor: not-allowed;
-	}
-	.spin {
-		width: 14px;
-		height: 14px;
-		border-radius: 50%;
-		border: 2px solid rgba(255, 255, 255, 0.4);
-		border-top-color: #fff;
-		animation: spin 0.8s linear infinite;
-	}
-	@keyframes spin {
-		to {
-			transform: rotate(360deg);
-		}
 	}
 </style>

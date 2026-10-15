@@ -3,6 +3,7 @@
 	import { GENRE_LABELS, GENRES, type Match, REGISTRATION_LABELS, type VibeProfile } from '$lib/types';
 	import { formatCount } from '$lib/format';
 	import Icon from './Icon.svelte';
+	import Spinner from './Spinner.svelte';
 	import ServerCard from './ServerCard.svelte';
 
 	// Tinder のデッキ: ドラッグでスワイプ、スタンプ、丸ボタン、戻す、詳細シート
@@ -14,6 +15,7 @@
 		onexhausted,
 		onsettings,
 		total,
+		busy = '',
 		composer
 	}: {
 		matches: Match[];
@@ -23,6 +25,7 @@
 		onundo: (m: Match, action: 'like' | 'pass') => void;
 		onexhausted: () => void; // このデッキを見終わった（次の束を頼む）
 		onsettings: () => void;
+		busy?: string; // Clef が読み取り中の言葉（空でなければ、カードと判定の上にスピナーを重ねて古い並びを隠す）
 		composer?: Snippet; // 言葉を足す箱。モバイルは束の下、デスクトップは右パネルの下に置く
 	} = $props();
 
@@ -103,6 +106,7 @@
 	}
 
 	function onkeydown(e: KeyboardEvent) {
+		if (busy) return;
 		if (e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLInputElement) return;
 		if (e.key === 'ArrowRight') fly('right');
 		else if (e.key === 'ArrowLeft') fly('left');
@@ -270,9 +274,15 @@
 	{/if}
 {/snippet}
 
-<section class="discover">
+<section class="discover" class:busy={!!busy}>
 	{#if current}
 		<div class="stack">
+			{#if busy}
+				<div class="busy-layer">
+					<Spinner label="読み取っています" />
+					<p>「{busy}」を Clef で読み取っています…</p>
+				</div>
+			{/if}
 			{#each stack.toReversed() as m, rev (m.server.host)}
 				{@const depth = stack.length - 1 - rev}
 				{#if depth === 0}
@@ -358,6 +368,44 @@
 		flex: 1;
 		min-height: 380px;
 		max-height: 640px;
+	}
+	/* 読み取り中: 古いカードと判定をぼかして隠し、操作させない */
+	.busy-layer {
+		position: absolute;
+		inset: 0;
+		z-index: 20;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		gap: 14px;
+		padding: 24px;
+		border-radius: var(--radius-lg);
+		background: var(--glass);
+		-webkit-backdrop-filter: blur(14px);
+		backdrop-filter: blur(14px);
+		text-align: center;
+		font-size: 0.86rem;
+		font-weight: 700;
+		color: var(--fg-muted);
+		animation: fade-in 0.2s ease;
+	}
+	.busy-layer p {
+		margin: 0;
+	}
+	.busy .actions,
+	.busy .aside {
+		opacity: 0.35;
+		pointer-events: none;
+		filter: blur(2px);
+		transition:
+			opacity 0.2s,
+			filter 0.2s;
+	}
+	@keyframes fade-in {
+		from {
+			opacity: 0;
+		}
 	}
 	.slot {
 		position: absolute;

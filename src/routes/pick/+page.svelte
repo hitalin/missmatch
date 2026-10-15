@@ -10,6 +10,7 @@
 	import Onboarding from '$lib/components/Onboarding.svelte';
 	import SearchBar from '$lib/components/SearchBar.svelte';
 		import Settings from '$lib/components/Settings.svelte';
+	import Spinner from '$lib/components/Spinner.svelte';
 	import Shell, { type Tab, TABS } from '$lib/components/Shell.svelte';
 	import { featuresOf } from '$lib/features';
 	import { applyIntent, type AskAxis, chooseAxis, isAxisDefault, unsureAxes } from '$lib/intent';
@@ -324,7 +325,7 @@
 				<div class="discover-tab">
 					<SearchBar {search} {reading} ondrop={dropTurn} />
 					{#if !profiles}
-						<div class="loading"><div class="pulse"><Icon name="heart" size={30} filled /></div><p class="muted">サーバー情報を取得中…</p></div>
+						<div class="loading"><Spinner label="サーバー情報を取得中" /><p class="muted">サーバー情報を取得中…</p></div>
 					{:else}
 						{#key deckGen}
 							<Discover
@@ -335,6 +336,7 @@
 								onundo={undo}
 								onexhausted={rebuildDeck}
 								onsettings={() => go('you')}
+								busy={reading ? searchTurns(search).at(-1) ?? '' : ''}
 							>
 								{#snippet composer()}
 									<Composer
@@ -419,21 +421,5 @@
 	.loading {
 		text-align: center;
 		padding: 80px 0;
-	}
-	.pulse {
-		width: 72px;
-		height: 72px;
-		margin: 0 auto 12px;
-		border-radius: 50%;
-		background: var(--accent-soft);
-		color: var(--accent);
-		display: grid;
-		place-items: center;
-		animation: pulse 1.2s ease-in-out infinite;
-	}
-	@keyframes pulse {
-		50% {
-			transform: scale(1.1);
-		}
 	}
 </style>

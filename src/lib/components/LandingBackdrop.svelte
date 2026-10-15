@@ -1,47 +1,41 @@
 <script lang="ts">
-	// ランディングの背景（マッチングアプリの LP 風）: 傾いたプロフィールカードとハートが周りに浮かぶ。
+	// ランディングの背景: サーバー（＝それぞれの星）が周りに浮かぶ宇宙。
 	// 中央の検索ボックスの周りは空け、本文の読みやすさを優先する。装飾なので支援技術からは隠す
-	const CARDS = [
-		{ x: '5%', y: '10%', r: -12, hue: 82, d: 0, side: true },
-		{ x: '11%', y: '48%', r: 8, hue: 140, d: 1.2, side: false },
-		{ x: '3%', y: '80%', r: -6, hue: 30, d: 2.1, side: true },
-		{ x: '84%', y: '8%', r: 10, hue: 200, d: 0.6, side: true },
-		{ x: '88%', y: '44%', r: -9, hue: 330, d: 1.8, side: false },
-		{ x: '81%', y: '78%', r: 6, hue: 82, d: 2.6, side: true }
+	const PLANETS = [
+		{ e: '🪐', x: '6%', y: '10%', s: 84, d: 0, corner: true },
+		{ e: '🌏', x: '12%', y: '50%', s: 60, d: 1.2, corner: false },
+		{ e: '🌕', x: '4%', y: '80%', s: 52, d: 2.1, corner: true },
+		{ e: '🌍', x: '84%', y: '9%', s: 66, d: 0.6, corner: true },
+		{ e: '🪐', x: '88%', y: '46%', s: 56, d: 1.8, corner: false },
+		{ e: '🌑', x: '82%', y: '80%', s: 72, d: 2.6, corner: true }
 	];
-	const HEARTS = [
-		{ x: '24%', y: '22%', s: 18, d: 0.3 },
-		{ x: '70%', y: '28%', s: 14, d: 1.5 },
-		{ x: '28%', y: '80%', s: 12, d: 2.2 },
-		{ x: '66%', y: '88%', s: 20, d: 0.9 },
-		{ x: '92%', y: '26%', s: 12, d: 2.8 }
+	const SPARKS = [
+		{ e: '✨', x: '24%', y: '20%', s: 22, d: 0.3 },
+		{ e: '⭐', x: '70%', y: '26%', s: 16, d: 1.5 },
+		{ e: '💫', x: '28%', y: '82%', s: 22, d: 2.2 },
+		{ e: '✨', x: '66%', y: '88%', s: 18, d: 0.9 },
+		{ e: '⭐', x: '93%', y: '28%', s: 14, d: 2.8 },
+		{ e: '☄️', x: '40%', y: '6%', s: 26, d: 1.1 }
 	];
 </script>
 
 <div class="backdrop" aria-hidden="true">
 	<div class="blob a"></div>
 	<div class="blob b"></div>
-	{#each CARDS as c, i (i)}
-		<div class="card" class:corner={c.side} style:left={c.x} style:top={c.y} style:--r="{c.r}deg" style:--d="{c.d}s">
-			<div class="photo" style:--h={c.hue}></div>
-			<div class="who">
-				<span class="avatar" style:--h={c.hue}></span>
-				<span class="lines"><i></i><i class="short"></i></span>
-			</div>
-		</div>
-	{/each}
-	{#each HEARTS as h, i (i)}
-		<svg
-			class="heart"
-			style:left={h.x}
-			style:top={h.y}
-			style:--d="{h.d}s"
-			width={h.s}
-			height={h.s}
-			viewBox="0 0 24 24"
+	{#each PLANETS as p, i (i)}
+		<span
+			class="planet"
+			class:corner={p.corner}
+			style:left={p.x}
+			style:top={p.y}
+			style:font-size="{p.s}px"
+			style:--d="{p.d}s">{p.e}</span
 		>
-			<path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10Z" />
-		</svg>
+	{/each}
+	{#each SPARKS as p, i (i)}
+		<span class="spark" style:left={p.x} style:top={p.y} style:font-size="{p.s}px" style:--d="{p.d}s"
+			>{p.e}</span
+		>
 	{/each}
 </div>
 
@@ -53,6 +47,7 @@
 		z-index: -1;
 		overflow: hidden;
 		pointer-events: none;
+		user-select: none;
 		/* 中央（検索ボックスのあたり）を抜く */
 		mask-image: radial-gradient(ellipse 38% 42% at 50% 46%, transparent 55%, #000 100%);
 	}
@@ -74,69 +69,35 @@
 		bottom: -18vmax;
 		background: radial-gradient(circle, #4ab300, transparent 65%);
 	}
-	.card {
+	.planet,
+	.spark {
 		position: absolute;
-		width: 132px;
-		padding: 6px;
-		border-radius: 18px;
-		background: var(--panel);
-		box-shadow: var(--shadow-lg);
-		transform: rotate(var(--r));
-		animation: float 7s ease-in-out var(--d) infinite;
-		opacity: 0.9;
+		line-height: 1;
 	}
-	.photo {
-		height: 120px;
-		border-radius: 13px;
-		background: linear-gradient(
-			160deg,
-			hsl(var(--h) 70% 72%),
-			hsl(calc(var(--h) + 40) 60% 48%)
-		);
+	/* 惑星はゆっくり漂いながら少し傾く、星はまたたく */
+	.planet {
+		filter: drop-shadow(0 12px 18px rgba(0, 0, 0, 0.18));
+		animation: drift 9s ease-in-out var(--d) infinite;
 	}
-	.who {
-		display: flex;
-		align-items: center;
-		gap: 6px;
-		padding: 7px 3px 3px;
+	.spark {
+		opacity: 0.8;
+		animation: twinkle 3.5s ease-in-out var(--d) infinite;
 	}
-	.avatar {
-		width: 20px;
-		height: 20px;
-		border-radius: 6px;
-		background: hsl(var(--h) 60% 60%);
-		flex-shrink: 0;
-	}
-	.lines {
-		flex: 1;
-		display: flex;
-		flex-direction: column;
-		gap: 4px;
-	}
-	.lines i {
-		display: block;
-		height: 5px;
-		border-radius: 3px;
-		background: var(--panel-2);
-		box-shadow: inset 0 0 0 1px var(--border);
-	}
-	.lines i.short {
-		width: 60%;
-	}
-	.heart {
-		position: absolute;
-		fill: var(--accent);
-		opacity: 0.55;
-		animation: float 6s ease-in-out var(--d) infinite;
-	}
-	@keyframes float {
+	@keyframes drift {
 		50% {
-			translate: 0 -10px;
+			translate: 0 -14px;
+			rotate: 8deg;
+		}
+	}
+	@keyframes twinkle {
+		50% {
+			opacity: 0.3;
+			scale: 0.8;
 		}
 	}
 	@media (prefers-reduced-motion: reduce) {
-		.card,
-		.heart {
+		.planet,
+		.spark {
 			animation: none;
 		}
 	}
@@ -145,20 +106,17 @@
 			left: var(--rail-w);
 		}
 	}
-	/* モバイルは四隅の 4 枚だけ、小さく薄く */
+	/* モバイルは四隅の惑星だけ、小さく薄く */
 	@media (max-width: 899px) {
 		.backdrop {
 			mask-image: linear-gradient(to bottom, #000 0, transparent 22%, transparent 78%, #000 100%);
 		}
-		.card {
-			width: 84px;
-			opacity: 0.6;
+		.planet {
+			scale: 0.6;
+			opacity: 0.7;
 		}
-		.card:not(.corner) {
+		.planet:not(.corner) {
 			display: none;
-		}
-		.photo {
-			height: 72px;
 		}
 	}
 </style>
