@@ -47,7 +47,7 @@
 		border: none;
 		background: none;
 		border-radius: 999px;
-		padding: 10px 8px;
+		padding: 8px 8px;
 		font-size: 0.84rem;
 		font-weight: 700;
 		color: var(--fg-muted);

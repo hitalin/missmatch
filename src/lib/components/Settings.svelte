@@ -204,10 +204,10 @@
 		font-size: 0.86rem;
 	}
 	.block {
-		padding: 20px 22px;
+		padding: 18px 20px;
 		display: flex;
 		flex-direction: column;
-		gap: 16px;
+		gap: 12px;
 		break-inside: avoid;
 	}
 	h2 {
@@ -251,7 +251,7 @@
 	.field {
 		display: flex;
 		flex-direction: column;
-		gap: 10px;
+		gap: 8px;
 	}
 	.label {
 		font-size: 0.74rem;
@@ -281,7 +281,7 @@
 		border: none;
 		background: none;
 		border-radius: 999px;
-		padding: 10px 8px;
+		padding: 8px 8px;
 		font-size: 0.84rem;
 		font-weight: 700;
 		color: var(--fg-muted);
@@ -306,8 +306,8 @@
 		gap: 8px;
 	}
 	.chips .chip {
-		padding: 7px 14px;
-		font-size: 0.82rem;
+		padding: 6px 13px;
+		font-size: 0.8rem;
 	}
 	.chip small {
 		font-weight: 400;
@@ -332,10 +332,10 @@
 		}
 		.head {
 			column-span: all;
-			margin-bottom: 18px;
+			margin-bottom: 14px;
 		}
 		.block {
-			margin-bottom: 18px;
+			margin-bottom: 16px;
 		}
 	}
 </style>
