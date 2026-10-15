@@ -1,7 +1,7 @@
 import { GENRE_LABELS, GENRES, type Genre, type ServerInfo, type VibeProfile } from './types';
 
 // VibeProfile のスキーマを変えたら上げる（古いキャッシュを無効化する）
-export const VIBE_VERSION = 2;
+export const VIBE_VERSION = 4;
 const KV_TTL_SECONDS = 60 * 60 * 24 * 7;
 
 // Clef (System One API) の入出力
@@ -50,10 +50,19 @@ const STRICTNESS_LEVELS = [
 // ジャンルは択一ではなく軸ごとに独立して問う。「創作も推し活も多い」サーバーを表現するため
 const GENRE_QUESTIONS: Record<Genre, string> = {
 	general: '日常の雑談が投稿の中心を占めているか',
-	creative: 'イラスト・小説・音楽などの創作活動の投稿が目立つか',
-	tech: 'プログラミングや技術の話題が目立つか',
-	game: 'ゲームの話題が目立つか',
-	otaku: 'アニメ・VTuber・アイドルなどの推し活の話題が目立つか',
+	diary: '交流よりも、日記やひとりごとのように自分の記録として書く投稿が中心か',
+	illust: 'イラストや漫画を描く人・見る人が集まり、絵の投稿や絵の話題が目立つか',
+	writing: '小説・詩・文章を書く創作（文芸）の話題が目立つか',
+	music: '音楽（演奏・作曲・DTM・合成音声・歌）の話題が目立つか',
+	making: 'ものづくりや制作（3DCG・ゲーム制作・電子工作・ロボット・ハンドメイド）の話題が目立つか',
+	tech: 'プログラミングや IT・技術の話題が目立つか',
+	game: 'ゲーム（ビデオゲーム・TRPG・ボードゲーム）の話題が目立つか',
+	anime: 'アニメ・漫画作品の感想や実況が目立つか',
+	fandom: '特定の作品・アイドル・VTuber・声優・アーティストなど「推し」のファンが集まる場所か',
+	vr: 'VRChat・Resonite などの VR・メタバースの話題が目立つか',
+	food: '食べ物・料理・お酒の話題が目立つか',
+	animal: '犬や猫などの動物・ペットの話題が目立つか',
+	vent: '愚痴・弱音・心身の不調など、心の内を吐き出す投稿が目立つか。いわゆる病み垢の居場所として受け入れているか',
 	niche: '地域・職業・特定の趣味など、限られたテーマのためのサーバーか'
 };
 
@@ -201,22 +210,24 @@ export async function listCachedHosts(kv: Pick<VibeKv, 'list'>): Promise<Set<str
 	return hosts;
 }
 
-// KV キャッシュがあればそれを、なければ Clef で計算して保存する。失敗時は null。
-export async function getOrComputeVibe(
-	server: ServerInfo,
-	deps: VibeDeps
+// KV に現行スキーマのキャッシュがあればそれを返す
+export async function readCachedVibe(
+	kv: Pick<VibeKv, 'get'>,
+	host: string
 ): Promise<VibeProfile | null> {
-	const key = vibeKey(server.host);
-	const cached = await deps.kv.get(key);
-	if (cached) {
-		try {
-			const parsed = JSON.parse(cached) as Partial<VibeProfile>;
-			if (parsed.version === VIBE_VERSION) return parsed as VibeProfile;
-		} catch {
-			// 壊れたキャッシュは作り直す
-		}
+	const cached = await kv.get(vibeKey(host));
+	if (!cached) return null;
+	try {
+		const parsed = JSON.parse(cached) as Partial<VibeProfile>;
+		return parsed.version === VIBE_VERSION ? (parsed as VibeProfile) : null;
+	} catch {
+		return null; // 壊れたキャッシュは作り直す
 	}
+}
 
+// Clef で計算して KV に保存する。失敗時は null
+export async function computeVibe(server: ServerInfo, deps: VibeDeps): Promise<VibeProfile | null> {
+	const key = vibeKey(server.host);
 	try {
 		const notes = await deps.sampler(server);
 		const output = await deps.runner(buildVibeRequest(server, notes));
@@ -227,4 +238,12 @@ export async function getOrComputeVibe(
 		console.error(`[vibe] ${server.host}:`, e);
 		return null;
 	}
+}
+
+// キャッシュがあればそれを、なければ計算して保存する
+export async function getOrComputeVibe(
+	server: ServerInfo,
+	deps: VibeDeps
+): Promise<VibeProfile | null> {
+	return (await readCachedVibe(deps.kv, server.host)) ?? computeVibe(server, deps);
 }

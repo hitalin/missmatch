@@ -16,16 +16,22 @@ const server: ServerInfo = {
 	description: '創作好きが集まる場所',
 	iconUrl: null,
 	bannerUrl: null,
+	themeColor: null,
 	usersCount: 100,
 	dru15: 10,
 	npd15: 50,
 	softwareName: 'misskey',
 	softwareVersion: '2025.9.0',
-	registrationOpen: true,
-	approvalRequired: false,
+	versionMonthsBehind: 0,
+	officialMisskey: true,
+	registration: 'open',
 	emailRequired: false,
 	ageRestriction: 'all',
 	ltlAvailable: true,
+	gtlAvailable: true,
+	driveCapacityMb: 1024,
+	adsEnabled: false,
+	noteSearchableScope: 'global',
 	serverRules: ['誹謗中傷禁止'],
 	langs: ['ja']
 };
@@ -41,19 +47,30 @@ describe('buildVibeRequest', () => {
 		expect(Object.keys(req.questions).sort()).toEqual(
 			[
 				'closedCommunity',
-				'genre.general',
-				'genre.creative',
-				'genre.tech',
-				'genre.game',
-				'genre.otaku',
-				'genre.niche',
+				...[
+					'general',
+					'diary',
+					'illust',
+					'writing',
+					'music',
+					'making',
+					'tech',
+					'game',
+					'anime',
+					'fandom',
+					'vr',
+					'food',
+					'animal',
+					'vent',
+					'niche'
+				].map((g) => `genre.${g}`),
 				'newcomerFriendly',
 				'nsfw',
 				'strictness',
 				'tone'
 			].sort()
 		);
-		expect(req.questions['genre.creative'].type).toBe('noul');
+		expect(req.questions['genre.illust'].type).toBe('noul');
 		expect(req.questions.tone.type).toBe('score');
 		expect(req.questions.nsfw.type).toBe('noul');
 	});
@@ -62,10 +79,19 @@ describe('buildVibeRequest', () => {
 describe('parseVibeAnswers', () => {
 	const answers: Record<string, ClefAnswer> = {
 		'genre.general': { type: 'noul', noul: 0.2 },
-		'genre.creative': { type: 'noul', noul: 0.7 },
+		'genre.diary': { type: 'noul', noul: 0 },
+		'genre.illust': { type: 'noul', noul: 0.7 },
+		'genre.writing': { type: 'noul', noul: 0 },
+		'genre.music': { type: 'noul', noul: 0 },
+		'genre.making': { type: 'noul', noul: 0 },
 		'genre.tech': { type: 'noul', noul: 0.1 },
 		'genre.game': { type: 'noul', noul: 0.05 },
-		'genre.otaku': { type: 'noul', noul: 0.6 },
+		'genre.anime': { type: 'noul', noul: 0 },
+		'genre.fandom': { type: 'noul', noul: 0.6 },
+		'genre.vr': { type: 'noul', noul: 0 },
+		'genre.food': { type: 'noul', noul: 0 },
+		'genre.animal': { type: 'noul', noul: 0 },
+		'genre.vent': { type: 'noul', noul: 0.1 },
 		'genre.niche': { type: 'noul', noul: 0.1 },
 		tone: {
 			type: 'score',
@@ -90,8 +116,8 @@ describe('parseVibeAnswers', () => {
 		const v = parseVibeAnswers('example.tld', answers, 20);
 		expect(v.version).toBe(VIBE_VERSION);
 		expect(v.host).toBe('example.tld');
-		expect(v.genre.creative).toBe(0.7);
-		expect(v.genre.otaku).toBe(0.6); // 複数ジャンルが同時に高くてよい
+		expect(v.genre.illust).toBe(0.7);
+		expect(v.genre.fandom).toBe(0.6); // 複数ジャンルが同時に高くてよい
 		expect(v.tone).toBeCloseTo(0.8); // 2.4 / 3
 		expect(v.strictness).toBe(0);
 		expect(v.newcomerFriendly).toBe(0.8);
@@ -112,10 +138,19 @@ describe('vibeTags', () => {
 	it('目立つ軸だけタグにする', () => {
 		const answers: Record<string, ClefAnswer> = {
 			'genre.general': { type: 'noul', noul: 0.4 },
-			'genre.creative': { type: 'noul', noul: 0.1 },
+			'genre.diary': { type: 'noul', noul: 0 },
+			'genre.illust': { type: 'noul', noul: 0.1 },
+			'genre.writing': { type: 'noul', noul: 0 },
+			'genre.music': { type: 'noul', noul: 0 },
+			'genre.making': { type: 'noul', noul: 0 },
 			'genre.tech': { type: 'noul', noul: 0.6 },
 			'genre.game': { type: 'noul', noul: 0.1 },
-			'genre.otaku': { type: 'noul', noul: 0.1 },
+			'genre.anime': { type: 'noul', noul: 0 },
+			'genre.fandom': { type: 'noul', noul: 0.1 },
+			'genre.vr': { type: 'noul', noul: 0 },
+			'genre.food': { type: 'noul', noul: 0 },
+			'genre.animal': { type: 'noul', noul: 0 },
+			'genre.vent': { type: 'noul', noul: 0.1 },
 			'genre.niche': { type: 'noul', noul: 0.1 },
 			tone: { type: 'score', score: 2.7, legend: {}, probabilities: {}, confidence: 1 },
 			strictness: { type: 'score', score: 1.8, legend: {}, probabilities: {}, confidence: 1 },
@@ -125,7 +160,7 @@ describe('vibeTags', () => {
 		};
 		const v = parseVibeAnswers('example.tld', answers, 10);
 		const tags = vibeTags(v);
-		expect(tags).toContain('技術');
+		expect(tags).toContain('技術・IT');
 		expect(tags).toContain('ほのぼの');
 		expect(tags).toContain('ルール厳しめ');
 		expect(tags).toContain('初心者歓迎');
@@ -147,10 +182,19 @@ describe('getOrComputeVibe', () => {
 			model: 'clef',
 			answers: {
 				'genre.general': { type: 'noul', noul: 1 },
-				'genre.creative': { type: 'noul', noul: 0 },
+				'genre.diary': { type: 'noul', noul: 0 },
+				'genre.illust': { type: 'noul', noul: 0 },
+				'genre.writing': { type: 'noul', noul: 0 },
+				'genre.music': { type: 'noul', noul: 0 },
+				'genre.making': { type: 'noul', noul: 0 },
 				'genre.tech': { type: 'noul', noul: 0 },
 				'genre.game': { type: 'noul', noul: 0 },
-				'genre.otaku': { type: 'noul', noul: 0 },
+				'genre.anime': { type: 'noul', noul: 0 },
+				'genre.fandom': { type: 'noul', noul: 0 },
+				'genre.vr': { type: 'noul', noul: 0 },
+				'genre.food': { type: 'noul', noul: 0 },
+				'genre.animal': { type: 'noul', noul: 0 },
+				'genre.vent': { type: 'noul', noul: 0 },
 				'genre.niche': { type: 'noul', noul: 0 },
 				tone: { type: 'score', score: 1.5, legend: {}, probabilities: {}, confidence: 1 },
 				strictness: { type: 'score', score: 1, legend: {}, probabilities: {}, confidence: 1 },

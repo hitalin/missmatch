@@ -1,138 +1,238 @@
 import { describe, expect, it } from 'vitest';
-import { hardFilter, isJoinable, paceOf, rankServers, scaleOf, scoreServer } from './match';
-import type { Preference, ServerInfo, VibeProfile } from './types';
+import { featuresOf } from './features';
+import { mk } from './fixtures.test-helper';
+import {
+	applyFilters,
+	buildDeck,
+	isJoinable,
+	learn,
+	scoreProfile,
+	type Taste,
+	tasteFit,
+	tasteSummary,
+	tasteWeight
+} from './match';
+import { defaultPreferences, type Preferences } from './prefs';
 
-const mk = (over: Partial<ServerInfo> = {}): ServerInfo => ({
-	host: 'a.tld',
-	name: 'A',
-	description: null,
-	iconUrl: null,
-	bannerUrl: null,
-	usersCount: 500,
-	dru15: 50,
-	npd15: 1000,
-	softwareName: 'misskey',
-	softwareVersion: '2025.9.0',
-	registrationOpen: true,
-	approvalRequired: false,
-	emailRequired: false,
-	ageRestriction: 'all',
-	ltlAvailable: true,
-	serverRules: [],
-	langs: ['ja'],
+const prefs = (over: Partial<Preferences> = {}): Preferences => ({
+	...defaultPreferences(),
+	adult: true,
+	nsfw: 'neutral',
 	...over
 });
 
-const vibe = (over: Partial<VibeProfile> = {}): VibeProfile => ({
-	version: 1,
-	host: 'a.tld',
-	genre: { general: 0.1, creative: 0.8, tech: 0.1, game: 0, otaku: 0, niche: 0 },
-	tone: 0.8,
-	strictness: 0.5,
-	newcomerFriendly: 0.8,
-	nsfw: 0.05,
-	closedCommunity: 0.2,
-	sampleCount: 20,
-	computedAt: '2026-10-15T00:00:00Z',
-	...over
-});
+describe('passesFilters', () => {
+	const profiles = [
+		mk({ host: 'ok.tld' }),
+		mk({ host: 'en.tld', langs: ['en'] }),
+		mk({ host: 'closed.tld', registration: 'closed', dru15: 5 }),
+		mk({ host: 'invite.tld', registration: 'invite', dru15: 5 }),
+		mk({ host: 'dead.tld', registration: 'closed', dru15: 0 }),
+		mk({ host: 'approval.tld', registration: 'approval' }),
+		mk({ host: 'adult.tld', ageRestriction: '18+' }),
+		mk({ host: 'ads.tld', adsEnabled: true }),
+		mk({ host: 'fork.tld', officialMisskey: false, versionMonthsBehind: 5 }),
+		mk({ host: 'small.tld', usersCount: 20, npd15: 5, emailRequired: false })
+	];
+	const hosts = (p: Preferences) => applyFilters(profiles, p).map((x) => x.server.host);
 
-const pref: Preference = {
-	genre: 'creative',
-	pace: 'relaxed',
-	scale: 'medium',
-	tone: 'warm',
-	adult: false,
-	nsfw: 'avoid',
-	community: 'easyEntry'
-};
-
-describe('paceOf / scaleOf', () => {
-	it('npd15 から流速を分類する', () => {
-		expect(paceOf(mk({ npd15: 20 }))).toBe('quiet');
-		expect(paceOf(mk({ npd15: 1000 }))).toBe('relaxed');
-		expect(paceOf(mk({ npd15: 20000 }))).toBe('busy');
-	});
-	it('usersCount から規模を分類する', () => {
-		expect(scaleOf(mk({ usersCount: 50 }))).toBe('small');
-		expect(scaleOf(mk({ usersCount: 500 }))).toBe('medium');
-		expect(scaleOf(mk({ usersCount: 5000 }))).toBe('large');
-	});
-});
-
-describe('hardFilter', () => {
-	it('日本語・登録受付中・年齢条件を満たすものだけ残す（承認制は受付中として扱う）', () => {
-		const servers = [
-			mk({ host: 'ok.tld' }),
-			mk({ host: 'en.tld', langs: ['en'] }),
-			mk({ host: 'closed.tld', registrationOpen: false }),
-			mk({ host: 'approval.tld', registrationOpen: true, approvalRequired: true }),
-			mk({ host: 'adult.tld', ageRestriction: '18+' })
-		];
-		expect(hardFilter(servers, pref).map((s) => s.host)).toEqual(['ok.tld', 'approval.tld']);
-		expect(hardFilter(servers, { ...pref, adult: true }).map((s) => s.host)).toEqual([
-			'ok.tld',
-			'approval.tld',
-			'adult.tld'
-		]);
+	it('既定は日本語・登録受付中（承認制含む）。18 歳未満には 18+ を出さない', () => {
+		expect(isJoinable(profiles[1].server)).toBe(false);
+		expect(hosts(prefs())).not.toContain('en.tld');
+		expect(hosts(prefs())).not.toContain('closed.tld');
+		expect(hosts(prefs())).not.toContain('invite.tld');
+		expect(hosts(prefs())).toContain('approval.tld');
+		expect(hosts(prefs())).toContain('adult.tld');
+		expect(hosts(prefs({ adult: false }))).not.toContain('adult.tld');
 	});
 
-	it('isJoinable は日本語かつ登録受付中', () => {
-		expect(isJoinable(mk())).toBe(true);
-		expect(isJoinable(mk({ langs: ['en'] }))).toBe(false);
-		expect(isJoinable(mk({ registrationOpen: false }))).toBe(false);
+	it('招待制・停止中を含める設定なら生きているものだけ出す（休眠は出さない）', () => {
+		const all = hosts(prefs({ registrations: ['open', 'approval', 'invite', 'closed'] }));
+		expect(all).toContain('invite.tld');
+		expect(all).toContain('closed.tld');
+		expect(all).not.toContain('dead.tld');
+		expect(hosts(prefs({ registrations: ['invite'] }))).toEqual(['invite.tld']);
+	});
+
+	it('絶対条件はハードフィルターになる', () => {
+		expect(
+			hosts(prefs({ dealbreakers: { ...defaultPreferences().dealbreakers, adsFree: true } }))
+		).not.toContain('ads.tld');
+		expect(
+			hosts(
+				prefs({
+					dealbreakers: { ...defaultPreferences().dealbreakers, official: true, fresh: true }
+				})
+			)
+		).not.toContain('fork.tld');
+		expect(
+			hosts(prefs({ dealbreakers: { ...defaultPreferences().dealbreakers, emailFree: true } }))
+		).toEqual(['small.tld']);
+	});
+
+	it('規模と流速は選んだ区分だけ残し、空なら絞らない', () => {
+		expect(hosts(prefs({ scales: ['small'] }))).toEqual(['small.tld']);
+		expect(hosts(prefs({ paces: ['quiet'] }))).toEqual(['small.tld']);
+		expect(hosts(prefs({ scales: ['personal'] }))).toEqual([]);
+		expect(hosts(prefs({ scales: [], paces: [] })).length).toBe(6);
 	});
 });
 
-describe('scoreServer', () => {
-	it('希望に合うサーバーは高得点で、理由が付く', () => {
-		const m = scoreServer(mk(), vibe(), pref);
+describe('scoreProfile', () => {
+	it('話題・空気感・R-18 の設定が点と理由になる', () => {
+		const p = prefs({
+			nsfw: 'avoid',
+			topics: ['illust', 'tech'],
+			tone: 'right',
+			community: 'right'
+		});
+		const m = scoreProfile(mk(), p);
 		expect(m.score).toBeGreaterThan(80);
-		expect(m.reasons.length).toBeGreaterThan(0);
-		expect(m.reasons.join(' ')).toContain('創作');
+		expect(m.reasons).toContain('イラスト・漫画を描くの話題が多い');
+		expect(m.reasons).toContain('空気が穏やか');
+		const nsfw = scoreProfile(mk({}, { nsfw: 0.9 }), p).score;
+		expect(nsfw).toBeLessThan(m.score - 20);
 	});
 
-	it('ジャンルが外れると下がる', () => {
-		const good = scoreServer(mk(), vibe(), pref).score;
-		const bad = scoreServer(
-			mk(),
-			vibe({
-				genre: { general: 0.1, creative: 0, tech: 0.9, game: 0, otaku: 0, niche: 0 }
-			}),
-			pref
-		).score;
-		expect(bad).toBeLessThan(good - 15);
+	it('設定が何も無ければ全員 50 点で、雰囲気未判定は中立', () => {
+		expect(scoreProfile(mk(), prefs()).score).toBe(50);
+		expect(scoreProfile(mk({}, null), prefs({ topics: ['illust'] })).score).toBe(50);
 	});
 
-	it('成人向けを避けたい人には nsfw 高めのサーバーが強く減点される', () => {
-		const good = scoreServer(mk(), vibe(), pref).score;
-		const bad = scoreServer(mk(), vibe({ nsfw: 0.9 }), pref).score;
-		expect(bad).toBeLessThan(good - 20);
-	});
-
-	it('vibe がなくても静的項目だけで採点できる', () => {
-		const m = scoreServer(mk(), null, pref);
-		expect(m.score).toBeGreaterThan(0);
-		expect(m.vibe).toBeNull();
-	});
-
-	it('こだわらない軸は採点に含めない', () => {
-		const anyPref: Preference = { ...pref, genre: null, pace: null, scale: null, tone: null };
-		const a = scoreServer(mk({ npd15: 10, usersCount: 10 }), vibe(), anyPref).score;
-		const b = scoreServer(mk({ npd15: 50000, usersCount: 50000 }), vibe(), anyPref).score;
-		expect(a).toBe(b);
+	it('ひとことの噛み合い確率が付いていれば効く', () => {
+		const p = prefs({
+			wish: '病み垢',
+			affinityFor: '病み垢',
+			affinity: { 'yami.tld': 0.95, 'other.tld': 0.1 }
+		});
+		expect(scoreProfile(mk({ host: 'yami.tld' }), p).score).toBeGreaterThan(
+			scoreProfile(mk({ host: 'other.tld' }), p).score
+		);
+		expect(scoreProfile(mk({ host: 'yami.tld' }), p).reasons).toContain(
+			'書いてくれた希望と噛み合う'
+		);
 	});
 });
 
-describe('rankServers', () => {
-	it('スコア降順で上位 N 件を返す', () => {
-		const items = [
-			{ server: mk({ host: 'x.tld' }), vibe: vibe({ nsfw: 0.9 }) },
-			{ server: mk({ host: 'y.tld' }), vibe: vibe() },
-			{ server: mk({ host: 'z.tld' }), vibe: null }
+describe('スワイプからの学習', () => {
+	it('いいねした鯖の特徴に寄り、パスした鯖の特徴から離れる', () => {
+		let taste: Taste = {};
+		taste = learn(
+			taste,
+			featuresOf(
+				mk(
+					{ usersCount: 3 },
+					{
+						genre: {
+							general: 0,
+							diary: 0,
+							illust: 0.9,
+							writing: 0,
+							music: 0,
+							making: 0,
+							tech: 0,
+							game: 0,
+							anime: 0,
+							fandom: 0,
+							vr: 0,
+							food: 0,
+							animal: 0,
+							vent: 0,
+							niche: 0
+						}
+					}
+				)
+			),
+			'like'
+		);
+		expect(taste['genre.illust']).toBeGreaterThan(0);
+		expect(taste.scale).toBeLessThan(0);
+		taste = learn(taste, featuresOf(mk({ usersCount: 50000 })), 'pass');
+		expect(taste.scale).toBeLessThan(-0.3);
+	});
+
+	it('絶対条件の領分（メアド・広告・GTL・更新）は学習せず、話題と容量は好きな方向だけ学ぶ', () => {
+		const noTech = featuresOf(
+			mk(
+				{ emailRequired: true, adsEnabled: true },
+				{
+					genre: {
+						general: 0.9,
+						diary: 0,
+						illust: 0,
+						writing: 0,
+						music: 0,
+						making: 0,
+						tech: 0,
+						game: 0,
+						anime: 0,
+						fandom: 0,
+						vr: 0,
+						food: 0,
+						animal: 0,
+						vent: 0,
+						niche: 0
+					}
+				}
+			)
+		);
+		let taste: Taste = {};
+		for (let i = 0; i < 5; i++) taste = learn(taste, noTech, 'like');
+		expect(taste.emailFree).toBeUndefined();
+		expect(taste.adsFree).toBeUndefined();
+		expect(taste['genre.tech']).toBe(0); // 「技術が少ない鯖が好き」にはならない
+		expect(taste['genre.general']).toBeGreaterThan(0.5);
+		expect(tasteSummary(taste).map((c) => c.label)).not.toContain('技術は少なめ');
+	});
+
+	it('パスはいいねより弱く、値は -1..1 に収まる', () => {
+		const f = featuresOf(mk({ usersCount: 50000 }));
+		const like = learn({}, f, 'like').scale ?? 0;
+		const pass = learn({}, f, 'pass').scale ?? 0;
+		expect(Math.abs(pass)).toBeLessThan(like);
+		let t: Taste = {};
+		for (let i = 0; i < 20; i++) t = learn(t, f, 'like');
+		expect(t.scale).toBe(1);
+	});
+
+	it('学習した好みに近い鯖の tasteFit が高く、好みが無ければ null', () => {
+		const taste: Taste = { scale: -1, 'genre.illust': 1 };
+		const small = tasteFit(featuresOf(mk({ usersCount: 10 })), taste) ?? 0;
+		const large = tasteFit(featuresOf(mk({ usersCount: 50000 })), taste) ?? 0;
+		expect(small).toBeGreaterThan(large);
+		expect(tasteFit(featuresOf(mk()), {})).toBeNull();
+	});
+
+	it('学習の重みはスワイプ数とともに増え、採点に入ると順位が変わる', () => {
+		expect(tasteWeight(0)).toBe(0);
+		expect(tasteWeight(8)).toBe(3);
+		const taste: Taste = { scale: -1 };
+		const small = mk({ host: 's.tld', usersCount: 10, dru15: 1 });
+		const large = mk({ host: 'l.tld', usersCount: 50000, dru15: 1000 });
+		const before = buildDeck([small, large], prefs(), taste, 0, new Set(), 2).map(
+			(m) => m.server.host
+		);
+		const after = buildDeck([small, large], prefs(), taste, 8, new Set(), 2).map(
+			(m) => m.server.host
+		);
+		expect(before[0]).toBe('l.tld'); // 同点なら活発な順
+		expect(after[0]).toBe('s.tld');
+	});
+
+	it('tasteSummary は目立つ好みだけを言葉にする', () => {
+		const chips = tasteSummary({ scale: -0.8, 'genre.vent': 0.6, tone: 0.1 });
+		expect(chips.map((c) => c.label)).toEqual(['小規模', '愚痴・弱音']);
+	});
+});
+
+describe('buildDeck', () => {
+	it('スワイプ済みを除き、フィルターを通ったものを相性順に上限まで', () => {
+		const profiles = [
+			mk({ host: 'a.tld' }),
+			mk({ host: 'b.tld' }, { nsfw: 0.9 }),
+			mk({ host: 'c.tld' })
 		];
-		const ranked = rankServers(items, pref, 2);
-		expect(ranked).toHaveLength(2);
-		expect(ranked[0].server.host).toBe('y.tld');
+		const deck = buildDeck(profiles, prefs({ nsfw: 'avoid' }), {}, 0, new Set(['a.tld']), 10);
+		expect(deck.map((m) => m.server.host)).toEqual(['c.tld', 'b.tld']);
 	});
 });

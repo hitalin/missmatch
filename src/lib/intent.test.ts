@@ -1,0 +1,84 @@
+import { describe, expect, it } from 'vitest';
+import { mk } from './fixtures.test-helper';
+import {
+	AFFINITY_BATCH,
+	applyIntent,
+	buildAffinityRequests,
+	buildIntentRequest,
+	parseAffinity
+} from './intent';
+import { defaultPreferences } from './prefs';
+import type { ClefAnswer } from './vibe';
+
+const choice = (c: string, p: number): ClefAnswer => ({
+	type: 'choice',
+	choice: c,
+	probabilities: { [c]: p },
+	confidence: p
+});
+const noul = (n: number): ClefAnswer => ({ type: 'noul', noul: n });
+
+describe('buildIntentRequest', () => {
+	it('話題は noul、空気感・規模・流速は choice にし、年齢と R-18 は読み取らない', () => {
+		const req = buildIntentRequest('創作垢を置ける落ち着いたサーバーがいい');
+		expect(req.questions['topic.illust'].type).toBe('noul');
+		expect(req.questions.tone.type).toBe('choice');
+		expect(req.questions.age).toBeUndefined();
+		expect(req.questions.nsfw).toBeUndefined();
+		expect((req.state as { userMessage: string }).userMessage).toContain('創作');
+	});
+	it('長すぎる入力は切り詰める', () => {
+		expect(
+			(buildIntentRequest('あ'.repeat(1000)).state as { userMessage: string }).userMessage.length
+		).toBe(300);
+	});
+});
+
+describe('applyIntent', () => {
+	it('自信のある読み取りで空いている設定を埋め、ユーザーが決めた項目は上書きしない', () => {
+		const base = { ...defaultPreferences(), tone: 'left' as const, topics: ['game' as const] };
+		const next = applyIntent(base, {
+			'topic.illust': noul(0.9),
+			'topic.tech': noul(0.3),
+			tone: choice('right', 0.95),
+			community: choice('right', 0.8),
+			rules: choice('left', 0.4),
+			scale: choice('small', 0.9),
+			pace: choice('none', 0.9),
+			emailFree: noul(0.85),
+			adsFree: noul(0.2)
+		});
+		expect(next.topics).toEqual(['game', 'illust']);
+		expect(next.tone).toBe('left'); // ユーザーが決めていた
+		expect(next.community).toBe('right');
+		expect(next.rules).toBe('any'); // 低確率
+		expect(next.scales).toEqual(['small', 'medium']);
+		expect(next.paces).toEqual([]);
+		expect(next.dealbreakers.emailFree).toBe(true);
+		expect(next.dealbreakers.adsFree).toBe(false);
+		expect(base.topics).toEqual(['game']); // 元は変えない
+	});
+});
+
+describe('buildAffinityRequests / parseAffinity', () => {
+	it('小さなバッチに分け、host を質問 id にし、state に説明とルールを入れる', () => {
+		const profiles = Array.from({ length: AFFINITY_BATCH + 6 }, (_, i) =>
+			mk({ host: `s${i}.tld`, description: `説明 ${i}` })
+		);
+		const reqs = buildAffinityRequests('病み垢を置きたい', profiles);
+		expect(reqs).toHaveLength(2);
+		expect(Object.keys(reqs[0].questions)).toHaveLength(AFFINITY_BATCH);
+		expect(Object.keys(reqs[1].questions)).toHaveLength(6);
+		const state = reqs[1].state as { userMessage: string; servers: { host: string }[] };
+		expect(state.userMessage).toBe('病み垢を置きたい');
+		expect(state.servers.map((s) => s.host)).toEqual(Object.keys(reqs[1].questions));
+	});
+
+	it('回答を host → 確率にまとめ、知らない host は捨てる', () => {
+		const affinity = parseAffinity(
+			[{ answers: { 'a.tld': noul(0.9), 'x.tld': noul(1) } }, { answers: { 'b.tld': noul(0.2) } }],
+			[mk({ host: 'a.tld' }), mk({ host: 'b.tld' })]
+		);
+		expect(affinity).toEqual({ 'a.tld': 0.9, 'b.tld': 0.2 });
+	});
+});

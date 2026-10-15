@@ -1,36 +1,76 @@
 export type AgeRestriction = 'all' | '13+' | '18+' | 'unknown';
+// open: 誰でも登録できる / approval: 申請して承認 / invite: 既存ユーザーの招待が要る / closed: 新規登録停止中
+export type Registration = 'open' | 'approval' | 'invite' | 'closed';
+export const REGISTRATION_LABELS: Record<Registration, string> = {
+	open: '登録受付中',
+	approval: '承認制',
+	invite: '招待制',
+	closed: '登録停止中'
+};
 
 // joinmisskey から正規化したサーバー情報
 export interface ServerInfo {
 	host: string;
 	name: string | null;
 	description: string | null;
-	iconUrl: string | null;
-	bannerUrl: string | null;
+	iconUrl: string | null; // joinmisskey の軽量アイコン（無ければサーバー自身のもの）
+	bannerUrl: string | null; // joinmisskey の軽量バナー（無ければ背景画像）
+	themeColor: string | null; // サーバーのテーマ色。画像が無いときのカード背景に使う
 	usersCount: number | null;
 	dru15: number | null; // Daily Read Users (15日平均)
 	npd15: number | null; // Notes Per Day (15日平均)
 	softwareName: string;
 	softwareVersion: string;
-	registrationOpen: boolean;
-	approvalRequired: boolean;
+	versionMonthsBehind: number | null; // 最新安定版から何ヶ月遅れているか（CalVer から算出、不明なら null）
+	officialMisskey: boolean; // 本家 misskey-dev/misskey を動かしているか（false ならフォーク）
+	registration: Registration;
 	emailRequired: boolean;
 	ageRestriction: AgeRestriction; // 登録者の年齢制限（内容の成人向け度は VibeProfile.nsfw）
 	ltlAvailable: boolean; // ローカル TL が有効か（無効なら投稿サンプリングしない）
+	gtlAvailable: boolean; // グローバル TL が有効か
+	driveCapacityMb: number | null; // 一般ユーザーのドライブ容量
+	adsEnabled: boolean; // 広告が表示されるか
+	noteSearchableScope: 'global' | 'local' | null; // 投稿がどこから検索されうるか
 	serverRules: string[];
 	langs: string[];
 }
 
-// Clef に判定させるジャンル。軸ごとに独立した確率なので、複数が同時に高くてよい
-export const GENRES = ['general', 'creative', 'tech', 'game', 'otaku', 'niche'] as const;
+// Clef に判定させるジャンル。軸ごとに独立した確率なので、複数が同時に高くてよい。
+// 区分は登録可能な日本語サーバー 97 件の説明文に実在するコンセプトから選んでいる（docs/REQUIREMENTS.md F3）
+export const GENRES = [
+	'general',
+	'diary',
+	'illust',
+	'writing',
+	'music',
+	'making',
+	'tech',
+	'game',
+	'anime',
+	'fandom',
+	'vr',
+	'food',
+	'animal',
+	'vent',
+	'niche'
+] as const;
 export type Genre = (typeof GENRES)[number];
 
 export const GENRE_LABELS: Record<Genre, string> = {
 	general: '雑談',
-	creative: '創作',
-	tech: '技術',
+	diary: '日記・ひとりごと',
+	illust: 'イラスト・漫画を描く',
+	writing: '小説・文章',
+	music: '音楽・歌',
+	making: 'ものづくり・制作',
+	tech: '技術・IT',
 	game: 'ゲーム',
-	otaku: 'アニメ・推し活',
+	anime: 'アニメ・漫画',
+	fandom: '推し活・ファン',
+	vr: 'VRChat・メタバース',
+	food: '食べ物・お酒',
+	animal: '動物・ペット',
+	vent: '愚痴・弱音',
 	niche: '特定テーマ'
 };
 
@@ -48,34 +88,20 @@ export interface VibeProfile {
 	computedAt: string;
 }
 
-export type Pace = 'quiet' | 'relaxed' | 'busy';
-export type Scale = 'small' | 'medium' | 'large';
-
-// 診断回答から導いたユーザーの希望
-export interface Preference {
-	genre: Genre | null;
-	pace: Pace | null;
-	scale: Scale | null;
-	tone: 'warm' | 'dry' | null;
-	adult: boolean; // 18歳以上か
-	nsfw: 'avoid' | 'neutral' | 'welcome';
-	community: 'easyEntry' | 'deep';
+// 診断の対象となる 1 サーバー分の属性表（静的情報 + 雰囲気）
+export interface ServerProfile {
+	server: ServerInfo;
+	vibe: VibeProfile | null;
+	affinity?: number; // ユーザーの自由記述とこのサーバーが噛み合う確率（Clef、診断ごとに付く）
 }
 
-export type QuizAnswers = Record<string, string>;
-
-export interface AxisScore {
-	axis: string;
-	score: number; // 0..1
-	weight: number;
-	reason: string | null; // 一致したときの説明
-}
+// 質問 id → 選択した選択肢の value
+export type Answers = Record<string, string>;
 
 export interface Match {
 	server: ServerInfo;
 	vibe: VibeProfile | null;
 	score: number; // 0..100
-	axes: AxisScore[];
 	reasons: string[];
 	tags: string[];
 }

@@ -1,479 +1,349 @@
 <script lang="ts">
-	import MatchList from '$lib/components/MatchList.svelte';
-	import ProfileSetup from '$lib/components/ProfileSetup.svelte';
-	import SwipeDeck from '$lib/components/SwipeDeck.svelte';
-	import type { Match, QuizAnswers } from '$lib/types';
+	import { onMount } from 'svelte';
+	import AppNav, { type Tab } from '$lib/components/AppNav.svelte';
+	import Discover from '$lib/components/Discover.svelte';
+	import LikesGrid from '$lib/components/LikesGrid.svelte';
+	import MatchOverlay from '$lib/components/MatchOverlay.svelte';
+	import Onboarding from '$lib/components/Onboarding.svelte';
+	import Settings from '$lib/components/Settings.svelte';
+	import { featuresOf } from '$lib/features';
+	import { applyIntent } from '$lib/intent';
+	import { applyFilters, buildDeck, learn, scoreProfile, type Taste } from '$lib/match';
+	import { hasFreshAffinity, isComplete, needsAllServers } from '$lib/prefs';
+	import { emptyProfile, PROFILE_KEY, parseSavedProfile, type SavedProfile } from '$lib/profile';
+	import type { Match, ServerProfile } from '$lib/types';
+	import type { ClefAnswer } from '$lib/vibe';
 
-	type Phase = 'intro' | 'profile' | 'loading' | 'swipe' | 'matches' | 'error';
+	const DECK_SIZE = 10;
+	const SAVE_DEBOUNCE_MS = 250;
 
-	let phase = $state<Phase>('intro');
-	let answers = $state<QuizAnswers>({});
-	let results = $state<Match[]>([]);
-	let liked = $state<Match[]>([]);
-	let deckDone = $state(false);
+	// プロフィール（設定・学習した好み・いいね・パス）はブラウザに保持する
+	let profile = $state<SavedProfile>(emptyProfile());
+	let tab = $state<Tab>('discover');
+	let onboarding = $state(true);
+	let hydrated = $state(false);
+
+	// 属性表は大きく不変なので深い reactivity を付けない。
+	// 既定は登録受付中の約 100 件。招待制・停止中を含める設定なら全件（約 580 件）を取りに行く
+	let profiles = $state.raw<ServerProfile[] | null>(null);
+	let loadedScope = $state<'open' | 'all' | null>(null);
+	const wantedScope = $derived(needsAllServers(profile.prefs) ? 'all' : 'open');
+	let loadError = $state('');
+	let reading = $state(false);
+	let readError = $state('');
+
+	let deck = $state.raw<Match[]>([]);
+	let deckKey = $state(''); // どの条件で作ったデッキか。条件が変わったら作り直す
+	let deckGen = $state(0); // 何束目か。同じ条件でも次の束で Discover を作り直すため
+	let deckTotal = $state(0);
 	let celebrate = $state<Match | null>(null);
-	let errorMessage = $state('');
 
-	async function submit(a: QuizAnswers) {
-		answers = a;
-		phase = 'loading';
+	// 条件（フィルター・加点・ひとこと）の文字列キー。一言の入力中は変わらない
+	const prefsKey = $derived.by(() => {
+		const { wish: _wish, affinity, affinityFor, ...rest } = profile.prefs;
+		return JSON.stringify({ ...rest, affinity: hasFreshAffinity(profile.prefs) ? affinityFor : '' });
+	});
+	const ready = $derived(isComplete(profile.prefs));
+	const liked = $derived.by(() => {
+		if (!profiles) return [] as Match[];
+		const byHost = new Map(profiles.map((p) => [p.server.host, p]));
+		return profile.liked
+			.map((host) => byHost.get(host))
+			.filter((p): p is ServerProfile => p !== undefined)
+			.map((p) => scoreProfile(p, profile.prefs, profile.taste, profile.swipes));
+	});
+
+	// 復元は一度だけ（$effect にすると自分の書き込みで再実行ループになる）
+	onMount(() => {
+		let saved = emptyProfile();
 		try {
-			const res = await fetch('/api/recommend', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ answers })
-			});
+			saved = parseSavedProfile(localStorage.getItem(PROFILE_KEY));
+		} catch {
+			// 読めなくても動く
+		}
+		profile = saved;
+		onboarding = !isComplete(saved.prefs);
+		hydrated = true;
+		loadProfiles();
+	});
+
+	// 保存（入力のたびに書かず、少し待ってまとめる）
+	$effect(() => {
+		if (!hydrated) return;
+		const snapshot = JSON.stringify(profile);
+		const t = setTimeout(() => {
+			try {
+				localStorage.setItem(PROFILE_KEY, snapshot);
+			} catch {
+				// 保存できなくても続ける
+			}
+		}, SAVE_DEBOUNCE_MS);
+		return () => clearTimeout(t);
+	});
+
+	// 条件が変わったらデッキを作り直す（学習した好みは次の束から効く）
+	$effect(() => {
+		if (!profiles || !ready || onboarding) return;
+		if (deckKey !== prefsKey) rebuildDeck();
+	});
+
+	// 招待制・停止中を含める設定に変わったら全件を取り直す（逆方向は絞るだけなので取り直さない）
+	$effect(() => {
+		if (hydrated && wantedScope === 'all' && loadedScope === 'open') loadProfiles();
+	});
+
+	let loading = false;
+	async function loadProfiles() {
+		if (loading) return;
+		loading = true;
+		loadError = '';
+		const scope = wantedScope;
+		try {
+			const res = await fetch(scope === 'all' ? '/api/servers?scope=all' : '/api/servers');
 			if (!res.ok) throw new Error(`HTTP ${res.status}`);
-			const data = (await res.json()) as { matches: Match[] };
-			results = data.matches;
-			liked = [];
-			deckDone = results.length === 0;
-			phase = deckDone ? 'matches' : 'swipe';
+			profiles = ((await res.json()) as { profiles: ServerProfile[] }).profiles;
+			loadedScope = scope;
+			deckKey = ''; // 取り直したらデッキも作り直す
 		} catch (e) {
-			errorMessage = e instanceof Error ? e.message : String(e);
-			phase = 'error';
+			loadError = e instanceof Error ? e.message : String(e);
+		} finally {
+			loading = false;
 		}
 	}
 
-	function like(m: Match) {
-		if (!liked.some((x) => x.server.host === m.server.host)) liked = [...liked, m];
-		// 相性が高いカードを好きになったら「マッチ」演出
-		if (m.score >= 70) celebrate = m;
+	// ひとことを Clef に読み取らせ、空いている設定を埋め、各サーバーとの噛み合いを付ける
+	async function readWish(text: string) {
+		reading = true;
+		readError = '';
+		try {
+			const res = await fetch('/api/intent', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ text, scope: wantedScope })
+			});
+			if (!res.ok) throw new Error(`HTTP ${res.status}`);
+			const data = (await res.json()) as {
+				answers?: Record<string, ClefAnswer>;
+				affinity?: Record<string, number>;
+			};
+			const prefs = applyIntent(profile.prefs, data.answers ?? {});
+			profile = {
+				...profile,
+				prefs: { ...prefs, wish: text, affinity: data.affinity ?? {}, affinityFor: text }
+			};
+		} catch (e) {
+			readError = e instanceof Error ? e.message : String(e);
+		} finally {
+			reading = false;
+		}
 	}
 
-	function remove(m: Match) {
-		liked = liked.filter((x) => x.server.host !== m.server.host);
+	function seenHosts(): Set<string> {
+		return new Set([...profile.liked, ...profile.passed]);
 	}
 
-	function finishDeck() {
-		deckDone = true;
-		if (!celebrate) phase = 'matches';
+	function rebuildDeck() {
+		if (!profiles) return;
+		const seen = seenHosts();
+		deck = buildDeck(profiles, profile.prefs, profile.taste, profile.swipes, seen, DECK_SIZE);
+		deckTotal = applyFilters(profiles, profile.prefs).filter((p) => !seen.has(p.server.host)).length;
+		deckKey = prefsKey;
+		deckGen += 1;
 	}
 
-	function closeCelebrate() {
-		celebrate = null;
-		if (deckDone) phase = 'matches';
+	function swipe(m: Match, action: 'like' | 'pass') {
+		const p = profiles?.find((x) => x.server.host === m.server.host);
+		const taste: Taste = p ? learn(profile.taste, featuresOf(p), action) : profile.taste;
+		profile = {
+			...profile,
+			taste,
+			swipes: profile.swipes + 1,
+			liked: action === 'like' && !profile.liked.includes(m.server.host) ? [...profile.liked, m.server.host] : profile.liked,
+			passed: action === 'pass' && !profile.passed.includes(m.server.host) ? [...profile.passed, m.server.host] : profile.passed
+		};
+		if (action === 'like' && m.score >= 70) celebrate = m;
 	}
 
-	function restart() {
-		results = [];
-		liked = [];
-		deckDone = false;
-		phase = 'profile';
+	function undo(m: Match, action: 'like' | 'pass') {
+		// 直前の学習を同じ量だけ戻し、履歴からも外す（取り消したカードはデッキに戻っている）
+		const p = profiles?.find((x) => x.server.host === m.server.host);
+		profile = {
+			...profile,
+			taste: p ? unlearn(profile.taste, p, action) : profile.taste,
+			swipes: Math.max(0, profile.swipes - 1),
+			liked: profile.liked.filter((h) => h !== m.server.host),
+			passed: profile.passed.filter((h) => h !== m.server.host)
+		};
+	}
+
+	// learn の逆操作（同じ量だけ戻す）
+	function unlearn(taste: Taste, p: ServerProfile, action: 'like' | 'pass'): Taste {
+		const forward = learn({}, featuresOf(p), action);
+		const next: Taste = { ...taste };
+		for (const [k, v] of Object.entries(forward) as [keyof Taste, number][]) {
+			next[k] = Math.min(1, Math.max(-1, (next[k] ?? 0) - v));
+		}
+		return next;
+	}
+
+	function unlike(host: string) {
+		profile = { ...profile, liked: profile.liked.filter((h) => h !== host) };
+	}
+
+	function go(next: Tab) {
+		tab = next;
+		window.scrollTo({ top: 0 });
 	}
 </script>
 
 <svelte:head>
-	<title>missmatch - Misskey サーバーとマッチング</title>
-	<meta
-		name="description"
-		content="プロフィールを作って、雰囲気まで考慮したおすすめ Misskey サーバーをスワイプで選ぼう。"
-	/>
+	<title>みすまっち - Misskey サーバーとマッチング</title>
+	<meta name="description" content="プロフィールを作って、雰囲気まで考慮したおすすめ Misskey サーバーをスワイプで選ぼう。" />
 </svelte:head>
 
-<main>
-	<header>
-		<button class="brand" onclick={() => (phase = 'intro')}>
-			<span class="logo">♥</span>
-			<span>missmatch</span>
-		</button>
-		{#if results.length > 0}
-			<button class="likes" onclick={() => (phase = phase === 'matches' ? 'swipe' : 'matches')}>
-				{#if phase === 'matches' && !deckDone}← スワイプに戻る{:else}♥ {liked.length}{/if}
-			</button>
-		{/if}
-	</header>
-
-	{#if phase === 'intro'}
-		<section class="intro">
-			<h1>Swipe.<br />Match.<br />with <span class="accent">Misskey</span>.</h1>
-			<p class="lead">
-				プロフィールを作ると、各サーバーの説明文・ルール・最近の投稿から読み取った雰囲気をもとに、
-				相性の良い Misskey サーバーをカードでお届けします。
-			</p>
-			<div class="cta-row">
-				<button class="btn primary" onclick={() => (phase = 'profile')}>はじめる</button>
-				<a class="btn secondary" href="#how">詳しく知る</a>
-			</div>
-			<div class="features" id="how">
-				<div class="feature">
-					<span class="emoji">📝</span>
-					<h3>プロフィール</h3>
-					<p>話したいこと、好きな流速や空気感など 7 つの質問に答えます。</p>
-				</div>
-				<div class="feature">
-					<span class="emoji">🔭</span>
-					<h3>スワイプ</h3>
-					<p>AI（Cloudflare Clef）が読み取った雰囲気をもとに、相性の良い順にカードで提示。右で ♥、左で ✕。</p>
-				</div>
-				<div class="feature">
-					<span class="emoji">🤝</span>
-					<h3>マッチ</h3>
-					<p>いいねしたサーバーは一覧に残ります。登録するかどうかは、自分の目で確かめて決めてください。</p>
-				</div>
-			</div>
-		</section>
-	{:else if phase === 'profile'}
-		<ProfileSetup onsubmit={submit} oncancel={() => (phase = 'intro')} />
-	{:else if phase === 'loading'}
-		<section class="loading">
-			<div class="pulse"><span>♥</span></div>
-			<h2>相手を探しています…</h2>
-			<p>初めて診断されるサーバーが多いと、十数秒かかることがあります。</p>
-		</section>
-	{:else if phase === 'error'}
-		<section class="error">
-			<h2>うまくいきませんでした</h2>
-			<p class="msg">{errorMessage}</p>
-			<button class="btn primary" onclick={() => submit(answers)}>もう一度試す</button>
-			<button class="btn secondary" onclick={restart}>プロフィールを作り直す</button>
-		</section>
-	{:else if phase === 'swipe'}
-		<SwipeDeck matches={results} onlike={like} onpass={() => {}} ondone={finishDeck} />
+<div class="app" class:onboarding>
+	{#if onboarding}
+		<Onboarding
+			bind:prefs={profile.prefs}
+			{reading}
+			onreadwish={readWish}
+			onfinish={() => {
+				onboarding = false;
+				tab = 'discover';
+			}}
+		/>
 	{:else}
-		<MatchList matches={liked} onremove={remove} />
-		<div class="after">
-			{#if !deckDone}
-				<button class="btn primary" onclick={() => (phase = 'swipe')}>スワイプに戻る</button>
+		<main>
+			{#if loadError}
+				<p class="banner">
+					サーバー情報を取得できませんでした（{loadError}）。
+					<button class="link" onclick={loadProfiles}>再試行</button>
+				</p>
 			{/if}
-			<button class="btn secondary" onclick={restart}>プロフィールを作り直す</button>
-		</div>
+			{#if readError}
+				<p class="banner">ひとことを読み取れませんでした（{readError}）。設定は手で選べます。</p>
+			{/if}
+
+			{#if tab === 'discover'}
+				{#if !profiles}
+					<div class="loading"><div class="pulse">♥</div><p class="muted">サーバー情報を取得中…</p></div>
+				{:else}
+					{#key deckGen}
+						<Discover
+							matches={deck}
+							total={deckTotal}
+							onlike={(m) => swipe(m, 'like')}
+							onpass={(m) => swipe(m, 'pass')}
+							onundo={undo}
+							onexhausted={rebuildDeck}
+							onsettings={() => go('you')}
+						/>
+					{/key}
+				{/if}
+			{:else if tab === 'likes'}
+				<LikesGrid matches={liked} onremove={(m) => unlike(m.server.host)} />
+			{:else}
+				<Settings
+					bind:prefs={profile.prefs}
+					taste={profile.taste}
+					swipes={profile.swipes}
+					passedCount={profile.passed.length}
+					{profiles}
+					{reading}
+					onreadwish={readWish}
+					onresettaste={() => (profile = { ...profile, taste: {}, swipes: 0 })}
+					onforget={(f) => {
+						const { [f]: _drop, ...rest } = profile.taste;
+						profile = { ...profile, taste: rest };
+					}}
+					onresetpassed={() => (profile = { ...profile, passed: [] })}
+				/>
+			{/if}
+			<footer>
+				<p>
+					データ: <a href="https://join.misskey.page/" target="_blank" rel="noopener">joinmisskey</a>
+					· 判定: Cloudflare Workers AI (Clef)
+					· <a href="https://github.com/hitalin/missmatch" target="_blank" rel="noopener">GitHub</a>
+				</p>
+			</footer>
+		</main>
+		<AppNav {tab} likes={profile.liked.length} discoverEnabled={ready && !!profiles} onchange={go} />
 	{/if}
 
 	{#if celebrate}
-		<div class="overlay" role="dialog" aria-modal="true" aria-label="マッチしました">
-			<div class="match">
-				<p class="title">マッチしました！</p>
-				<div class="faces">
-					<div class="face you">あなた</div>
-					<span class="heart">♥</span>
-					{#if celebrate.server.iconUrl}
-						<img src={celebrate.server.iconUrl} alt="" width="72" height="72" />
-					{:else}
-						<div class="face">{(celebrate.server.name ?? celebrate.server.host).slice(0, 1)}</div>
-					{/if}
-				</div>
-				<p class="name">{celebrate.server.name ?? celebrate.server.host}</p>
-				<p class="sub">相性 {celebrate.score}%。きっと居心地が良いはず。</p>
-				<a class="btn primary" href="https://{celebrate.server.host}/" target="_blank" rel="noopener">
-					サーバーを見に行く
-				</a>
-				<button class="btn secondary" onclick={closeCelebrate}>スワイプを続ける</button>
-			</div>
-		</div>
+		<MatchOverlay match={celebrate} onclose={() => (celebrate = null)} />
 	{/if}
-
-	<footer>
-		<p>
-			データ: <a href="https://join.misskey.page/" target="_blank" rel="noopener">joinmisskey</a>
-			・ 判定: Cloudflare Workers AI (Clef)
-			・ <a href="https://github.com/hitalin/missmatch" target="_blank" rel="noopener">GitHub</a>
-		</p>
-	</footer>
-</main>
+</div>
 
 <style>
-	:global(:root) {
-		--bg: #f6f6f6;
-		--surface: #ffffff;
-		--surface-2: #efefef;
-		--card: #ffffff;
-		--border: #e4e4e4;
-		--text: #222222;
-		--muted: #6c757d;
-		--accent: #86b300;
-		--accent-strong: #6f9600;
-		--accent-soft: #f6ffc7;
-		--accent-text: #4a6b00;
-		--like: #86b300;
-		--like-soft: #f6ffc7;
-		--pass: #dc3545;
-		--shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
-		--shadow-lg: 0 18px 40px rgba(0, 0, 0, 0.14);
-	}
-	@media (prefers-color-scheme: dark) {
-		:global(:root) {
-			--bg: #1f1f1f;
-			--surface: #2e2e2e;
-			--surface-2: #383838;
-			--card: #2e2e2e;
-			--border: #3d3d3d;
-			--text: #eeeeee;
-			--muted: #a7a7a7;
-			--accent-soft: rgba(134, 179, 0, 0.18);
-			--accent-text: #c9ec5a;
-			--like-soft: rgba(134, 179, 0, 0.18);
-			--shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
-			--shadow-lg: 0 18px 40px rgba(0, 0, 0, 0.5);
-		}
-	}
-	:global(body) {
-		margin: 0;
-		background: var(--bg);
-		color: var(--text);
-		font-family:
-			'Nunito', 'Hiragino Maru Gothic Pro', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-		min-height: 100vh;
+	.app {
+		max-width: var(--maxw);
+		margin: 0 auto;
+		padding: 0 16px;
+		min-height: 100dvh;
 	}
 	main {
-		max-width: 480px;
-		margin: 0 auto;
-		padding: 0 16px 40px;
+		padding: 10px 0 calc(var(--nav-h) + env(safe-area-inset-bottom) + 16px);
 	}
-	header {
-		position: sticky;
-		top: 0;
-		z-index: 10;
-		margin: 0 -16px 20px;
-		padding: 12px 16px;
-		background: color-mix(in srgb, var(--surface) 85%, transparent);
-		backdrop-filter: blur(8px);
-		border-bottom: 1px solid var(--border);
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
+	.banner {
+		margin: 0 0 12px;
+		padding: 10px 14px;
+		border-radius: 12px;
+		font-size: 0.88rem;
+		background: var(--nope-soft);
 	}
-	.brand {
-		font: inherit;
-		font-size: 1.25rem;
-		font-weight: 800;
-		color: var(--text);
+	.link {
+		font-weight: 700;
 		background: none;
 		border: none;
-		display: flex;
-		align-items: center;
-		gap: 6px;
+		color: var(--accent-fg);
 		cursor: pointer;
+		text-decoration: underline;
 		padding: 0;
 	}
-	.logo {
-		color: var(--accent);
-	}
-	.likes {
-		font: inherit;
-		font-weight: 800;
-		background: var(--accent-soft);
-		color: var(--accent-text);
-		border: none;
-		border-radius: 999px;
-		padding: 8px 14px;
-		cursor: pointer;
-	}
-
-	/* ボタン: Misskey Hub のピル */
-	.btn {
-		font: inherit;
-		font-weight: 700;
-		border-radius: 999px;
-		padding: 12px 28px;
-		cursor: pointer;
-		border: 1px solid transparent;
-		text-decoration: none;
-		display: inline-block;
+	.loading {
 		text-align: center;
-		transition:
-			transform 0.1s,
-			box-shadow 0.15s;
-	}
-	.btn:active {
-		transform: scale(0.97);
-	}
-	.btn.primary {
-		background: var(--accent);
-		color: #fff;
-		box-shadow: 0 6px 18px rgba(134, 179, 0, 0.35);
-	}
-	.btn.primary:hover {
-		background: var(--accent-strong);
-	}
-	.btn.secondary {
-		background: var(--surface);
-		color: var(--text);
-		border-color: var(--border);
-	}
-
-	/* イントロ: Hub のトップページ構成 */
-	.intro {
-		text-align: center;
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: 18px;
-		padding-top: 24px;
-	}
-	h1 {
-		font-size: 2.4rem;
-		font-weight: 800;
-		line-height: 1.2;
-		margin: 0;
-		letter-spacing: -0.01em;
-	}
-	h1 .accent {
-		color: var(--accent);
-	}
-	.lead {
-		margin: 0;
-		color: var(--muted);
-		line-height: 1.7;
-	}
-	.cta-row {
-		display: flex;
-		gap: 10px;
-		flex-wrap: wrap;
-		justify-content: center;
-	}
-	.features {
-		display: grid;
-		gap: 12px;
-		width: 100%;
-		margin-top: 16px;
-	}
-	.feature {
-		background: var(--surface);
-		border-radius: 16px;
-		padding: 24px 20px;
-		box-shadow: var(--shadow);
-	}
-	.feature .emoji {
-		font-size: 2.2rem;
-		display: block;
-	}
-	.feature h3 {
-		margin: 10px 0 6px;
-		font-size: 1.1rem;
-	}
-	.feature p {
-		margin: 0;
-		color: var(--muted);
-		font-size: 0.9rem;
-		line-height: 1.6;
-	}
-
-	.loading,
-	.error {
-		text-align: center;
-		padding: 40px 0;
-	}
-	.loading h2,
-	.error h2 {
-		margin: 16px 0 8px;
-	}
-	.loading p,
-	.error p {
-		color: var(--muted);
-	}
-	.error .btn {
-		margin: 4px;
-	}
-	.msg {
-		color: var(--pass);
+		padding: 80px 0;
 	}
 	.pulse {
-		width: 80px;
-		height: 80px;
-		margin: 0 auto;
+		width: 72px;
+		height: 72px;
+		margin: 0 auto 12px;
 		border-radius: 50%;
 		background: var(--accent-soft);
+		color: var(--accent);
 		display: grid;
 		place-items: center;
-		font-size: 2rem;
-		color: var(--accent);
+		font-size: 1.8rem;
 		animation: pulse 1.2s ease-in-out infinite;
 	}
 	@keyframes pulse {
 		50% {
-			transform: scale(1.12);
-			box-shadow: 0 0 0 16px rgba(134, 179, 0, 0.1);
+			transform: scale(1.1);
 		}
-	}
-	.after {
-		display: flex;
-		flex-direction: column;
-		gap: 10px;
-		margin-top: 20px;
-	}
-
-	/* マッチ演出: Tinder の瞬間を Hub のカードで */
-	.overlay {
-		position: fixed;
-		inset: 0;
-		background: rgba(0, 0, 0, 0.55);
-		backdrop-filter: blur(4px);
-		display: grid;
-		place-items: center;
-		z-index: 50;
-		padding: 16px;
-	}
-	.match {
-		background: var(--surface);
-		border-radius: 24px;
-		padding: 32px 24px;
-		width: min(100%, 360px);
-		text-align: center;
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: 10px;
-		box-shadow: var(--shadow-lg);
-		animation: pop 0.35s cubic-bezier(0.2, 1.4, 0.4, 1);
-	}
-	@keyframes pop {
-		from {
-			transform: scale(0.7);
-			opacity: 0;
-		}
-	}
-	.match .title {
-		margin: 0;
-		font-size: 1.8rem;
-		font-weight: 900;
-		color: var(--accent);
-	}
-	.faces {
-		display: flex;
-		align-items: center;
-		gap: 12px;
-		margin: 8px 0;
-	}
-	.faces img,
-	.face {
-		width: 72px;
-		height: 72px;
-		border-radius: 50%;
-		object-fit: cover;
-		border: 3px solid var(--accent);
-		display: grid;
-		place-items: center;
-		font-weight: 800;
-		background: var(--surface-2);
-	}
-	.face.you {
-		font-size: 0.8rem;
-	}
-	.heart {
-		color: var(--accent);
-		font-size: 1.8rem;
-	}
-	.name {
-		margin: 0;
-		font-size: 1.2rem;
-		font-weight: 800;
-	}
-	.sub {
-		margin: 0 0 8px;
-		color: var(--muted);
-	}
-	.match .btn {
-		width: 100%;
-		box-sizing: border-box;
 	}
 	footer {
-		margin-top: 40px;
-		color: var(--muted);
-		font-size: 0.75rem;
+		margin-top: 28px;
+		font-size: 0.72rem;
+		color: var(--fg-muted);
 		text-align: center;
 	}
 	footer a {
-		color: var(--muted);
+		color: var(--fg-muted);
+	}
+	@media (min-width: 900px) {
+		.app {
+			max-width: none;
+			margin: 0;
+			padding: 0 0 0 var(--rail-w);
+		}
+		.app.onboarding {
+			padding-left: 0;
+		}
+		main {
+			max-width: var(--desktop-maxw);
+			margin: 0 auto;
+			padding: 28px 40px 48px;
+		}
 	}
 </style>

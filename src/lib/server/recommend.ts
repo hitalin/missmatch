@@ -1,23 +1,22 @@
-import { selectCandidates } from '$lib/candidates';
+import { byActivity } from '$lib/candidates';
 import { fetchServers } from '$lib/instances';
-import { hardFilter, rankServers } from '$lib/match';
+import { isJoinable, isListed } from '$lib/match';
 import { fetchSampleNotes } from '$lib/sample';
-import type { Match, Preference, ServerInfo, VibeProfile } from '$lib/types';
+import type { ServerInfo, ServerProfile } from '$lib/types';
 import {
 	type ClefInput,
 	type ClefOutput,
 	type ClefRunner,
 	getOrComputeVibe,
-	listCachedHosts,
+	readCachedVibe,
 	type VibeKv
 } from '$lib/vibe';
 
 // ServerInfo の形を変えたら上げる
-const SERVERS_KEY = 'servers:v2';
+const SERVERS_KEY = 'servers:v5';
 const SERVERS_TTL_SECONDS = 60 * 60;
 // 1 リクエストで新たに Clef にかける候補の上限（レイテンシとコストの上限になる）
 export const CANDIDATE_LIMIT = 40;
-export const RESULT_LIMIT = 10;
 const CONCURRENCY = 8;
 
 // `vite dev` などバインディングがない環境向けの代替
@@ -53,13 +52,10 @@ export interface Deps {
 	runner: ClefRunner | null;
 }
 
-export async function computeVibes(
-	servers: ServerInfo[],
-	deps: Deps
-): Promise<{ server: ServerInfo; vibe: VibeProfile | null }[]> {
+export async function computeVibes(servers: ServerInfo[], deps: Deps): Promise<ServerProfile[]> {
 	if (!deps.runner) return servers.map((server) => ({ server, vibe: null }));
 	const runner = deps.runner;
-	const results: { server: ServerInfo; vibe: VibeProfile | null }[] = new Array(servers.length);
+	const results: ServerProfile[] = new Array(servers.length);
 	let next = 0;
 	const worker = async () => {
 		while (next < servers.length) {
@@ -78,17 +74,38 @@ export async function computeVibes(
 	return results;
 }
 
-export async function recommend(
-	pref: Preference,
-	deps: Deps
-): Promise<{ matches: Match[]; candidateCount: number; totalCount: number }> {
+// 診断に使う属性表: 推薦され得る全サーバー。
+// 雰囲気はキャッシュ済みの分だけ即座に返し、未判定は活発な順に上限まで応答後に計算する（defer があれば）。
+// ユーザーを Clef の計算で待たせない。欠けは次のアクセスか warm で埋まる
+export type Scope = 'open' | 'all';
+
+export async function loadProfiles(
+	deps: Deps,
+	defer?: (work: Promise<unknown>) => void,
+	scope: Scope = 'open'
+): Promise<{ profiles: ServerProfile[]; totalCount: number; pendingCount: number }> {
 	const servers = await getServers(deps.kv);
-	const cachedHosts = deps.runner ? await listCachedHosts(deps.kv) : new Set<string>();
-	const candidates = selectCandidates(hardFilter(servers, pref), cachedHosts, CANDIDATE_LIMIT);
-	const scored = await computeVibes(candidates, deps);
+	const joinable = servers.filter(scope === 'all' ? isListed : isJoinable);
+	const profiles: ServerProfile[] = await Promise.all(
+		joinable.map(async (server) => ({ server, vibe: await readCachedVibe(deps.kv, server.host) }))
+	);
+	const missing = profiles
+		.filter((p) => p.vibe === null)
+		.map((p) => p.server)
+		.sort(byActivity)
+		.slice(0, CANDIDATE_LIMIT);
+	if (missing.length > 0 && deps.runner) {
+		const work = computeVibes(missing, deps);
+		if (defer) {
+			defer(work);
+		} else {
+			const byHost = new Map((await work).map((p) => [p.server.host, p.vibe]));
+			for (const p of profiles) p.vibe = byHost.get(p.server.host) ?? p.vibe;
+		}
+	}
 	return {
-		matches: rankServers(scored, pref, RESULT_LIMIT),
-		candidateCount: candidates.length,
-		totalCount: servers.length
+		profiles,
+		totalCount: servers.length,
+		pendingCount: defer ? missing.length : 0
 	};
 }

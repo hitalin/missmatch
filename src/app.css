@@ -1,0 +1,127 @@
+/* デザイントークン: Misskey の配色と角丸に、Tinder のカード文法を載せる */
+:root {
+	--bg: #f2f3f0;
+	--panel: #ffffff;
+	--panel-2: #eef0ec;
+	--border: #e1e4de;
+	--fg: #1f2321;
+	--fg-muted: #6b716d;
+	--accent: #86b300;
+	--accent-strong: #6f9600;
+	--accent-soft: #eef7cf;
+	--accent-fg: #4a6b00;
+	--nope: #ff4d5e;
+	--nope-soft: #ffe3e6;
+	--info: #2b9df4;
+	--radius: 14px;
+	--radius-lg: 24px;
+	--shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
+	--shadow-lg: 0 16px 44px rgba(0, 0, 0, 0.18);
+	--nav-h: 62px;
+	--maxw: 480px; /* モバイルの本文幅 */
+	--rail-w: 220px; /* デスクトップの左レール幅 */
+	--desktop-maxw: 1080px;
+	color-scheme: light dark;
+}
+@media (prefers-color-scheme: dark) {
+	:root {
+		--bg: #191b1a;
+		--panel: #242726;
+		--panel-2: #2e3230;
+		--border: #383d3a;
+		--fg: #ececec;
+		--fg-muted: #a1a6a3;
+		--accent-soft: rgba(134, 179, 0, 0.2);
+		--accent-fg: #c9ec5a;
+		--nope-soft: rgba(255, 77, 94, 0.2);
+		--shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
+		--shadow-lg: 0 16px 44px rgba(0, 0, 0, 0.55);
+	}
+}
+* {
+	box-sizing: border-box;
+}
+html,
+body {
+	margin: 0;
+	height: 100%;
+}
+body {
+	background: var(--bg);
+	color: var(--fg);
+	font-family:
+		system-ui, -apple-system, 'Segoe UI', Roboto, 'Hiragino Sans', 'Hiragino Kaku Gothic ProN',
+		'Noto Sans JP', sans-serif;
+	line-height: 1.5;
+	-webkit-font-smoothing: antialiased;
+	overscroll-behavior-y: none;
+}
+button {
+	font: inherit;
+	color: inherit;
+}
+a {
+	color: var(--accent-fg);
+}
+/* ピルボタン（Misskey） */
+.btn {
+	font-weight: 700;
+	border-radius: 999px;
+	padding: 13px 24px;
+	cursor: pointer;
+	border: 1px solid transparent;
+	text-decoration: none;
+	text-align: center;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 8px;
+	transition:
+		transform 0.08s,
+		background 0.15s;
+}
+.btn:active {
+	transform: scale(0.97);
+}
+.btn.primary {
+	background: var(--accent);
+	color: #fff;
+	box-shadow: 0 6px 18px rgba(134, 179, 0, 0.35);
+}
+.btn.primary:hover {
+	background: var(--accent-strong);
+}
+.btn.secondary {
+	background: var(--panel);
+	color: var(--fg);
+	border-color: var(--border);
+}
+.btn.ghost {
+	background: transparent;
+	color: var(--fg-muted);
+}
+.btn:disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
+	box-shadow: none;
+}
+.btn.block {
+	width: 100%;
+}
+/* パネル（Misskey） */
+.panel {
+	background: var(--panel);
+	border: 1px solid var(--border);
+	border-radius: var(--radius);
+	box-shadow: var(--shadow);
+}
+.muted {
+	color: var(--fg-muted);
+}
+.sr-only {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	overflow: hidden;
+	clip: rect(0 0 0 0);
+}
