@@ -24,6 +24,9 @@ const ONE_WAY = new Set<Feature>([...GENRE_FEATURES, 'drive']);
 // 学習の軸の重みはスワイプ数とともに増え、この回数で最大になる
 const TASTE_FULL_AT = 8;
 const TASTE_MAX_WEIGHT = 3;
+// 検索語があるときは「文章との噛み合い」が主、設定と学習した好みは従。
+// 好みを同列に足すと、話題や R-18 の重みに噛み合いが埋もれて検索の精度が落ちる
+export const AFFINITY_SHARE = 0.75;
 
 // 新規登録を受け付けているサーバー（既定の候補）
 export function isJoinable(s: ServerInfo): boolean {
@@ -131,26 +134,28 @@ export function scoreProfile(
 			reason: strict ? 'ルールがしっかりしている' : 'ルールがゆるめ'
 		});
 	}
-	if (hasFreshAffinity(prefs)) {
-		axes.push({
-			fit: prefs.affinity[p.server.host] ?? UNKNOWN,
-			weight: 3,
-			reason: '書いてくれた希望と噛み合う'
-		});
-	}
 	const tw = tasteWeight(swipes);
 	if (tw > 0) {
 		const fit = tasteFit(featuresOf(p), taste);
 		if (fit !== null) axes.push({ fit, weight: tw, reason: 'いいねした鯖と似ている' });
 	}
 
+	// 好み（設定 + 学習）の適合度。軸が無ければ中立
 	const totalWeight = axes.reduce((s, a) => s + a.weight, 0);
 	const weighted = axes.reduce((s, a) => s + a.fit * a.weight, 0);
-	const score = totalWeight === 0 ? 50 : Math.round((weighted / totalWeight) * 100);
+	const prefFit = totalWeight === 0 ? 0.5 : weighted / totalWeight;
 	const reasons = axes
 		.filter((a) => a.reason && a.fit >= 0.6)
 		.sort((a, b) => b.fit * b.weight - a.fit * a.weight)
 		.map((a) => a.reason as string);
+
+	let fit = prefFit;
+	if (hasFreshAffinity(prefs)) {
+		const affinity = prefs.affinity[p.server.host] ?? UNKNOWN;
+		fit = AFFINITY_SHARE * affinity + (1 - AFFINITY_SHARE) * prefFit;
+		if (affinity >= 0.6) reasons.unshift('書いてくれた希望と噛み合う');
+	}
+	const score = Math.round(fit * 100);
 	return { server: p.server, vibe: v, score, reasons, tags: v ? vibeTags(v) : [] };
 }
 

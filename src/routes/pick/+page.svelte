@@ -216,7 +216,7 @@
 </script>
 
 <svelte:head>
-	<title>選ぶ - みすまっち</title>
+	<title>さがす - みすまっち</title>
 	<meta name="description" content="プロフィールを作って、雰囲気まで考慮したおすすめ Misskey サーバーをスワイプで選ぼう。" />
 </svelte:head>
 

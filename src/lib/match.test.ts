@@ -13,6 +13,25 @@ import {
 	tasteWeight
 } from './match';
 import { defaultPreferences, type Preferences } from './prefs';
+import type { Genre } from './types';
+
+const emptyGenre = (): Record<Genre, number> => ({
+	general: 0,
+	diary: 0,
+	illust: 0,
+	writing: 0,
+	music: 0,
+	making: 0,
+	tech: 0,
+	game: 0,
+	anime: 0,
+	fandom: 0,
+	vr: 0,
+	food: 0,
+	animal: 0,
+	vent: 0,
+	niche: 0
+});
 
 const prefs = (over: Partial<Preferences> = {}): Preferences => ({
 	...defaultPreferences(),
@@ -99,18 +118,27 @@ describe('scoreProfile', () => {
 		expect(scoreProfile(mk({}, null), prefs({ topics: ['illust'] })).score).toBe(50);
 	});
 
-	it('ひとことの噛み合い確率が付いていれば効く', () => {
+	it('検索語があるときは噛み合いが主で、好みは従（好みが完璧でも噛み合わない鯖は下）', () => {
 		const p = prefs({
+			nsfw: 'avoid',
+			topics: ['illust'],
+			tone: 'right',
 			wish: '病み垢',
 			affinityFor: '病み垢',
 			affinity: { 'yami.tld': 0.95, 'other.tld': 0.1 }
 		});
-		expect(scoreProfile(mk({ host: 'yami.tld' }), p).score).toBeGreaterThan(
-			scoreProfile(mk({ host: 'other.tld' }), p).score
+		// yami は好み（創作・ほのぼの・R-18 少なめ）には全く合わないが、文章には噛み合う
+		const yami = scoreProfile(
+			mk({ host: 'yami.tld' }, { genre: { ...emptyGenre(), vent: 0.95 }, tone: 0.3, nsfw: 0.5 }),
+			p
 		);
-		expect(scoreProfile(mk({ host: 'yami.tld' }), p).reasons).toContain(
-			'書いてくれた希望と噛み合う'
-		);
+		// other は好みには完璧に合うが、文章には噛み合わない
+		const other = scoreProfile(mk({ host: 'other.tld' }), p);
+		expect(yami.score).toBeGreaterThan(other.score);
+		expect(yami.reasons[0]).toBe('書いてくれた希望と噛み合う');
+		// 噛み合い 0.95 が 75% を占めるので、好みが低くても 71 点以上。逆は 33 点以下
+		expect(yami.score).toBeGreaterThanOrEqual(71);
+		expect(other.score).toBeLessThanOrEqual(33);
 	});
 });
 

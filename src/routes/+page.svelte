@@ -6,7 +6,7 @@
 	import { isComplete } from '$lib/prefs';
 	import { emptyProfile, loadSavedProfile, persistProfile, type SavedProfile } from '$lib/profile';
 
-	// 探す: 検索ボックスだけのランディング。言葉を入れて送ると「選ぶ」でデッキが並び替わる
+	// 探す: 検索ボックスだけのランディング。言葉を入れて送ると「さがす」でデッキが並び替わる
 	const EXAMPLES = [
 		'病み垢を置ける、静かで干渉が少ない場所',
 		'一次創作のイラストを見せたい',
@@ -32,7 +32,7 @@
 			prefs: {
 				...profile.prefs,
 				wish: trimmed,
-				// 言葉が変わったら噛み合いは「選ぶ」で読み直す
+				// 言葉が変わったら噛み合いは「さがす」で読み直す
 				affinity: changed ? {} : profile.prefs.affinity,
 				affinityFor: changed ? '' : profile.prefs.affinityFor
 			}
@@ -56,7 +56,7 @@
 <main class="landing">
 	<div class="center">
 		<h1 class="brand"><span class="logo">♥</span> みすまっち</h1>
-		<p class="tagline">Misskey のサーバーを、探して、選ぶ。</p>
+		<p class="tagline">Misskey のサーバーと、マッチング。</p>
 
 		<form class="search" onsubmit={submit} role="search">
 			<label class="sr-only" for="q">どんな場所を探している？</label>
@@ -84,7 +84,7 @@
 		</ul>
 
 		<p class="skip">
-			<a href={resolve('/pick')}>{hasProfile ? '前回の続きから選ぶ' : '言葉を入れずに条件だけで選ぶ'} →</a>
+			<a href={resolve('/pick')}>{hasProfile ? '前回の続きからさがす' : '言葉を入れずに条件だけでさがす'} →</a>
 		</p>
 	</div>
 

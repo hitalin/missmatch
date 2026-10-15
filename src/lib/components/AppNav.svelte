@@ -27,7 +27,7 @@
 		class:active={tab === 'discover'}
 		disabled={!discoverEnabled}
 		onclick={() => onchange('discover')}
-		aria-label="選ぶ"
+		aria-label="さがす"
 	>
 		<svg viewBox="0 0 24 24" aria-hidden="true">
 			<path
@@ -35,7 +35,7 @@
 			/>
 			<path d="M6.5 13.5C6.5 17 9 20 12 20s5.5-3 5.5-6.5" />
 		</svg>
-		<span>選ぶ</span>
+		<span>さがす</span>
 	</button>
 	<button class:active={tab === 'likes'} onclick={() => onchange('likes')} aria-label="いいね">
 		<svg viewBox="0 0 24 24" aria-hidden="true">
