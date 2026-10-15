@@ -64,7 +64,6 @@
 				{:else}
 					<button class="open-btn" onclick={() => onselect(s.id)}>
 						<span class="title" class:muted={!s.query && !s.title}>{searchTitle(s)}</span>
-						{#if s.liked.length > 0}<span class="n"><Icon name="heart" size={11} filled />{s.liked.length}</span>{/if}
 					</button>
 					<div class="menu-wrap" data-menu>
 						<button
@@ -168,14 +167,6 @@
 	.muted {
 		color: var(--fg-muted);
 		font-weight: 400;
-	}
-	.n {
-		display: inline-flex;
-		align-items: center;
-		gap: 2px;
-		font-size: 0.7rem;
-		color: var(--nope);
-		flex-shrink: 0;
 	}
 	.menu-wrap {
 		position: relative;
