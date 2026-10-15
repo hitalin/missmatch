@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { Match } from '$lib/types';
 
-	const MISSPACE_URL = 'https://misspace.pages.dev';
+	const MISSPACE_URL = 'https://misspace.hital.in';
 
 	// いいね一覧と、よくないね（パス）一覧を同じグリッドで出す
 	let {
