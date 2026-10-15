@@ -8,7 +8,7 @@ import {
 	type ClefOutput,
 	type ClefRunner,
 	getOrComputeVibe,
-	readCachedVibe,
+	readVibeEntry,
 	type VibeKv
 } from '$lib/vibe';
 
@@ -94,12 +94,17 @@ export async function loadProfiles(
 	}
 	const servers = await getServers(deps.kv);
 	const joinable = servers.filter(scope === 'all' ? isListed : isJoinable);
-	const profiles: ServerProfile[] = await Promise.all(
-		joinable.map(async (server) => ({ server, vibe: await readCachedVibe(deps.kv, server.host) }))
+	const entries = await Promise.all(
+		joinable.map(async (server) => ({ server, entry: await readVibeEntry(deps.kv, server.host) }))
 	);
-	const missing = profiles
-		.filter((p) => p.vibe === null)
-		.map((p) => p.server)
+	const profiles: ServerProfile[] = entries.map(({ server, entry }) => ({
+		server,
+		vibe: entry.vibe
+	}));
+	// 最近失敗したものは欠けに数えない（しばらく再試行しないし、キャッシュを止めもしない）
+	const missing = entries
+		.filter(({ entry }) => entry.vibe === null && !entry.failed)
+		.map(({ server }) => server)
 		.sort(byActivity)
 		.slice(0, CANDIDATE_LIMIT);
 	if (missing.length > 0 && deps.runner) {

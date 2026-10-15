@@ -3,7 +3,12 @@
 
 	const MISSPACE_URL = 'https://misspace.pages.dev';
 
-	let { matches, onremove }: { matches: Match[]; onremove: (m: Match) => void } = $props();
+	// いいね一覧と、よくないね（パス）一覧を同じグリッドで出す
+	let {
+		matches,
+		mode = 'liked',
+		onremove
+	}: { matches: Match[]; mode?: 'liked' | 'passed'; onremove: (m: Match) => void } = $props();
 
 	function misspaceLink(host: string): string {
 		const url = new URL(MISSPACE_URL);
@@ -15,14 +20,20 @@
 </script>
 
 <section class="likes">
-	<h1>いいね <span class="count">{matches.length}</span></h1>
+	<h1>{mode === 'liked' ? 'いいね' : 'よくないね'} <span class="count">{matches.length}</span></h1>
 	{#if matches.length === 0}
 		<div class="panel empty">
-			<p class="big">♥</p>
-			<p>まだありません。「さがす」で気になるサーバーに ♥ を送ると、ここに残ります。</p>
+			<p class="big">{mode === 'liked' ? '♥' : '✕'}</p>
+			{#if mode === 'liked'}
+				<p>まだありません。「さがす」で気になるサーバーに ♥ を送ると、ここに残ります。</p>
+			{:else}
+				<p>まだありません。✕ を送ったサーバーがここに残り、デッキには出なくなります。</p>
+			{/if}
 		</div>
 	{:else}
-		<p class="muted">気になったら覗いてみてください。登録するかどうかは、自分の目で確かめて。</p>
+		<p class="muted">
+			{#if mode === 'liked'}気になったら覗いてみてください。登録するかどうかは、自分の目で確かめて。{:else}気が変わったら「戻す」で、またデッキに出るようになります。{/if}
+		</p>
 		<ul class="grid">
 			{#each matches as m (m.server.host)}
 				<li class="tile" style:background={bg(m.server.themeColor)}>
@@ -43,7 +54,7 @@
 					<div class="actions">
 						<a href="https://{m.server.host}/" target="_blank" rel="noopener">見る</a>
 						<a href={misspaceLink(m.server.host)} target="_blank" rel="noopener">連合</a>
-						<button onclick={() => onremove(m)}>外す</button>
+						<button onclick={() => onremove(m)}>{mode === 'liked' ? '外す' : '戻す'}</button>
 					</div>
 				</li>
 			{/each}

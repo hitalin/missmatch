@@ -6,6 +6,7 @@
 	import MatchOverlay from '$lib/components/MatchOverlay.svelte';
 	import Onboarding from '$lib/components/Onboarding.svelte';
 	import Settings from '$lib/components/Settings.svelte';
+	import WishSearch from '$lib/components/WishSearch.svelte';
 	import { featuresOf } from '$lib/features';
 	import { applyIntent } from '$lib/intent';
 	import { applyFilters, buildDeck, learn, scoreProfile, type Taste } from '$lib/match';
@@ -44,14 +45,16 @@
 		return JSON.stringify({ ...rest, affinity: hasFreshAffinity(profile.prefs) ? affinityFor : '' });
 	});
 	const ready = $derived(isComplete(profile.prefs));
-	const liked = $derived.by(() => {
-		if (!profiles) return [] as Match[];
+	function matchesOf(hosts: string[]): Match[] {
+		if (!profiles) return [];
 		const byHost = new Map(profiles.map((p) => [p.server.host, p]));
-		return profile.liked
+		return hosts
 			.map((host) => byHost.get(host))
 			.filter((p): p is ServerProfile => p !== undefined)
 			.map((p) => scoreProfile(p, profile.prefs, profile.taste, profile.swipes));
-	});
+	}
+	const liked = $derived(matchesOf(profile.liked));
+	const passed = $derived(matchesOf(profile.passed));
 
 	// 復元は一度だけ（$effect にすると自分の書き込みで再実行ループになる）
 	onMount(() => {
@@ -131,6 +134,7 @@
 				...profile,
 				prefs: { ...prefs, wish: text, affinity: data.affinity ?? {}, affinityFor: text }
 			};
+			tab = 'discover';
 		} catch (e) {
 			readError = e instanceof Error ? e.message : String(e);
 		} finally {
@@ -189,6 +193,13 @@
 	function unlike(host: string) {
 		profile = { ...profile, liked: profile.liked.filter((h) => h !== host) };
 	}
+	// よくないねを取り消す（デッキに戻る）
+	function restore(host: string) {
+		profile = { ...profile, passed: profile.passed.filter((h) => h !== host) };
+	}
+	function clearWish() {
+		profile = { ...profile, prefs: { ...profile.prefs, wish: '', affinity: {}, affinityFor: '' } };
+	}
 
 	function go(next: Tab) {
 		tab = next;
@@ -205,8 +216,6 @@
 	{#if onboarding}
 		<Onboarding
 			bind:prefs={profile.prefs}
-			{reading}
-			onreadwish={readWish}
 			onfinish={() => {
 				onboarding = false;
 				tab = 'discover';
@@ -225,6 +234,13 @@
 			{/if}
 
 			{#if tab === 'discover'}
+				<WishSearch
+					wish={hasFreshAffinity(profile.prefs) ? profile.prefs.wish : ''}
+					applied={hasFreshAffinity(profile.prefs)}
+					{reading}
+					onsearch={readWish}
+					onclear={clearWish}
+				/>
 				{#if !profiles}
 					<div class="loading"><div class="pulse">♥</div><p class="muted">サーバー情報を取得中…</p></div>
 				{:else}
@@ -242,21 +258,19 @@
 				{/if}
 			{:else if tab === 'likes'}
 				<LikesGrid matches={liked} onremove={(m) => unlike(m.server.host)} />
+			{:else if tab === 'passed'}
+				<LikesGrid matches={passed} mode="passed" onremove={(m) => restore(m.server.host)} />
 			{:else}
 				<Settings
 					bind:prefs={profile.prefs}
 					taste={profile.taste}
 					swipes={profile.swipes}
-					passedCount={profile.passed.length}
 					{profiles}
-					{reading}
-					onreadwish={readWish}
 					onresettaste={() => (profile = { ...profile, taste: {}, swipes: 0 })}
 					onforget={(f) => {
 						const { [f]: _drop, ...rest } = profile.taste;
 						profile = { ...profile, taste: rest };
 					}}
-					onresetpassed={() => (profile = { ...profile, passed: [] })}
 				/>
 			{/if}
 			<footer>
@@ -267,7 +281,13 @@
 				</p>
 			</footer>
 		</main>
-		<AppNav {tab} likes={profile.liked.length} discoverEnabled={ready && !!profiles} onchange={go} />
+		<AppNav
+			{tab}
+			likes={profile.liked.length}
+			passed={profile.passed.length}
+			discoverEnabled={ready && !!profiles}
+			onchange={go}
+		/>
 	{/if}
 
 	{#if celebrate}
@@ -300,6 +320,9 @@
 		cursor: pointer;
 		text-decoration: underline;
 		padding: 0;
+	}
+	main :global(.wish) {
+		margin-bottom: 10px;
 	}
 	.loading {
 		text-align: center;

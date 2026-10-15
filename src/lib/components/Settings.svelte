@@ -1,11 +1,9 @@
 <script lang="ts">
 	import Segmented from '$lib/components/Segmented.svelte';
-	import { MAX_INTENT_LENGTH } from '$lib/intent';
 	import { applyFilters, type Taste, tasteSummary } from '$lib/match';
 	import {
 		DEALBREAKER_LABELS,
 		type Dealbreakers,
-		hasFreshAffinity,
 		PACE_HINTS,
 		PACE_LABELS,
 		PACES,
@@ -25,29 +23,19 @@
 		prefs = $bindable(),
 		taste,
 		swipes,
-		passedCount,
 		profiles,
-		reading = false,
-		onreadwish,
 		onresettaste,
-		onforget,
-		onresetpassed
+		onforget
 	}: {
 		prefs: Preferences;
 		taste: Taste;
 		swipes: number;
-		passedCount: number;
 		profiles: ServerProfile[] | null;
-		reading?: boolean;
-		onreadwish: (text: string) => void;
 		onresettaste: () => void;
 		onforget: (feature: keyof Taste) => void;
-		onresetpassed: () => void;
 	} = $props();
 
 	const count = $derived(profiles ? applyFilters(profiles, prefs).length : null);
-	const wishTrimmed = $derived(prefs.wish.trim());
-	const wishRead = $derived(hasFreshAffinity(prefs));
 	const chips = $derived(tasteSummary(taste));
 
 	function toggleIn<T extends string>(list: T[], v: T): T[] {
@@ -66,17 +54,6 @@
 			条件を変えると「さがす」のカードが入れ替わります。
 		</p>
 	</header>
-
-	<div class="panel block">
-		<h2>ひとこと</h2>
-		<p class="help">探している場所を一言で。97 件の説明文と直接突き合わせて相性に入れます。</p>
-		<textarea bind:value={prefs.wish} maxlength={MAX_INTENT_LENGTH} rows="2" placeholder="例: 病み垢として運用したい。静かで干渉が少ない場所" aria-label="ひとこと"></textarea>
-		<div class="row">
-			<button class="btn secondary sm" disabled={reading || wishTrimmed.length < 2 || wishRead} onclick={() => onreadwish(wishTrimmed)}>
-				{#if reading}読み取り中…{:else if wishRead}反映済み ✓{:else}反映する{/if}
-			</button>
-		</div>
-	</div>
 
 	{#if swipes > 0}
 		<div class="panel block">
@@ -191,11 +168,6 @@
 		{/if}
 	</div>
 
-	<div class="panel block">
-		<h2>履歴</h2>
-		<p class="help">パスしたサーバーは二度と出ません（{passedCount} 件）。</p>
-		<div class="row"><button class="btn ghost sm" disabled={passedCount === 0} onclick={onresetpassed}>パスした鯖をもう一度見る</button></div>
-	</div>
 </section>
 
 <style>
@@ -242,20 +214,6 @@
 		font-size: 0.85rem;
 		color: var(--nope);
 		font-weight: 700;
-	}
-	textarea {
-		font: inherit;
-		width: 100%;
-		background: var(--bg);
-		color: var(--fg);
-		border: 1.5px solid var(--border);
-		border-radius: 12px;
-		padding: 10px 12px;
-		resize: vertical;
-	}
-	textarea:focus {
-		outline: none;
-		border-color: var(--accent);
 	}
 	.row {
 		display: flex;
@@ -400,8 +358,7 @@
 			grid-template-columns: 1fr 1fr;
 			gap: 16px;
 		}
-		.head,
-		.block:first-of-type {
+		.head {
 			grid-column: 1 / -1;
 		}
 	}

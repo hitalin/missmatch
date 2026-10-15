@@ -3,6 +3,8 @@ import { GENRE_LABELS, GENRES, type Genre, type ServerInfo, type VibeProfile } f
 // VibeProfile のスキーマを変えたら上げる（古いキャッシュを無効化する）
 export const VIBE_VERSION = 4;
 const KV_TTL_SECONDS = 60 * 60 * 24 * 7;
+// Clef が判定を返せなかったサーバーは 1 日おいて再挑戦する（毎リクエスト再試行して無駄撃ちしない）
+const FAILURE_TTL_SECONDS = 60 * 60 * 24;
 
 // Clef (System One API) の入出力
 export type ClefQuestion =
@@ -210,34 +212,56 @@ export async function listCachedHosts(kv: Pick<VibeKv, 'list'>): Promise<Set<str
 	return hosts;
 }
 
-// KV に現行スキーマのキャッシュがあればそれを返す
+export interface VibeEntry {
+	vibe: VibeProfile | null;
+	failed: boolean; // 最近 Clef が判定を返せなかった（しばらく再試行しない）
+}
+
+// KV の現行スキーマのエントリ。vibe か失敗マーカーのどちらか
+export async function readVibeEntry(kv: Pick<VibeKv, 'get'>, host: string): Promise<VibeEntry> {
+	const cached = await kv.get(vibeKey(host));
+	if (!cached) return { vibe: null, failed: false };
+	try {
+		const parsed = JSON.parse(cached) as Partial<VibeProfile> & { failed?: boolean };
+		if (parsed.version !== VIBE_VERSION) return { vibe: null, failed: false };
+		if (parsed.failed) return { vibe: null, failed: true };
+		return { vibe: parsed as VibeProfile, failed: false };
+	} catch {
+		return { vibe: null, failed: false }; // 壊れたキャッシュは作り直す
+	}
+}
+
 export async function readCachedVibe(
 	kv: Pick<VibeKv, 'get'>,
 	host: string
 ): Promise<VibeProfile | null> {
-	const cached = await kv.get(vibeKey(host));
-	if (!cached) return null;
-	try {
-		const parsed = JSON.parse(cached) as Partial<VibeProfile>;
-		return parsed.version === VIBE_VERSION ? (parsed as VibeProfile) : null;
-	} catch {
-		return null; // 壊れたキャッシュは作り直す
-	}
+	return (await readVibeEntry(kv, host)).vibe;
 }
 
-// Clef で計算して KV に保存する。失敗時は null
+// Clef で計算して KV に保存する。投稿サンプル込みで判定できなければ説明文だけで再挑戦し、
+// それでも駄目なら失敗マーカーを置く。失敗時は null
 export async function computeVibe(server: ServerInfo, deps: VibeDeps): Promise<VibeProfile | null> {
 	const key = vibeKey(server.host);
-	try {
-		const notes = await deps.sampler(server);
-		const output = await deps.runner(buildVibeRequest(server, notes));
-		const vibe = parseVibeAnswers(server.host, output.answers, notes.length);
-		await deps.kv.put(key, JSON.stringify(vibe), { expirationTtl: KV_TTL_SECONDS });
-		return vibe;
-	} catch (e) {
-		console.error(`[vibe] ${server.host}:`, e);
-		return null;
+	const notes = await deps.sampler(server);
+	const attempts = notes.length > 0 ? [notes, []] : [[]];
+	let lastError: unknown = null;
+	for (const sample of attempts) {
+		try {
+			const output = await deps.runner(buildVibeRequest(server, sample));
+			const vibe = parseVibeAnswers(server.host, output.answers, sample.length);
+			await deps.kv.put(key, JSON.stringify(vibe), { expirationTtl: KV_TTL_SECONDS });
+			return vibe;
+		} catch (e) {
+			lastError = e;
+		}
 	}
+	console.error(`[vibe] ${server.host}:`, lastError);
+	await deps.kv.put(
+		key,
+		JSON.stringify({ version: VIBE_VERSION, host: server.host, failed: true }),
+		{ expirationTtl: FAILURE_TTL_SECONDS }
+	);
+	return null;
 }
 
 // キャッシュがあればそれを、なければ計算して保存する

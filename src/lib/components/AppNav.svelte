@@ -1,11 +1,18 @@
 <script lang="ts">
-	export type Tab = 'discover' | 'likes' | 'you';
+	export type Tab = 'discover' | 'likes' | 'passed' | 'you';
 	let {
 		tab,
 		likes,
+		passed,
 		discoverEnabled,
 		onchange
-	}: { tab: Tab; likes: number; discoverEnabled: boolean; onchange: (t: Tab) => void } = $props();
+	}: {
+		tab: Tab;
+		likes: number;
+		passed: number;
+		discoverEnabled: boolean;
+		onchange: (t: Tab) => void;
+	} = $props();
 </script>
 
 <nav class="nav" aria-label="画面切り替え">
@@ -31,6 +38,13 @@
 		</svg>
 		<span>いいね</span>
 		{#if likes > 0}<i class="badge">{likes}</i>{/if}
+	</button>
+	<button class:active={tab === 'passed'} onclick={() => onchange('passed')} aria-label="よくないね">
+		<svg viewBox="0 0 24 24" aria-hidden="true">
+			<path d="M6 6l12 12M18 6L6 18" />
+		</svg>
+		<span>よくないね</span>
+		{#if passed > 0}<i class="badge dim">{passed}</i>{/if}
 	</button>
 	<button class:active={tab === 'you'} onclick={() => onchange('you')} aria-label="あなた">
 		<svg viewBox="0 0 24 24" aria-hidden="true">
@@ -61,7 +75,7 @@
 	.nav button {
 		position: relative;
 		flex: 1;
-		max-width: calc(var(--maxw) / 3);
+		max-width: calc(var(--maxw) / 4);
 		background: none;
 		border: none;
 		cursor: pointer;
@@ -92,6 +106,9 @@
 	}
 	.active svg {
 		fill: var(--accent-soft);
+	}
+	.badge.dim {
+		background: var(--fg-muted);
 	}
 	.badge {
 		position: absolute;

@@ -6,6 +6,7 @@ import {
 	type ClefOutput,
 	getOrComputeVibe,
 	parseVibeAnswers,
+	readVibeEntry,
 	VIBE_VERSION,
 	vibeTags
 } from './vibe';
@@ -224,9 +225,20 @@ describe('getOrComputeVibe', () => {
 		expect(runner).toHaveBeenCalledTimes(2);
 	});
 
-	it('runner が失敗したら null を返す', async () => {
+	it('投稿サンプル込みで失敗したら説明文だけで再挑戦する', async () => {
 		store.clear();
-		runner.mockRejectedValueOnce(new Error('boom'));
+		runner.mockRejectedValueOnce(new Error('3043: no valid decision'));
+		const v = await getOrComputeVibe(server, { kv, runner, sampler });
+		expect(v?.sampleCount).toBe(0);
+		expect(runner).toHaveBeenLastCalledWith(
+			expect.objectContaining({ state: expect.objectContaining({ recentNotes: [] }) })
+		);
+	});
+
+	it('それでも失敗したら null を返し、失敗マーカーを置いて次回は failed として読める', async () => {
+		store.clear();
+		runner.mockRejectedValueOnce(new Error('boom')).mockRejectedValueOnce(new Error('boom'));
 		expect(await getOrComputeVibe(server, { kv, runner, sampler })).toBeNull();
+		expect(await readVibeEntry(kv, server.host)).toEqual({ vibe: null, failed: true });
 	});
 });
