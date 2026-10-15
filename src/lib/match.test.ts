@@ -10,7 +10,8 @@ import {
 	type Taste,
 	tasteFit,
 	tasteSummary,
-	tasteWeight
+	tasteWeight,
+	withRelativeVibes
 } from './match';
 import { defaultPreferences, type Preferences } from './prefs';
 import { newSearch } from './search';
@@ -202,6 +203,40 @@ describe('scoreProfile', () => {
 		// 噛み合い 0.95 が 75% を占めるので、好みが低くても 71 点以上。逆は 33 点以下
 		expect(yami.score).toBeGreaterThanOrEqual(71);
 		expect(other.score).toBeLessThanOrEqual(33);
+	});
+});
+
+describe('雰囲気の相対化と確信度', () => {
+	it('withRelativeVibes は空気感などを候補の中での順位（0..1）にする', () => {
+		const ps = withRelativeVibes([
+			mk({ host: 'a.tld' }, { tone: 0.6 }),
+			mk({ host: 'b.tld' }, { tone: 0.7 }),
+			mk({ host: 'c.tld' }, { tone: 0.8 }),
+			mk({ host: 'd.tld' }, null)
+		]);
+		expect(ps.map((p) => p.rel?.tone)).toEqual([0, 0.5, 1, undefined]);
+		// 元の判定値は変えない（右パネルの表示用）
+		expect(ps[0].vibe?.tone).toBe(0.6);
+	});
+
+	it('空気感の採点は相対値を使うので、判定値の差が小さくても順位が付く', () => {
+		const ps = withRelativeVibes([
+			mk({ host: 'a.tld' }, { tone: 0.62 }),
+			mk({ host: 'b.tld' }, { tone: 0.7 })
+		]);
+		const p = prefs({ tone: 'right' });
+		const [a, b] = ps.map((x) => scoreProfile(x, p).score);
+		expect(b - a).toBeGreaterThan(40);
+	});
+
+	it('投稿サンプルが少ない鯖は、投稿から読む軸の点を中立に寄せる', () => {
+		const p = prefs({ topics: ['game'] });
+		const genre = { ...emptyGenre(), game: 1 };
+		const many = scoreProfile(mk({}, { genre, sampleCount: 50 }), p).score;
+		const few = scoreProfile(mk({}, { genre, sampleCount: 0 }), p).score;
+		expect(many).toBe(100);
+		expect(few).toBeLessThan(85);
+		expect(few).toBeGreaterThan(50);
 	});
 });
 

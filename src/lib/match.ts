@@ -8,7 +8,7 @@ import {
 } from './features';
 import { BIG_DRIVE_MB, meetsActivity, type Preferences, paceOf, scaleOf } from './prefs';
 import { hasAffinity, type Search, seenHosts } from './search';
-import type { Match, ServerInfo, ServerProfile } from './types';
+import type { Match, RelativeVibe, ServerInfo, ServerProfile } from './types';
 import { vibeTags } from './vibe';
 
 // 判定不能な軸は「分からない」として中立値にする
@@ -70,6 +70,41 @@ export function applyFilters(profiles: ServerProfile[], prefs: Preferences): Ser
 	return profiles.filter((p) => passesFilters(p, prefs));
 }
 
+// 候補の中での順位（0..1、同値は平均順位）。元の判定値は表示用にそのまま残す
+const REL_KEYS: (keyof RelativeVibe)[] = [
+	'tone',
+	'strictness',
+	'newcomerFriendly',
+	'closedCommunity'
+];
+export function withRelativeVibes(profiles: ServerProfile[]): ServerProfile[] {
+	const judged = profiles.filter((p) => p.vibe !== null);
+	const n = judged.length;
+	const ranks = new Map<ServerProfile, RelativeVibe>();
+	for (const p of judged)
+		ranks.set(p, { tone: 0.5, strictness: 0.5, newcomerFriendly: 0.5, closedCommunity: 0.5 });
+	if (n > 1) {
+		for (const key of REL_KEYS) {
+			const values = judged.map((p) => p.vibe?.[key] ?? 0);
+			for (const p of judged) {
+				const v = p.vibe?.[key] ?? 0;
+				const below = values.filter((x) => x < v).length;
+				const same = values.filter((x) => x === v).length;
+				(ranks.get(p) as RelativeVibe)[key] = (below + (same - 1) / 2) / (n - 1);
+			}
+		}
+	}
+	return profiles.map((p) => (ranks.has(p) ? { ...p, rel: ranks.get(p) } : p));
+}
+
+// 投稿サンプルが少ないほど、投稿から読む軸（話題・空気感・関わり方）を中立に寄せる
+const SAMPLE_FULL_AT = 30;
+const MIN_CONFIDENCE = 0.3;
+function sampleConfidence(sampleCount: number): number {
+	return Math.min(1, MIN_CONFIDENCE + (1 - MIN_CONFIDENCE) * (sampleCount / SAMPLE_FULL_AT));
+}
+const shrink = (fit: number, conf: number) => UNKNOWN + (fit - UNKNOWN) * conf;
+
 interface Axis {
 	fit: number;
 	weight: number;
@@ -102,6 +137,8 @@ export function scoreProfile(
 	affinity: Record<string, number> = {} // 検索の噛み合い。空なら設定と好みだけで採点
 ): Match {
 	const v = p.vibe;
+	const r = p.rel ?? v; // 空気感などは相対値で採点する
+	const conf = v ? sampleConfidence(v.sampleCount) : 1;
 	const axes: Axis[] = [];
 
 	if (prefs.nsfw === 'avoid') axes.push({ fit: v ? 1 - v.nsfw : UNKNOWN, weight: 4, reason: null });
@@ -114,7 +151,7 @@ export function scoreProfile(
 			? prefs.topics.reduce((b, t) => (v.genre[t] > v.genre[b] ? t : b), prefs.topics[0])
 			: null;
 		axes.push({
-			fit: v && best ? v.genre[best] : UNKNOWN,
+			fit: v && best ? shrink(v.genre[best], conf) : UNKNOWN,
 			weight: 3,
 			reason: best ? `${FEATURE_LABELS[`genre.${best}`].up}の話題が多い` : null
 		});
@@ -122,7 +159,7 @@ export function scoreProfile(
 	if (prefs.tone !== 'any') {
 		const warm = prefs.tone === 'right';
 		axes.push({
-			fit: v ? (warm ? v.tone : (1 - v.tone + (1 - v.strictness)) / 2) : UNKNOWN,
+			fit: r ? shrink(warm ? r.tone : (1 - r.tone + (1 - r.strictness)) / 2, conf) : UNKNOWN,
 			weight: 2,
 			reason: warm ? '空気が穏やか' : '干渉が少なく自由'
 		});
@@ -130,10 +167,11 @@ export function scoreProfile(
 	if (prefs.community !== 'any') {
 		const open = prefs.community === 'right';
 		axes.push({
-			fit: v
-				? open
-					? (v.newcomerFriendly + (1 - v.closedCommunity)) / 2
-					: 0.5 + v.closedCommunity / 2
+			fit: r
+				? shrink(
+						open ? (r.newcomerFriendly + (1 - r.closedCommunity)) / 2 : 0.5 + r.closedCommunity / 2,
+						conf
+					)
 				: UNKNOWN,
 			weight: 2,
 			reason: open ? '初心者が入りやすい' : 'コミュニティの結びつきが強い'
@@ -142,7 +180,7 @@ export function scoreProfile(
 	if (prefs.rules !== 'any') {
 		const strict = prefs.rules === 'right';
 		axes.push({
-			fit: v ? (strict ? v.strictness : 1 - v.strictness) : UNKNOWN,
+			fit: r ? (strict ? r.strictness : 1 - r.strictness) : UNKNOWN,
 			weight: 1.5,
 			reason: strict ? 'ルールがしっかりしている' : 'ルールがゆるめ'
 		});

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { mk } from './fixtures.test-helper';
+import { mk, mkVibe } from './fixtures.test-helper';
 import {
 	AFFINITY_BATCH,
 	applyIntent,
@@ -114,6 +114,23 @@ describe('buildAffinityRequests / parseAffinity', () => {
 		const state = reqs[1].state as { userMessages: string[]; servers: { host: string }[] };
 		expect(state.userMessages).toEqual(['病み垢を置きたい', '小さめ']);
 		expect(state.servers.map((s) => s.host)).toEqual(Object.keys(reqs[1].questions));
+	});
+
+	it('サーバーごとに説明・ルール・話題の確率・投稿の抜粋を渡す', () => {
+		const p = {
+			...mk(
+				{ host: 'a.tld', description: '説明'.repeat(200), serverRules: ['ルール'.repeat(100)] },
+				{ genre: { ...mkVibe().genre, game: 0.9, illust: 0.1 } }
+			),
+			excerpts: ['ゲームの話', '今日のガチャ']
+		};
+		const [req] = buildAffinityRequests(['ゲーム'], [p]);
+		const s = (req.state as { servers: Record<string, unknown>[] }).servers[0];
+		expect((s.description as string).length).toBe(300);
+		expect((s.rules as string).length).toBe(200);
+		expect(s.recentNotes).toEqual(['ゲームの話', '今日のガチャ']);
+		expect(s.topics).toContain('ゲーム 90%');
+		expect(s.topics).not.toContain('イラスト・漫画を描く 10%');
 	});
 
 	it('回答を host → 確率にまとめ、知らない host は捨てる', () => {

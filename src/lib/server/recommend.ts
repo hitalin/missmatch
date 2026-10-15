@@ -8,7 +8,10 @@ import {
 	type ClefOutput,
 	type ClefRunner,
 	getOrComputeVibe,
+	readExcerpts,
 	readVibeEntry,
+	sampleKey,
+	saveExcerpts,
 	type VibeKv
 } from '$lib/vibe';
 
@@ -19,7 +22,7 @@ const SERVERS_TTL_SECONDS = 60 * 60;
 export const CANDIDATE_LIMIT = 40;
 // 組み立て済みの属性表のキャッシュ。欠けが無くなったときだけ置き、毎回 97〜576 件の KV 読みを避ける
 const PROFILES_TTL_SECONDS = 60 * 5;
-const profilesKey = (scope: Scope) => `profiles:v2:${scope}`;
+const profilesKey = (scope: Scope) => `profiles:v3:${scope}`;
 const CONCURRENCY = 8;
 
 // `vite dev` などバインディングがない環境向けの代替
@@ -77,6 +80,29 @@ export async function computeVibes(servers: ServerInfo[], deps: Deps): Promise<S
 	return results;
 }
 
+// 投稿の抜粋が無いサーバーだけ LTL を取りに行って保存する（Clef は使わない）。
+// 抜粋を持つ前に雰囲気を判定したサーバーを、判定し直さずに埋めるため
+export async function fillExcerpts(servers: ServerInfo[], kv: VibeKv): Promise<number> {
+	let filled = 0;
+	let next = 0;
+	const worker = async () => {
+		while (next < servers.length) {
+			const s = servers[next++];
+			if (!s.ltlAvailable || (await kv.get(sampleKey(s.host)))) continue;
+			const notes = await fetchSampleNotes(s.host, 10);
+			await saveExcerpts(kv, s.host, notes);
+			if (notes.length > 0) filled++;
+		}
+	};
+	await Promise.all(Array.from({ length: Math.min(CONCURRENCY, servers.length) }, worker));
+	return filled;
+}
+
+// 抜粋はサーバー内（噛み合い判定）だけで使う。ブラウザに送る属性表からは外す
+export function forClient(profiles: ServerProfile[]): ServerProfile[] {
+	return profiles.map(({ excerpts: _excerpts, ...p }) => p);
+}
+
 // 診断に使う属性表: 推薦され得る全サーバー。
 // 雰囲気はキャッシュ済みの分だけ即座に返し、未判定は活発な順に上限まで応答後に計算する（defer があれば）。
 // ユーザーを Clef の計算で待たせない。欠けは次のアクセスか warm で埋まる
@@ -95,11 +121,16 @@ export async function loadProfiles(
 	const servers = await getServers(deps.kv);
 	const joinable = servers.filter(scope === 'all' ? isListed : isJoinable);
 	const entries = await Promise.all(
-		joinable.map(async (server) => ({ server, entry: await readVibeEntry(deps.kv, server.host) }))
+		joinable.map(async (server) => ({
+			server,
+			entry: await readVibeEntry(deps.kv, server.host),
+			excerpts: await readExcerpts(deps.kv, server.host)
+		}))
 	);
-	const profiles: ServerProfile[] = entries.map(({ server, entry }) => ({
+	const profiles: ServerProfile[] = entries.map(({ server, entry, excerpts }) => ({
 		server,
-		vibe: entry.vibe
+		vibe: entry.vibe,
+		excerpts
 	}));
 	// 最近失敗したものは欠けに数えない（しばらく再試行しないし、キャッシュを止めもしない）
 	const missing = entries

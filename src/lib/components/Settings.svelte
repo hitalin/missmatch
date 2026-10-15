@@ -154,7 +154,7 @@
 		{#if swipes > 0}
 			<div class="panel block">
 				<h2>
-					いいねから学んだ好み <span class="muted small">{swipes} スワイプ</span>
+					この検索で学んだ好み <span class="muted small">{swipes} スワイプ</span>
 					<button class="reset" onclick={onresettaste}>リセット</button>
 				</h2>
 				{#if chips.length === 0}

@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
+import { defaultPreferences } from './prefs';
 import {
+	effectivePrefs,
 	groupSearches,
 	hasAffinity,
 	newSearch,
@@ -9,6 +11,33 @@ import {
 	seenHosts
 } from './search';
 
+describe('effectivePrefs', () => {
+	it('全体の設定に、その検索の読み取りと聞き返しの答えを重ねる（全体の設定は変えない）', () => {
+		const prefs = { ...defaultPreferences(), age: 'adult' as const, topics: ['tech' as const] };
+		const s = {
+			...newSearch('ゲーム'),
+			intent: {
+				'topic.game': { type: 'noul' as const, noul: 0.9 },
+				tone: {
+					type: 'choice' as const,
+					choice: 'right',
+					probabilities: { right: 0.9 },
+					confidence: 0.9
+				}
+			},
+			choices: { scale: 'small' }
+		};
+		const eff = effectivePrefs(prefs, s);
+		expect(eff.topics).toEqual(['tech', 'game']);
+		expect(eff.tone).toBe('right');
+		expect(eff.scales).toEqual(['small', 'medium']);
+		expect(prefs.topics).toEqual(['tech']);
+		expect(prefs.tone).toBe('any');
+		// 別の検索には効かない
+		expect(effectivePrefs(prefs, newSearch('病み垢')).topics).toEqual(['tech']);
+	});
+});
+
 describe('search', () => {
 	it('newSearch は空のいいね・よくないねで始まり、言葉を持つ', () => {
 		const s = newSearch('病み垢');
@@ -17,6 +46,10 @@ describe('search', () => {
 		expect(s.liked).toEqual([]);
 		expect(s.passed).toEqual([]);
 		expect(s.affinity).toEqual({});
+		expect(s.intent).toEqual({});
+		expect(s.choices).toEqual({});
+		expect(s.taste).toEqual({});
+		expect(s.swipes).toBe(0);
 		expect(s.id).not.toBe(newSearch().id);
 	});
 

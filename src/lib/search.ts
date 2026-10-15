@@ -1,4 +1,7 @@
-import type { AskAxis } from './intent';
+import { type AskAxis, applyIntent, chooseAxis } from './intent';
+import type { Taste } from './match';
+import type { Preferences } from './prefs';
+import type { ClefAnswer } from './vibe';
 
 // 探す言葉ごとのセッション。いいね / よくないねは言葉ごとに分ける
 // （別の目的で外した鯖が、次の目的のときも消えたままにならないように）
@@ -10,6 +13,12 @@ export interface Search {
 	affinity: Record<string, number>; // 言葉の並びと各サーバーの噛み合い確率（未読み取りなら空）
 	affinityFor: string; // affinity を読み取ったときの言葉の並び（searchTurns を改行で結合）
 	unsure: AskAxis[]; // 言葉から読み取れず、選択肢で聞く軸（答えるか「こだわらない」で消える）
+	// 言葉の読み取り結果と聞き返しへの答え。全体の設定には書き込まず、この検索で並べるときだけ重ねる
+	intent: Record<string, ClefAnswer>;
+	choices: Partial<Record<AskAxis, string>>;
+	// この検索のスワイプから学んだ好み（目的の違う検索のいいねを混ぜない）
+	taste: Taste;
+	swipes: number;
 	liked: string[]; // いいねした host（順序あり）
 	passed: string[]; // よくないねした host（この検索では二度と出さない）
 	at: number; // 最後に使った時刻
@@ -24,10 +33,23 @@ export function newSearch(query = ''): Search {
 		affinity: {},
 		affinityFor: '',
 		unsure: [],
+		intent: {},
+		choices: {},
+		taste: {},
+		swipes: 0,
 		liked: [],
 		passed: [],
 		at: Date.now()
 	};
+}
+
+// この検索で並べるときの設定: 全体の設定の空いている所を読み取りで埋め、聞き返しの答えで上書きする
+export function effectivePrefs(prefs: Preferences, s: Search): Preferences {
+	let p = applyIntent(prefs, s.intent);
+	for (const [axis, choice] of Object.entries(s.choices) as [AskAxis, string][]) {
+		p = chooseAxis(p, axis, choice);
+	}
+	return p;
 }
 
 // Clef に渡す発言の並び（最初の言葉 → 絞り込み）

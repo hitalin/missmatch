@@ -64,8 +64,6 @@ describe('parseSavedProfile', () => {
 		expect(p.prefs.rules).toBe('any');
 		expect(p.prefs.dealbreakers.adsFree).toBe(true);
 		expect(p.prefs.dealbreakers.gtl).toBe(false);
-		expect(p.taste).toEqual({ scale: -0.5 });
-		expect(p.swipes).toBe(3);
 		expect(p.searches).toEqual([
 			{
 				id: 's1',
@@ -75,12 +73,48 @@ describe('parseSavedProfile', () => {
 				affinity: { 'a.tld': 0.9 },
 				affinityFor: '病み垢\n小さめ',
 				unsure: ['scale'],
+				intent: {},
+				choices: {},
+				// 旧形式の全体の好みは、開いていた検索に移す
+				taste: { scale: -0.5 },
+				swipes: 3,
 				liked: ['a.tld'],
 				passed: [],
 				at: 100
 			}
 		]);
 		expect(p.current).toBe('s1');
+	});
+
+	it('検索ごとの読み取り・聞き返しの答え・学習した好みを読む', () => {
+		const p = parseSavedProfile(
+			JSON.stringify({
+				searches: [
+					{
+						id: 'x',
+						query: 'a',
+						intent: {
+							tone: {
+								type: 'choice',
+								choice: 'right',
+								probabilities: { right: 0.9 },
+								confidence: 0.9
+							},
+							'topic.game': { type: 'noul', noul: 0.8 },
+							bogus: { type: 'nope' }
+						},
+						choices: { scale: 'small', pace: 3, nope: 'x' },
+						taste: { tone: 0.4, bogus: 9 },
+						swipes: 2
+					}
+				]
+			})
+		);
+		const s = p.searches[0];
+		expect(Object.keys(s.intent).sort()).toEqual(['tone', 'topic.game']);
+		expect(s.choices).toEqual({ scale: 'small' });
+		expect(s.taste).toEqual({ tone: 0.4 });
+		expect(s.swipes).toBe(2);
 	});
 
 	it('年齢: 旧形式の adult を移し、知らない値は未設定にする', () => {

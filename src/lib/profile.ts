@@ -1,3 +1,4 @@
+import { FEATURES, type Feature } from './features';
 import { ASK_AXES, type AskAxis } from './intent';
 import type { Taste } from './match';
 import {
@@ -13,13 +14,12 @@ import {
 	TOPICS
 } from './prefs';
 import { newSearch, type Search } from './search';
+import type { ClefAnswer } from './vibe';
 
 // ブラウザに保持するもの。マッチングアプリと同じく、作ったプロフィールと履歴は残す。
 // 設定と学習した好みは「その人」のものなので 1 本、いいね / よくないねは検索ごと
 export interface SavedProfile {
 	prefs: Preferences;
-	taste: Taste; // スワイプから学習した好み
-	swipes: number; // 学習に使ったスワイプ数
 	searches: Search[]; // 探した言葉ごとのセッション
 	current: string; // 今開いている検索の id（searches が空なら ''）
 }
@@ -27,7 +27,7 @@ export interface SavedProfile {
 export const PROFILE_KEY = 'missmatch:profile:v2';
 
 export function emptyProfile(): SavedProfile {
-	return { prefs: defaultPreferences(), taste: {}, swipes: 0, searches: [], current: '' };
+	return { prefs: defaultPreferences(), searches: [], current: '' };
 }
 
 export function currentSearch(p: SavedProfile): Search | null {
@@ -77,6 +77,39 @@ const affinityOf = (x: unknown): Record<string, number> => {
 	return out;
 };
 
+const isAxis = (a: string): a is AskAxis => (ASK_AXES as readonly string[]).includes(a);
+const ANSWER_TYPES = ['noul', 'choice', 'score'];
+// Clef の回答（読み取り結果）。形の崩れたものは捨てる
+function intentOf(x: unknown): Record<string, ClefAnswer> {
+	const out: Record<string, ClefAnswer> = {};
+	if (!x || typeof x !== 'object') return out;
+	for (const [k, v] of Object.entries(x as Record<string, unknown>)) {
+		if (v && typeof v === 'object' && ANSWER_TYPES.includes((v as { type?: string }).type ?? '')) {
+			out[k] = v as ClefAnswer;
+		}
+	}
+	return out;
+}
+function choicesOf(x: unknown): Partial<Record<AskAxis, string>> {
+	const out: Partial<Record<AskAxis, string>> = {};
+	if (!x || typeof x !== 'object') return out;
+	for (const [k, v] of Object.entries(x as Record<string, unknown>)) {
+		if (isAxis(k) && isStr(v)) out[k] = v;
+	}
+	return out;
+}
+function tasteOf(x: unknown): Taste {
+	const out: Taste = {};
+	if (!x || typeof x !== 'object') return out;
+	for (const [k, v] of Object.entries(x as Record<string, unknown>)) {
+		if ((FEATURES as readonly string[]).includes(k) && typeof v === 'number' && v >= -1 && v <= 1) {
+			out[k as Feature] = v;
+		}
+	}
+	return out;
+}
+const swipesOf = (x: unknown): number => (typeof x === 'number' && x >= 0 ? Math.floor(x) : 0);
+
 function parseSearch(x: unknown): Search | null {
 	if (!x || typeof x !== 'object') return null;
 	const s = x as Record<string, unknown>;
@@ -91,6 +124,10 @@ function parseSearch(x: unknown): Search | null {
 		unsure: strArray(s.unsure).filter((a): a is AskAxis =>
 			(ASK_AXES as readonly string[]).includes(a)
 		),
+		intent: intentOf(s.intent),
+		choices: choicesOf(s.choices),
+		taste: tasteOf(s.taste),
+		swipes: swipesOf(s.swipes),
 		liked: strArray(s.liked),
 		passed: strArray(s.passed),
 		at: typeof s.at === 'number' ? s.at : 0
@@ -159,12 +196,6 @@ export function parseSavedProfile(raw: string | null): SavedProfile {
 	for (const key of Object.keys(DEALBREAKER_LABELS) as (keyof Preferences['dealbreakers'])[]) {
 		if (typeof db[key] === 'boolean') prefs.dealbreakers[key] = db[key] as boolean;
 	}
-	if (d.taste && typeof d.taste === 'object') {
-		for (const [k, v] of Object.entries(d.taste as Record<string, unknown>)) {
-			if (typeof v === 'number' && v >= -1 && v <= 1) profile.taste[k as keyof Taste] = v;
-		}
-	}
-	if (typeof d.swipes === 'number' && d.swipes >= 0) profile.swipes = Math.floor(d.swipes);
 	if (Array.isArray(d.searches)) {
 		profile.searches = d.searches.map(parseSearch).filter((s): s is Search => s !== null);
 	} else {
@@ -175,6 +206,13 @@ export function parseSavedProfile(raw: string | null): SavedProfile {
 		isStr(d.current) && profile.searches.some((s) => s.id === d.current)
 			? d.current
 			: (profile.searches[0]?.id ?? '');
+	// 旧形式: 学習した好みは全体で 1 本だった。開いている検索がまだ何も学んでいなければそこへ移す
+	const legacyTaste = tasteOf(d.taste);
+	const cur = profile.searches.find((s) => s.id === profile.current);
+	if (cur && cur.swipes === 0 && Object.keys(legacyTaste).length > 0) {
+		cur.taste = legacyTaste;
+		cur.swipes = swipesOf(d.swipes);
+	}
 	return profile;
 }
 

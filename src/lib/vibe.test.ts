@@ -1,11 +1,14 @@
 import { describe, expect, it, vi } from 'vitest';
+import { mkVibe } from './fixtures.test-helper';
 import type { ServerInfo } from './types';
 import {
 	buildVibeRequest,
 	type ClefAnswer,
 	type ClefOutput,
+	EXCERPT_CHARS,
 	getOrComputeVibe,
 	parseVibeAnswers,
+	pickExcerpts,
 	readVibeEntry,
 	VIBE_VERSION,
 	vibeTags
@@ -141,6 +144,15 @@ describe('parseVibeAnswers', () => {
 	});
 });
 
+describe('pickExcerpts', () => {
+	it('短すぎる投稿を除き、長い投稿は切って先頭から数件', () => {
+		const long = 'あ'.repeat(300);
+		expect(
+			pickExcerpts(['ok', 'すこし長めの投稿', long, 'もうひとつの投稿', '4件目の投稿'])
+		).toEqual(['すこし長めの投稿', 'あ'.repeat(EXCERPT_CHARS), 'もうひとつの投稿']);
+	});
+});
+
 describe('vibeTags', () => {
 	it('目立つ軸だけタグにする', () => {
 		const answers: Record<string, ClefAnswer> = {
@@ -173,6 +185,16 @@ describe('vibeTags', () => {
 		expect(tags).toContain('初心者歓迎');
 		expect(tags).not.toContain('成人向け多め');
 		expect(tags).not.toContain('身内ノリ強め');
+	});
+
+	it('「特定テーマ」は乱発されやすいので、他の話題より強く出たときだけ付ける', () => {
+		const base = mkVibe();
+		const v = (niche: number, game: number) => ({
+			...base,
+			genre: { ...base.genre, niche, game, illust: 0, general: 0 }
+		});
+		expect(vibeTags(v(0.7, 0))).not.toContain('特定テーマ');
+		expect(vibeTags(v(0.85, 0))).toContain('特定テーマ');
 	});
 });
 
@@ -212,13 +234,18 @@ describe('getOrComputeVibe', () => {
 			usage: { input_tokens: 1, output_tokens: 0 }
 		})
 	);
-	const sampler = vi.fn(async () => ['a', 'b']);
+	const sampler = vi.fn(async () => ['ゲームの話をしよう', 'こんにちは、はじめまして']);
 
 	it('初回は計算して KV に保存し、2回目はキャッシュを返す', async () => {
 		const first = await getOrComputeVibe(server, { kv, runner, sampler });
 		expect(first?.genre.general).toBe(1);
 		expect(runner).toHaveBeenCalledTimes(1);
-		expect(kv.put).toHaveBeenCalledTimes(1);
+		// 雰囲気と、噛み合い判定用の投稿の抜粋の 2 つを保存する
+		expect(kv.put).toHaveBeenCalledTimes(2);
+		expect(JSON.parse(store.get(`sample:${server.host}`) ?? '[]')).toEqual([
+			'ゲームの話をしよう',
+			'こんにちは、はじめまして'
+		]);
 
 		const second = await getOrComputeVibe(server, { kv, runner, sampler });
 		expect(second).toEqual(first);

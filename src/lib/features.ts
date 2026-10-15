@@ -78,9 +78,11 @@ export function featuresOf(p: ServerProfile): FeatureVector {
 	if (s.versionMonthsBehind !== null) f.fresh = Math.max(0, 1 - s.versionMonthsBehind / 6);
 	if (v) {
 		for (const g of GENRES) if (g !== 'niche') f[`genre.${g}`] = v.genre[g];
-		f.tone = v.tone;
-		f.strictness = v.strictness;
-		f.community = (v.newcomerFriendly + (1 - v.closedCommunity)) / 2;
+		// 空気感などは候補の中での順位があればそちらを使う（判定値は似た値に固まりやすい）
+		const r = p.rel ?? v;
+		f.tone = r.tone;
+		f.strictness = r.strictness;
+		f.community = (r.newcomerFriendly + (1 - r.closedCommunity)) / 2;
 		f.nsfw = v.nsfw;
 	}
 	return f;

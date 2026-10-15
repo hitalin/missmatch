@@ -1,6 +1,6 @@
 import { DEALBREAKER_LABELS, type Preferences, TOPIC_LABELS, TOPICS, type Topic } from './prefs';
-import type { ServerProfile } from './types';
-import { type ClefAnswer, type ClefInput, type ClefQuestion, vibeTags } from './vibe';
+import { GENRE_LABELS, GENRES, type ServerProfile } from './types';
+import type { ClefAnswer, ClefInput, ClefQuestion } from './vibe';
 
 export const MAX_INTENT_LENGTH = 300; // 1 回の発言の長さ
 export const MAX_TURNS = 8; // 最初の言葉 + 絞り込みの数
@@ -150,10 +150,20 @@ export function unsureAxes(answers: Record<string, ClefAnswer>): AskAxis[] {
 	);
 }
 
-// Clef の応答時間は state のトークン数にほぼ比例するので、小さなバッチに分けて並列に投げる
-export const AFFINITY_BATCH = 12;
-const DESCRIPTION_CHARS = 200;
-const RULES_CHARS = 160;
+// Clef の応答時間は state のトークン数にほぼ比例するので、小さなバッチに分けて並列に投げる。
+// 1 回にまとめる数が多いと、同じバッチ内のサーバー同士で判定が引きずられやすい
+export const AFFINITY_BATCH = 8;
+const DESCRIPTION_CHARS = 300;
+const RULES_CHARS = 200;
+// 話題は確率付きで渡す（タグに丸めると「どのくらい」が消える）
+const TOPIC_MIN = 0.5;
+function topicsOf(p: ServerProfile): string[] {
+	const v = p.vibe;
+	if (!v) return [];
+	return GENRES.filter((g) => v.genre[g] >= TOPIC_MIN)
+		.sort((a, b) => v.genre[b] - v.genre[a])
+		.map((g) => `${GENRE_LABELS[g]} ${Math.round(v.genre[g] * 100)}%`);
+}
 
 // 「この一言と各サーバーは噛み合うか」を、サーバーの説明・ルール・雰囲気タグを見せて直接判定させる。
 // 設定項目に無い切り口（例: 病み垢の居場所）でも説明文に書いてあれば拾える
@@ -167,7 +177,7 @@ export function buildAffinityRequests(turns: string[], profiles: ServerProfile[]
 				type: 'noul',
 				instructions: `servers のうち host が ${p.server.host} のサーバーは、ユーザーが望む使い方・話題・居心地に合う場所か`,
 				criteria: {
-					true: '説明文・ルール・雰囲気が、ユーザーの望む使い方や話題と噛み合う',
+					true: '説明文・ルール・話題・最近の投稿が、ユーザーの望む使い方や話題と噛み合う',
 					false: '噛み合わない、無関係、またはユーザーが避けたいものに当たる'
 				}
 			};
@@ -181,7 +191,8 @@ export function buildAffinityRequests(turns: string[], profiles: ServerProfile[]
 					name: p.server.name ?? p.server.host,
 					description: (p.server.description ?? '').slice(0, DESCRIPTION_CHARS),
 					rules: p.server.serverRules.join(' / ').slice(0, RULES_CHARS),
-					vibeTags: p.vibe ? vibeTags(p.vibe) : []
+					topics: topicsOf(p),
+					recentNotes: p.excerpts ?? []
 				}))
 			},
 			questions

@@ -95,9 +95,19 @@ export interface VibeProfile {
 }
 
 // 診断の対象となる 1 サーバー分の属性表（静的情報 + 雰囲気）
+// 空気感などを候補の中での順位（0..1）にしたもの。Clef の判定値は似た値に固まりやすいので、採点はこちらを使う
+export interface RelativeVibe {
+	tone: number;
+	strictness: number;
+	newcomerFriendly: number;
+	closedCommunity: number;
+}
+
 export interface ServerProfile {
 	server: ServerInfo;
 	vibe: VibeProfile | null;
+	rel?: RelativeVibe; // クライアントで withRelativeVibes が付ける
+	excerpts?: string[]; // 最近の投稿の抜粋（サーバー内で噛み合い判定に使う。クライアントには送らない）
 	affinity?: number; // ユーザーの自由記述とこのサーバーが噛み合う確率（Clef、診断ごとに付く）
 }
 

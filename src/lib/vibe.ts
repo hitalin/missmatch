@@ -163,8 +163,13 @@ export function topGenre(vibe: VibeProfile): Genre {
 	return GENRES.reduce((best, g) => (vibe.genre[g] > vibe.genre[best] ? g : best), GENRES[0]);
 }
 
+const NICHE_TAG_MIN = 0.8;
+
 export function vibeTags(vibe: VibeProfile): string[] {
-	const tags: string[] = GENRES.filter((g) => vibe.genre[g] >= 0.6)
+	// 「特定テーマ」は多くの鯖で高めに出るので、閾値を上げる
+	const tags: string[] = GENRES.filter(
+		(g) => vibe.genre[g] >= (g === 'niche' ? NICHE_TAG_MIN : 0.6)
+	)
 		.sort((a, b) => vibe.genre[b] - vibe.genre[a])
 		.slice(0, 2)
 		.map((g) => GENRE_LABELS[g]);
@@ -195,6 +200,39 @@ export interface VibeDeps {
 }
 
 const KEY_PREFIX = 'vibe:';
+const SAMPLE_PREFIX = 'sample:';
+
+// 噛み合い判定に渡す投稿の抜粋。雰囲気判定で取った投稿から短く数件だけ残す
+export const EXCERPT_COUNT = 3;
+export const EXCERPT_CHARS = 100;
+const EXCERPT_MIN_CHARS = 4;
+export function pickExcerpts(notes: string[]): string[] {
+	return notes
+		.filter((t) => t.length >= EXCERPT_MIN_CHARS)
+		.slice(0, EXCERPT_COUNT)
+		.map((t) => t.slice(0, EXCERPT_CHARS));
+}
+export function sampleKey(host: string): string {
+	return `${SAMPLE_PREFIX}${host}`;
+}
+export async function saveExcerpts(
+	kv: Pick<VibeKv, 'put'>,
+	host: string,
+	notes: string[]
+): Promise<void> {
+	const excerpts = pickExcerpts(notes);
+	if (excerpts.length === 0) return;
+	await kv.put(sampleKey(host), JSON.stringify(excerpts), { expirationTtl: KV_TTL_SECONDS });
+}
+export async function readExcerpts(kv: Pick<VibeKv, 'get'>, host: string): Promise<string[]> {
+	try {
+		const raw = await kv.get(sampleKey(host));
+		const parsed = raw ? (JSON.parse(raw) as unknown) : [];
+		return Array.isArray(parsed) ? parsed.filter((x): x is string => typeof x === 'string') : [];
+	} catch {
+		return [];
+	}
+}
 
 export function vibeKey(host: string): string {
 	return `${KEY_PREFIX}${host}`;
@@ -243,6 +281,7 @@ export async function readCachedVibe(
 export async function computeVibe(server: ServerInfo, deps: VibeDeps): Promise<VibeProfile | null> {
 	const key = vibeKey(server.host);
 	const notes = await deps.sampler(server);
+	await saveExcerpts(deps.kv, server.host, notes);
 	const attempts = notes.length > 0 ? [notes, []] : [[]];
 	let lastError: unknown = null;
 	for (const sample of attempts) {

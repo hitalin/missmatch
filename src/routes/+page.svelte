@@ -13,8 +13,15 @@
 	import Landing from '$lib/components/Landing.svelte';
 	import Shell, { type Tab } from '$lib/components/Shell.svelte';
 	import { featuresOf } from '$lib/features';
-	import { applyIntent, type AskAxis, chooseAxis, isAxisDefault, unsureAxes } from '$lib/intent';
-	import { applyFilters, buildDeck, learn, scoreProfile, type Taste } from '$lib/match';
+	import { type AskAxis, isAxisDefault, unsureAxes } from '$lib/intent';
+	import {
+		applyFilters,
+		buildDeck,
+		learn,
+		scoreProfile,
+		type Taste,
+		withRelativeVibes
+	} from '$lib/match';
 	import { isComplete, needsAllServers } from '$lib/prefs';
 	import {
 		currentSearch,
@@ -28,6 +35,7 @@
 		selectSearch
 	} from '$lib/profile';
 	import {
+		effectivePrefs,
 		hasAffinity,
 		newSearch,
 		refineSearch,
@@ -67,9 +75,11 @@
 	let draft = $state(''); // 言葉を足す箱の入力中テキスト
 
 	// 条件（フィルター・加点・どの検索か・噛み合い済みか）の文字列キー。変わったらデッキを作り直す
+	// この検索で並べるときの設定（全体の設定 + この検索の読み取りと聞き返しの答え）
+	const prefs = $derived(effectivePrefs(profile.prefs, search));
 	const prefsKey = $derived(
 		JSON.stringify({
-			...profile.prefs,
+			...prefs,
 			search: search.id,
 			affinity: hasAffinity(search) ? search.affinityFor : ''
 		})
@@ -83,7 +93,7 @@
 		return hosts
 			.map((host) => byHost.get(host))
 			.filter((p): p is ServerProfile => p !== undefined)
-			.map((p) => scoreProfile(p, profile.prefs, profile.taste, profile.swipes, affinity));
+			.map((p) => scoreProfile(p, prefs, search.taste, search.swipes, affinity));
 	}
 	const liked = $derived(matchesOf(search.liked));
 	const passed = $derived(matchesOf(search.passed));
@@ -141,7 +151,7 @@
 		try {
 			const res = await fetch(scope === 'all' ? '/api/servers?scope=all' : '/api/servers');
 			if (!res.ok) throw new Error(`HTTP ${res.status}`);
-			profiles = ((await res.json()) as { profiles: ServerProfile[] }).profiles;
+			profiles = withRelativeVibes(((await res.json()) as { profiles: ServerProfile[] }).profiles);
 			loadedScope = scope;
 			deckKey = ''; // 取り直したらデッキも作り直す
 		} catch (e) {
@@ -171,10 +181,13 @@
 			// 待っている間に別の検索へ移っていたら捨てる
 			if (profile.current !== target.id) return;
 			const answers = data.answers ?? {};
-			profile = patchSearch(
-				{ ...profile, prefs: applyIntent(profile.prefs, answers) },
-				{ affinity: data.affinity ?? {}, affinityFor: text, unsure: unsureAxes(answers) }
-			);
+			// 読み取り結果はこの検索にだけ持たせる（全体の設定に書き込むと、次の検索にも効いてしまう）
+			profile = patchSearch(profile, {
+				intent: answers,
+				affinity: data.affinity ?? {},
+				affinityFor: text,
+				unsure: unsureAxes(answers)
+			});
 			tab = 'discover';
 		} catch (e) {
 			readError = e instanceof Error ? e.message : String(e);
@@ -186,40 +199,34 @@
 	function rebuildDeck() {
 		if (!profiles) return;
 		const seen = seenHosts(search);
-		deck = buildDeck(profiles, profile.prefs, profile.taste, profile.swipes, search, DECK_SIZE);
-		deckTotal = applyFilters(profiles, profile.prefs).filter((p) => !seen.has(p.server.host)).length;
+		deck = buildDeck(profiles, prefs, search.taste, search.swipes, search, DECK_SIZE);
+		deckTotal = applyFilters(profiles, prefs).filter((p) => !seen.has(p.server.host)).length;
 		deckKey = prefsKey;
 		deckGen += 1;
 	}
 
 	function swipe(m: Match, action: 'like' | 'pass') {
 		const p = profiles?.find((x) => x.server.host === m.server.host);
-		const taste: Taste = p ? learn(profile.taste, featuresOf(p), action) : profile.taste;
+		const taste: Taste = p ? learn(search.taste, featuresOf(p), action) : search.taste;
 		const host = m.server.host;
-		profile = patchSearch(
-			{ ...profile, taste, swipes: profile.swipes + 1 },
-			{
+		profile = patchSearch(profile, {
+				taste,
+				swipes: search.swipes + 1,
 				liked: action === 'like' && !search.liked.includes(host) ? [...search.liked, host] : search.liked,
 				passed: action === 'pass' && !search.passed.includes(host) ? [...search.passed, host] : search.passed
-			}
-		);
+			});
 		if (action === 'like' && m.score >= 70) celebrate = m;
 	}
 
 	function undo(m: Match, action: 'like' | 'pass') {
 		// 直前の学習を同じ量だけ戻し、履歴からも外す（取り消したカードはデッキに戻っている）
 		const p = profiles?.find((x) => x.server.host === m.server.host);
-		profile = patchSearch(
-			{
-				...profile,
-				taste: p ? unlearn(profile.taste, p, action) : profile.taste,
-				swipes: Math.max(0, profile.swipes - 1)
-			},
-			{
-				liked: search.liked.filter((h) => h !== m.server.host),
-				passed: search.passed.filter((h) => h !== m.server.host)
-			}
-		);
+		profile = patchSearch(profile, {
+			taste: p ? unlearn(search.taste, p, action) : search.taste,
+			swipes: Math.max(0, search.swipes - 1),
+			liked: search.liked.filter((h) => h !== m.server.host),
+			passed: search.passed.filter((h) => h !== m.server.host)
+		});
 	}
 
 	// learn の逆操作（同じ量だけ戻す）
@@ -279,11 +286,13 @@
 	}
 	// 読み取れなかった軸は 1 つずつ選択肢で聞く（設定で既に決めた軸は聞かない）
 	const asks = $derived(
-		search.unsure.filter((a) => isAxisDefault(profile.prefs, a)).slice(0, 1)
+		search.unsure.filter((a) => isAxisDefault(prefs, a)).slice(0, 1)
 	);
 	function answerAsk(axis: AskAxis, choice: string | null) {
-		const prefs = choice ? chooseAxis(profile.prefs, axis, choice) : profile.prefs;
-		profile = patchSearch({ ...profile, prefs }, { unsure: search.unsure.filter((a) => a !== axis) });
+		profile = patchSearch(profile, {
+			choices: choice ? { ...search.choices, [axis]: choice } : search.choices,
+			unsure: search.unsure.filter((a) => a !== axis)
+		});
 	}
 
 	function go(next: Tab) {
@@ -378,13 +387,13 @@
 			{:else}
 				<Settings
 					bind:prefs={profile.prefs}
-					taste={profile.taste}
-					swipes={profile.swipes}
+					taste={search.taste}
+					swipes={search.swipes}
 					{profiles}
-					onresettaste={() => (profile = { ...profile, taste: {}, swipes: 0 })}
+					onresettaste={() => (profile = patchSearch(profile, { taste: {}, swipes: 0 }))}
 					onforget={(f) => {
-						const { [f]: _drop, ...rest } = profile.taste;
-						profile = { ...profile, taste: rest };
+						const { [f]: _drop, ...rest } = search.taste;
+						profile = patchSearch(profile, { taste: rest });
 					}}
 				/>
 			{/if}
