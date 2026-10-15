@@ -87,7 +87,7 @@
 		padding: 6px 14px 20px;
 		color: var(--accent);
 		font-size: 1.15rem;
-		font-weight: 900;
+		font-weight: 700;
 		text-decoration: none;
 	}
 	nav {
@@ -150,7 +150,7 @@
 		margin: 0 0 6px;
 		padding: 0 10px;
 		font-size: 0.7rem;
-		font-weight: 800;
+		font-weight: 700;
 		letter-spacing: 0.06em;
 		text-transform: uppercase;
 		color: var(--fg-muted);
@@ -169,14 +169,17 @@
 		justify-content: center;
 		gap: 6px;
 		border-radius: 999px;
-		background: var(--accent);
+		background: var(--accent-grad);
+		background-size: 200% 100%;
+		box-shadow: var(--shadow-accent);
+		transition: background-position 0.3s;
 		color: #fff;
 		font-size: 0.9rem;
-		font-weight: 800;
+		font-weight: 700;
 		text-decoration: none;
 		flex-shrink: 0;
 	}
 	.new:hover {
-		background: var(--accent-strong);
+		background-position: 100% 0;
 	}
 </style>

@@ -57,7 +57,9 @@
 		grid-auto-columns: 1fr;
 		justify-items: center;
 		align-items: center;
-		background: var(--panel);
+		background: var(--glass);
+		-webkit-backdrop-filter: blur(12px);
+		backdrop-filter: blur(12px);
 		border-top: 1px solid var(--border);
 	}
 	button {

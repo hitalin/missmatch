@@ -136,7 +136,8 @@
 		height: 30px;
 		border-radius: 50%;
 		border: none;
-		background: var(--accent);
+		background: var(--accent-grad);
+		box-shadow: var(--shadow-accent);
 		color: #fff;
 		cursor: pointer;
 		display: grid;
@@ -147,10 +148,10 @@
 			background 0.15s;
 	}
 	.send:hover:not(:disabled) {
-		background: var(--accent-strong);
 		transform: translateY(-1px);
 	}
 	.send:disabled {
+		box-shadow: none;
 		opacity: 0.35;
 		cursor: not-allowed;
 	}

@@ -73,7 +73,7 @@
 	h1 {
 		margin: 0;
 		font-size: 1.5rem;
-		font-weight: 900;
+		font-weight: 700;
 		display: flex;
 		align-items: center;
 		gap: 10px;
@@ -147,11 +147,12 @@
 		display: inline-flex;
 		align-items: center;
 		gap: 3px;
-		background: rgba(0, 0, 0, 0.5);
+		background: var(--pill);
+		color: #000;
 		border-radius: 999px;
 		padding: 3px 8px;
 		font-size: 0.75rem;
-		font-weight: 800;
+		font-weight: 700;
 	}
 	.label {
 		position: relative;

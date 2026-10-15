@@ -180,7 +180,7 @@
 	.head h1 {
 		margin: 8px 0 4px;
 		font-size: 1.6rem;
-		font-weight: 900;
+		font-weight: 700;
 	}
 	.head p {
 		margin: 0;
@@ -202,7 +202,7 @@
 	}
 	.small {
 		font-size: 0.75rem;
-		font-weight: 600;
+		font-weight: 400;
 	}
 	.help {
 		margin: -4px 0 0;

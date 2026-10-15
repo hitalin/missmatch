@@ -88,7 +88,7 @@
 >
 	<main class="landing">
 		<div class="center">
-			<h1 class="brand"><span class="logo"><Icon name="heart" size={40} filled /></span> みすまっち</h1>
+			<h1 class="brand"><span class="logo"><Icon name="heart" size={40} filled /></span> <span class="text-grad">みすまっち</span></h1>
 			<p class="tagline">Misskey のサーバーと、マッチング。</p>
 			<p class="ask">どんな場所を探している？</p>
 
@@ -133,6 +133,19 @@
 		flex: 1;
 		display: flex;
 		flex-direction: column;
+		position: relative;
+		isolation: isolate;
+	}
+	/* misskey-hub のドット背景。上下はフェードさせる */
+	.landing::before {
+		content: '';
+		position: absolute;
+		inset: 0;
+		z-index: -1;
+		background-image: radial-gradient(circle, color-mix(in srgb, var(--fg) 14%, transparent) 2px, transparent 2.5px);
+		background-size: 22px 22px;
+		mask-image: radial-gradient(ellipse at center, #000 20%, transparent 70%);
+		pointer-events: none;
 	}
 	.center {
 		flex: 1;
@@ -149,7 +162,7 @@
 	.brand {
 		margin: 0;
 		font-size: clamp(2.2rem, 9vw, 3.2rem);
-		font-weight: 900;
+		font-weight: 700;
 		letter-spacing: -0.02em;
 	}
 	.logo {

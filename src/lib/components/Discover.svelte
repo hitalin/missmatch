@@ -364,7 +364,7 @@
 		border: 4px solid;
 		border-radius: 8px;
 		font-size: 1.9rem;
-		font-weight: 900;
+		font-weight: 700;
 		letter-spacing: 0.08em;
 		pointer-events: none;
 	}
@@ -394,7 +394,7 @@
 		background: var(--panel);
 		box-shadow: var(--shadow);
 		font-size: 1.7rem;
-		font-weight: 900;
+		font-weight: 700;
 		cursor: pointer;
 		display: grid;
 		place-items: center;
@@ -422,7 +422,9 @@
 		color: var(--nope);
 	}
 	.round.like {
-		color: var(--accent);
+		color: #fff;
+		background: var(--accent-grad);
+		box-shadow: var(--shadow-accent);
 	}
 	.hint {
 		margin: 0;
@@ -525,7 +527,7 @@
 	.avatar.placeholder {
 		display: grid;
 		place-items: center;
-		font-weight: 900;
+		font-weight: 700;
 		font-size: 1.6rem;
 		color: var(--accent-fg);
 		background: var(--accent-soft);
@@ -533,7 +535,7 @@
 	.identity h2 {
 		margin: 6px 0 0;
 		font-size: 1.1rem;
-		font-weight: 800;
+		font-weight: 700;
 		max-width: 100%;
 		overflow: hidden;
 		text-overflow: ellipsis;
@@ -566,7 +568,7 @@
 	}
 	.stats b {
 		font-size: 1.05rem;
-		font-weight: 800;
+		font-weight: 700;
 	}
 	.stats span {
 		font-size: 0.62rem;
@@ -593,9 +595,9 @@
 		color: var(--fg-muted);
 	}
 	.tag.score {
-		background: var(--accent-soft);
+		background: var(--pill);
 		border-color: transparent;
-		color: var(--accent-fg);
+		color: #000;
 	}
 	.tag.reg.open {
 		color: var(--accent-fg);
@@ -683,7 +685,7 @@
 	.clef h3 {
 		margin: 0 0 6px;
 		font-size: 0.66rem;
-		font-weight: 800;
+		font-weight: 700;
 		letter-spacing: 0.06em;
 		text-transform: uppercase;
 		color: var(--fg-muted);
@@ -710,7 +712,7 @@
 		white-space: nowrap;
 	}
 	.clef .v {
-		font-weight: 800;
+		font-weight: 700;
 		min-width: 2.6em;
 		text-align: right;
 	}
@@ -725,7 +727,7 @@
 		display: block;
 		height: 100%;
 		border-radius: 3px;
-		background: var(--accent);
+		background: var(--accent-grad);
 	}
 	.clef .small {
 		margin: 6px 0 0;

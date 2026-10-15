@@ -92,18 +92,19 @@
 		position: absolute;
 		top: 14px;
 		right: 14px;
-		background: rgba(0, 0, 0, 0.45);
-		border: 1px solid rgba(255, 255, 255, 0.25);
+		background: var(--pill);
+		color: #000;
 		border-radius: 999px;
-		padding: 6px 12px;
-		font-weight: 900;
+		padding: 5px 12px;
+		box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+		font-weight: 700;
 		font-size: 1.05rem;
 		display: flex;
 		align-items: baseline;
 		gap: 4px;
 	}
 	.score span {
-		color: var(--accent);
+		color: #000;
 		display: inline-flex;
 		align-self: center;
 	}
@@ -120,7 +121,7 @@
 		border-radius: 999px;
 		padding: 5px 10px;
 		font-size: 0.75rem;
-		font-weight: 800;
+		font-weight: 700;
 	}
 	.reg.closed {
 		background: rgba(255, 77, 94, 0.75);
@@ -153,7 +154,7 @@
 	.placeholder {
 		display: grid;
 		place-items: center;
-		font-weight: 900;
+		font-weight: 700;
 		font-size: 1.4rem;
 		color: var(--accent-fg);
 	}
@@ -164,7 +165,7 @@
 		margin: 0;
 		font-size: 1.55rem;
 		line-height: 1.15;
-		font-weight: 900;
+		font-weight: 700;
 		text-shadow: 0 1px 8px rgba(0, 0, 0, 0.5);
 		overflow: hidden;
 		text-overflow: ellipsis;

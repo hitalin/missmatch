@@ -28,7 +28,7 @@
 		<div class="hero">
 			<div class="blob" aria-hidden="true"></div>
 			<p class="brand"><span class="logo"><Icon name="heart" size={22} filled /></span> みすまっち</p>
-			<h1>Swipe.<br />Match.<br />with <span class="accent">Misskey</span>.</h1>
+			<h1>Swipe.<br />Match.<br /><span class="text-grad">with Misskey.</span></h1>
 			<p class="lead">
 				登録できる日本語 Misskey サーバー約 100 件を、マッチングアプリのようにスワイプで選べます。
 				いいねとよくないねから好みを学んで、だんだん合う鯖が上に来ます。
@@ -90,24 +90,23 @@
 	}
 	.brand {
 		margin: 0;
-		font-weight: 900;
+		font-weight: 700;
 		font-size: 1.1rem;
 	}
-	.logo,
-	.accent {
+	.logo {
 		color: var(--accent);
 	}
 	h1 {
 		margin: 0;
 		font-size: clamp(2.6rem, 11vw, 3.4rem);
 		line-height: 1.05;
-		font-weight: 900;
+		font-weight: 700;
 		letter-spacing: -0.02em;
 	}
 	h2 {
 		margin: 0;
 		font-size: 1.6rem;
-		font-weight: 900;
+		font-weight: 700;
 		line-height: 1.25;
 	}
 	.lead,
@@ -149,7 +148,7 @@
 		border-radius: 16px;
 		padding: 18px 20px;
 		font-size: 1.05rem;
-		font-weight: 800;
+		font-weight: 700;
 		text-align: left;
 		cursor: pointer;
 		box-shadow: var(--shadow);

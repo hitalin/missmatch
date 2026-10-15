@@ -48,7 +48,7 @@
 		cursor: pointer;
 	}
 	button.any {
-		font-weight: 600;
+		font-weight: 400;
 		font-size: 0.78rem;
 	}
 	button.on {

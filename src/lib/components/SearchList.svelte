@@ -167,7 +167,7 @@
 	}
 	.muted {
 		color: var(--fg-muted);
-		font-weight: 600;
+		font-weight: 400;
 	}
 	.n {
 		display: inline-flex;
@@ -232,7 +232,7 @@
 		background: none;
 		color: var(--fg);
 		font-size: 0.82rem;
-		font-weight: 600;
+		font-weight: 400;
 		text-align: left;
 		cursor: pointer;
 	}

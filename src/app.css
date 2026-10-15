@@ -1,19 +1,26 @@
-/* デザイントークン: Misskey の配色と角丸に、Tinder のカード文法を載せる */
+/* デザイントークン: misskey-hub の UI 言語（黄緑のグラデーション・999px のピル・丸ゴシック）に、Tinder のカード文法を載せる */
 :root {
-	--bg: #f2f3f0;
+	--bg: #eeeeee;
 	--panel: #ffffff;
-	--panel-2: #eef0ec;
-	--border: #e1e4de;
-	--fg: #1f2321;
-	--fg-muted: #6b716d;
+	--panel-2: #f3f3f3;
+	--border: #e5e5e5;
+	--fg: #222222;
+	--fg-muted: #737373;
 	--accent: #86b300;
 	--accent-strong: #6f9600;
 	--accent-soft: #eef7cf;
-	--accent-fg: #4a6b00;
+	--accent-fg: #4f690b;
+	--accent-grad: linear-gradient(90deg, #86b300, #4ab300, #4ab300);
+	--pill: #9ad11b; /* misskey-hub のブランドピル（黒文字） */
+	--glass: rgba(251, 251, 251, 0.8);
+	--shadow-accent: 0 8px 20px -5px rgba(134, 179, 0, 0.4);
+	--font:
+		'Nunito', 'Hiragino Maru Gothic ProN', 'Hiragino Maru Gothic Pro', 'M PLUS Rounded 1c', system-ui,
+		sans-serif;
 	--nope: #ff4d5e;
 	--nope-soft: #ffe3e6;
 	--info: #2b9df4;
-	--radius: 14px;
+	--radius: 16px;
 	--radius-lg: 24px;
 	--shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
 	--shadow-lg: 0 16px 44px rgba(0, 0, 0, 0.18);
@@ -25,12 +32,13 @@
 }
 @media (prefers-color-scheme: dark) {
 	:root {
-		--bg: #191b1a;
-		--panel: #242726;
-		--panel-2: #2e3230;
-		--border: #383d3a;
-		--fg: #ececec;
-		--fg-muted: #a1a6a3;
+		--bg: #1a1a1a;
+		--panel: #262626;
+		--panel-2: #2e2e2e;
+		--border: #404040;
+		--fg: #eeeeee;
+		--fg-muted: #a3a3a3;
+		--glass: rgba(46, 46, 46, 0.8);
 		--accent-soft: rgba(134, 179, 0, 0.2);
 		--accent-fg: #c9ec5a;
 		--nope-soft: rgba(255, 77, 94, 0.2);
@@ -49,9 +57,7 @@ body {
 body {
 	background: var(--bg);
 	color: var(--fg);
-	font-family:
-		system-ui, -apple-system, 'Segoe UI', Roboto, 'Hiragino Sans', 'Hiragino Kaku Gothic ProN',
-		'Noto Sans JP', sans-serif;
+	font-family: var(--font);
 	line-height: 1.5;
 	-webkit-font-smoothing: antialiased;
 	overscroll-behavior-y: none;
@@ -62,6 +68,32 @@ button {
 }
 a {
 	color: var(--accent-fg);
+}
+::selection {
+	background: #86b300;
+	color: #fff;
+}
+:focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: 2px;
+}
+/* 見出しの強調（misskey-hub の「with Misskey.」） */
+.text-grad {
+	background: var(--accent-grad);
+	-webkit-background-clip: text;
+	background-clip: text;
+	color: transparent;
+}
+/* ブランドピル: 黄緑に黒文字 */
+.brand-pill {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	padding: 3px 12px;
+	border-radius: 999px;
+	background: var(--pill);
+	color: #000;
+	font-weight: 700;
 }
 /* チップ（misspace の filter-chip）: 小さなピル。hover で浮き、押すと縮む。.on で選択中 */
 .chip {
@@ -102,7 +134,7 @@ a {
 .btn {
 	font-weight: 700;
 	border-radius: 999px;
-	padding: 13px 24px;
+	padding: 0.75em 1.5em;
 	cursor: pointer;
 	border: 1px solid transparent;
 	text-decoration: none;
@@ -119,12 +151,17 @@ a {
 	transform: scale(0.97);
 }
 .btn.primary {
-	background: var(--accent);
+	background: var(--accent-grad);
+	background-size: 200% 100%;
+	background-position: 0% 0;
 	color: #fff;
-	box-shadow: 0 6px 18px rgba(134, 179, 0, 0.35);
+	box-shadow: var(--shadow-accent);
+	transition:
+		transform 0.08s,
+		background-position 0.3s;
 }
 .btn.primary:hover {
-	background: var(--accent-strong);
+	background-position: 100% 0;
 }
 .btn.secondary {
 	background: var(--panel);

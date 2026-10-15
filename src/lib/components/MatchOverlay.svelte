@@ -61,7 +61,7 @@
 	.title {
 		margin: 0;
 		font-size: 2.4rem;
-		font-weight: 900;
+		font-weight: 700;
 		font-style: italic;
 		letter-spacing: -0.02em;
 		background: linear-gradient(90deg, #c9ec5a, #86b300);
@@ -88,7 +88,7 @@
 		border: 3px solid #fff;
 		display: grid;
 		place-items: center;
-		font-weight: 900;
+		font-weight: 700;
 		font-size: 1.6rem;
 		background: var(--accent);
 	}
