@@ -17,6 +17,7 @@ const mk = (host: string, dru15: number): ServerInfo => ({
 	approvalRequired: false,
 	emailRequired: false,
 	ageRestriction: 'unknown',
+	ltlAvailable: true,
 	serverRules: [],
 	langs: ['ja']
 });

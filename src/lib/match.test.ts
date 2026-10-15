@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { hardFilter, paceOf, rankServers, scaleOf, scoreServer } from './match';
+import { hardFilter, isJoinable, paceOf, rankServers, scaleOf, scoreServer } from './match';
 import type { Preference, ServerInfo, VibeProfile } from './types';
 
 const mk = (over: Partial<ServerInfo> = {}): ServerInfo => ({
@@ -17,6 +17,7 @@ const mk = (over: Partial<ServerInfo> = {}): ServerInfo => ({
 	approvalRequired: false,
 	emailRequired: false,
 	ageRestriction: 'all',
+	ltlAvailable: true,
 	serverRules: [],
 	langs: ['ja'],
 	...over
@@ -25,7 +26,7 @@ const mk = (over: Partial<ServerInfo> = {}): ServerInfo => ({
 const vibe = (over: Partial<VibeProfile> = {}): VibeProfile => ({
 	version: 1,
 	host: 'a.tld',
-	genre: { general: 0.1, creative: 0.8, tech: 0.1, game: 0, otaku: 0, adult: 0, niche: 0 },
+	genre: { general: 0.1, creative: 0.8, tech: 0.1, game: 0, otaku: 0, niche: 0 },
 	tone: 0.8,
 	strictness: 0.5,
 	newcomerFriendly: 0.8,
@@ -41,7 +42,6 @@ const pref: Preference = {
 	pace: 'relaxed',
 	scale: 'medium',
 	tone: 'warm',
-	registration: 'openOnly',
 	adult: false,
 	nsfw: 'avoid',
 	community: 'easyEntry'
@@ -61,22 +61,26 @@ describe('paceOf / scaleOf', () => {
 });
 
 describe('hardFilter', () => {
-	it('日本語・登録可能・年齢条件を満たすものだけ残す', () => {
+	it('日本語・登録受付中・年齢条件を満たすものだけ残す（承認制は受付中として扱う）', () => {
 		const servers = [
 			mk({ host: 'ok.tld' }),
 			mk({ host: 'en.tld', langs: ['en'] }),
 			mk({ host: 'closed.tld', registrationOpen: false }),
-			mk({ host: 'approval.tld', registrationOpen: false, approvalRequired: true }),
+			mk({ host: 'approval.tld', registrationOpen: true, approvalRequired: true }),
 			mk({ host: 'adult.tld', ageRestriction: '18+' })
 		];
-		expect(hardFilter(servers, pref).map((s) => s.host)).toEqual(['ok.tld']);
-		expect(hardFilter(servers, { ...pref, registration: 'approvalOk' }).map((s) => s.host)).toEqual(
-			['ok.tld', 'approval.tld']
-		);
+		expect(hardFilter(servers, pref).map((s) => s.host)).toEqual(['ok.tld', 'approval.tld']);
 		expect(hardFilter(servers, { ...pref, adult: true }).map((s) => s.host)).toEqual([
 			'ok.tld',
+			'approval.tld',
 			'adult.tld'
 		]);
+	});
+
+	it('isJoinable は日本語かつ登録受付中', () => {
+		expect(isJoinable(mk())).toBe(true);
+		expect(isJoinable(mk({ langs: ['en'] }))).toBe(false);
+		expect(isJoinable(mk({ registrationOpen: false }))).toBe(false);
 	});
 });
 
@@ -93,7 +97,7 @@ describe('scoreServer', () => {
 		const bad = scoreServer(
 			mk(),
 			vibe({
-				genre: { general: 0.1, creative: 0, tech: 0.9, game: 0, otaku: 0, adult: 0, niche: 0 }
+				genre: { general: 0.1, creative: 0, tech: 0.9, game: 0, otaku: 0, niche: 0 }
 			}),
 			pref
 		).score;

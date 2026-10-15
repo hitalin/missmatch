@@ -25,6 +25,7 @@ const server: ServerInfo = {
 	approvalRequired: false,
 	emailRequired: false,
 	ageRestriction: 'all',
+	ltlAvailable: true,
 	serverRules: ['誹謗中傷禁止'],
 	langs: ['ja']
 };
@@ -38,9 +39,21 @@ describe('buildVibeRequest', () => {
 		expect(state.rules).toEqual(['誹謗中傷禁止']);
 		expect(state.recentNotes).toEqual(['おはよう', '絵描いた']);
 		expect(Object.keys(req.questions).sort()).toEqual(
-			['closedCommunity', 'genre', 'newcomerFriendly', 'nsfw', 'strictness', 'tone'].sort()
+			[
+				'closedCommunity',
+				'genre.general',
+				'genre.creative',
+				'genre.tech',
+				'genre.game',
+				'genre.otaku',
+				'genre.niche',
+				'newcomerFriendly',
+				'nsfw',
+				'strictness',
+				'tone'
+			].sort()
 		);
-		expect(req.questions.genre.type).toBe('choice');
+		expect(req.questions['genre.creative'].type).toBe('noul');
 		expect(req.questions.tone.type).toBe('score');
 		expect(req.questions.nsfw.type).toBe('noul');
 	});
@@ -48,12 +61,12 @@ describe('buildVibeRequest', () => {
 
 describe('parseVibeAnswers', () => {
 	const answers: Record<string, ClefAnswer> = {
-		genre: {
-			type: 'choice',
-			choice: 'creative',
-			probabilities: { creative: 0.7, general: 0.2, tech: 0.1 },
-			confidence: 0.7
-		},
+		'genre.general': { type: 'noul', noul: 0.2 },
+		'genre.creative': { type: 'noul', noul: 0.7 },
+		'genre.tech': { type: 'noul', noul: 0.1 },
+		'genre.game': { type: 'noul', noul: 0.05 },
+		'genre.otaku': { type: 'noul', noul: 0.6 },
+		'genre.niche': { type: 'noul', noul: 0.1 },
 		tone: {
 			type: 'score',
 			score: 2.4,
@@ -78,7 +91,7 @@ describe('parseVibeAnswers', () => {
 		expect(v.version).toBe(VIBE_VERSION);
 		expect(v.host).toBe('example.tld');
 		expect(v.genre.creative).toBe(0.7);
-		expect(v.genre.adult).toBe(0); // 欠けている選択肢は 0
+		expect(v.genre.otaku).toBe(0.6); // 複数ジャンルが同時に高くてよい
 		expect(v.tone).toBeCloseTo(0.8); // 2.4 / 3
 		expect(v.strictness).toBe(0);
 		expect(v.newcomerFriendly).toBe(0.8);
@@ -90,18 +103,20 @@ describe('parseVibeAnswers', () => {
 	it('必要な回答が欠けていれば例外を投げる', () => {
 		const { tone: _tone, ...rest } = answers;
 		expect(() => parseVibeAnswers('example.tld', rest, 1)).toThrow();
+		const { 'genre.tech': _tech, ...noGenre } = answers;
+		expect(() => parseVibeAnswers('example.tld', noGenre, 1)).toThrow();
 	});
 });
 
 describe('vibeTags', () => {
 	it('目立つ軸だけタグにする', () => {
 		const answers: Record<string, ClefAnswer> = {
-			genre: {
-				type: 'choice',
-				choice: 'tech',
-				probabilities: { tech: 0.6, general: 0.4 },
-				confidence: 0.6
-			},
+			'genre.general': { type: 'noul', noul: 0.4 },
+			'genre.creative': { type: 'noul', noul: 0.1 },
+			'genre.tech': { type: 'noul', noul: 0.6 },
+			'genre.game': { type: 'noul', noul: 0.1 },
+			'genre.otaku': { type: 'noul', noul: 0.1 },
+			'genre.niche': { type: 'noul', noul: 0.1 },
 			tone: { type: 'score', score: 2.7, legend: {}, probabilities: {}, confidence: 1 },
 			strictness: { type: 'score', score: 1.8, legend: {}, probabilities: {}, confidence: 1 },
 			newcomerFriendly: { type: 'noul', noul: 0.9 },
@@ -131,7 +146,12 @@ describe('getOrComputeVibe', () => {
 		async (): Promise<ClefOutput> => ({
 			model: 'clef',
 			answers: {
-				genre: { type: 'choice', choice: 'general', probabilities: { general: 1 }, confidence: 1 },
+				'genre.general': { type: 'noul', noul: 1 },
+				'genre.creative': { type: 'noul', noul: 0 },
+				'genre.tech': { type: 'noul', noul: 0 },
+				'genre.game': { type: 'noul', noul: 0 },
+				'genre.otaku': { type: 'noul', noul: 0 },
+				'genre.niche': { type: 'noul', noul: 0 },
 				tone: { type: 'score', score: 1.5, legend: {}, probabilities: {}, confidence: 1 },
 				strictness: { type: 'score', score: 1, legend: {}, probabilities: {}, confidence: 1 },
 				newcomerFriendly: { type: 'noul', noul: 0.5 },

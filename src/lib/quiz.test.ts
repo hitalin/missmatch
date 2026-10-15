@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { QUIZ, toPreference } from './quiz';
 
 describe('QUIZ', () => {
-	it('各設問の id と選択肢 value が一意である', () => {
+	it('7 問で、各設問の id と選択肢 value が一意である', () => {
+		expect(QUIZ).toHaveLength(7);
 		const ids = QUIZ.map((q) => q.id);
 		expect(new Set(ids).size).toBe(ids.length);
 		for (const q of QUIZ) {
@@ -20,7 +21,6 @@ describe('toPreference', () => {
 			pace: 'busy',
 			scale: 'small',
 			tone: 'warm',
-			registration: 'openOnly',
 			age: 'adult',
 			nsfw: 'avoid',
 			community: 'easyEntry'
@@ -30,7 +30,6 @@ describe('toPreference', () => {
 			pace: 'busy',
 			scale: 'small',
 			tone: 'warm',
-			registration: 'openOnly',
 			adult: true,
 			nsfw: 'avoid',
 			community: 'easyEntry'
@@ -43,7 +42,6 @@ describe('toPreference', () => {
 		expect(pref.pace).toBeNull();
 		expect(pref.scale).toBeNull();
 		expect(pref.tone).toBeNull();
-		expect(pref.registration).toBe('approvalOk');
 		expect(pref.adult).toBe(false);
 		expect(pref.nsfw).toBe('avoid');
 		expect(pref.community).toBe('easyEntry');

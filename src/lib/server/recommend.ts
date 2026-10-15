@@ -68,7 +68,8 @@ export async function computeVibes(
 			const vibe = await getOrComputeVibe(server, {
 				kv: deps.kv,
 				runner,
-				sampler: (host) => fetchSampleNotes(host)
+				// LTL を公開していないサーバーには触らず、説明文とルールだけで判定する
+				sampler: (s) => (s.ltlAvailable ? fetchSampleNotes(s.host) : Promise.resolve([]))
 			});
 			results[i] = { server, vibe };
 		}

@@ -15,13 +15,14 @@ export interface ServerInfo {
 	registrationOpen: boolean;
 	approvalRequired: boolean;
 	emailRequired: boolean;
-	ageRestriction: AgeRestriction;
+	ageRestriction: AgeRestriction; // 登録者の年齢制限（内容の成人向け度は VibeProfile.nsfw）
+	ltlAvailable: boolean; // ローカル TL が有効か（無効なら投稿サンプリングしない）
 	serverRules: string[];
 	langs: string[];
 }
 
-// Clef に判定させるジャンル
-export const GENRES = ['general', 'creative', 'tech', 'game', 'otaku', 'adult', 'niche'] as const;
+// Clef に判定させるジャンル。軸ごとに独立した確率なので、複数が同時に高くてよい
+export const GENRES = ['general', 'creative', 'tech', 'game', 'otaku', 'niche'] as const;
 export type Genre = (typeof GENRES)[number];
 
 export const GENRE_LABELS: Record<Genre, string> = {
@@ -30,7 +31,6 @@ export const GENRE_LABELS: Record<Genre, string> = {
 	tech: '技術',
 	game: 'ゲーム',
 	otaku: 'アニメ・推し活',
-	adult: '成人向け',
 	niche: '特定テーマ'
 };
 
@@ -38,7 +38,7 @@ export const GENRE_LABELS: Record<Genre, string> = {
 export interface VibeProfile {
 	version: number;
 	host: string;
-	genre: Record<Genre, number>;
+	genre: Record<Genre, number>; // 各ジャンルの話題が目立つ確率
 	tone: number; // 0 = 殺伐, 1 = ほのぼの
 	strictness: number; // 0 = ゆるい, 1 = 厳しめ
 	newcomerFriendly: number;
@@ -57,7 +57,6 @@ export interface Preference {
 	pace: Pace | null;
 	scale: Scale | null;
 	tone: 'warm' | 'dry' | null;
-	registration: 'openOnly' | 'approvalOk';
 	adult: boolean; // 18歳以上か
 	nsfw: 'avoid' | 'neutral' | 'welcome';
 	community: 'easyEntry' | 'deep';

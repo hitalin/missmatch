@@ -53,8 +53,8 @@
 		<p class="meta">
 			{#if s.usersCount !== null}<span>👥 {s.usersCount.toLocaleString()}人</span>{/if}
 			{#if s.npd15 !== null}<span>📝 {Math.round(s.npd15).toLocaleString()}投稿/日</span>{/if}
-			{#if s.approvalRequired && !s.registrationOpen}<span>承認制</span>{/if}
-			{#if s.emailRequired}<span>メアド必須</span>{/if}
+			{#if s.approvalRequired}<span>承認制</span>{/if}
+			{#if !s.emailRequired}<span>メアド不要</span>{/if}
 			{#if !match.vibe}<span>雰囲気は未判定</span>{/if}
 		</p>
 	</div>

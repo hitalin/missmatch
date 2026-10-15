@@ -99,7 +99,7 @@
 				<div class="feature">
 					<span class="emoji">📝</span>
 					<h3>プロフィール</h3>
-					<p>話したいこと、好きな流速や空気感など 8 つの質問に答えます。</p>
+					<p>話したいこと、好きな流速や空気感など 7 つの質問に答えます。</p>
 				</div>
 				<div class="feature">
 					<span class="emoji">🔭</span>

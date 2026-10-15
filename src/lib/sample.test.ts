@@ -21,10 +21,24 @@ describe('pickSampleTexts', () => {
 			{ text: 'おはよう' },
 			{ text: 'w' },
 			{ text: 'https://example.com' },
-			{ text: '今日はいい天気' },
-			{ cw: '注意', text: '中身' }
+			{ text: '今日はいい天気' }
 		];
-		expect(pickSampleTexts(notes, 10)).toEqual(['おはよう', '今日はいい天気', '中身']);
+		expect(pickSampleTexts(notes, 10)).toEqual(['おはよう', '今日はいい天気']);
 		expect(pickSampleTexts(notes, 1)).toEqual(['おはよう']);
+	});
+
+	it('CW 付きの投稿は CW 本文を先頭に付ける', () => {
+		expect(pickSampleTexts([{ cw: '注意', text: '中身' }], 10)).toEqual(['[CW: 注意] 中身']);
+	});
+
+	it('同じユーザーの投稿は上限件数までしか採らない', () => {
+		const notes = [
+			...Array.from({ length: 10 }, (_, i) => ({ userId: 'a', text: `A の投稿 ${i}` })),
+			{ userId: 'b', text: 'B の投稿' }
+		];
+		const picked = pickSampleTexts(notes, 10, 3);
+		expect(picked).toHaveLength(4);
+		expect(picked.filter((t) => t.startsWith('A'))).toHaveLength(3);
+		expect(picked).toContain('B の投稿');
 	});
 });

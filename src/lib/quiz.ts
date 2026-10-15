@@ -29,9 +29,9 @@ export const QUIZ: QuizQuestion[] = [
 		id: 'pace',
 		title: 'タイムラインの流れる速さは？',
 		options: [
-			{ value: 'quiet', label: 'のんびり', hint: '1日数十〜数百投稿' },
-			{ value: 'relaxed', label: 'ほどほど', hint: '1日数百〜数千投稿' },
-			{ value: 'busy', label: 'にぎやか', hint: '1日数千投稿以上' },
+			{ value: 'quiet', label: 'のんびり', hint: '1日100投稿まで' },
+			{ value: 'relaxed', label: 'ほどほど', hint: '1日100〜5,000投稿' },
+			{ value: 'busy', label: 'にぎやか', hint: '1日5,000投稿以上' },
 			{ value: 'any', label: 'こだわらない' }
 		]
 	},
@@ -39,9 +39,9 @@ export const QUIZ: QuizQuestion[] = [
 		id: 'scale',
 		title: 'サーバーの規模は？',
 		options: [
-			{ value: 'small', label: '小さなコミュニティ', hint: '〜100人' },
-			{ value: 'medium', label: '中規模', hint: '100〜1000人' },
-			{ value: 'large', label: '大手', hint: '1000人以上' },
+			{ value: 'small', label: '小さなコミュニティ', hint: '100人まで' },
+			{ value: 'medium', label: '中規模', hint: '100〜1,000人' },
+			{ value: 'large', label: '大手', hint: '1,000人以上' },
 			{ value: 'any', label: 'こだわらない' }
 		]
 	},
@@ -52,14 +52,6 @@ export const QUIZ: QuizQuestion[] = [
 			{ value: 'warm', label: 'ほのぼの・穏やか' },
 			{ value: 'dry', label: 'ドライ・自由', hint: '干渉が少ない' },
 			{ value: 'any', label: 'どちらでも' }
-		]
-	},
-	{
-		id: 'registration',
-		title: '新規登録について',
-		options: [
-			{ value: 'openOnly', label: 'すぐ使い始めたい', hint: '登録受付中のみ' },
-			{ value: 'approvalOk', label: '承認待ちでも構わない' }
 		]
 	},
 	{
@@ -101,7 +93,6 @@ export function toPreference(answers: QuizAnswers): Preference {
 		pace: pick(answers.pace, ['quiet', 'relaxed', 'busy'] as const),
 		scale: pick(answers.scale, ['small', 'medium', 'large'] as const),
 		tone: pick(answers.tone, ['warm', 'dry'] as const),
-		registration: pick(answers.registration, ['openOnly', 'approvalOk'] as const) ?? 'approvalOk',
 		adult: answers.age === 'adult',
 		nsfw: pick(answers.nsfw, ['avoid', 'neutral', 'welcome'] as const) ?? 'avoid',
 		community: pick(answers.community, ['easyEntry', 'deep'] as const) ?? 'easyEntry'

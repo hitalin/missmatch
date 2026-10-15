@@ -33,17 +33,13 @@ export function scaleOf(server: ServerInfo): Scale {
 	return 'large';
 }
 
+// 推薦され得るサーバー: 日本語で、新規登録を受け付けている（承認制も含む）
+export function isJoinable(s: ServerInfo): boolean {
+	return s.langs.includes('ja') && s.registrationOpen;
+}
+
 export function hardFilter(servers: ServerInfo[], pref: Preference): ServerInfo[] {
-	return servers.filter((s) => {
-		if (!s.langs.includes('ja')) return false;
-		const joinable =
-			pref.registration === 'openOnly'
-				? s.registrationOpen
-				: s.registrationOpen || s.approvalRequired;
-		if (!joinable) return false;
-		if (!pref.adult && s.ageRestriction === '18+') return false;
-		return true;
-	});
+	return servers.filter((s) => isJoinable(s) && (pref.adult || s.ageRestriction !== '18+'));
 }
 
 // 順序付きカテゴリの近さ: 一致 1、隣 0.4、それ以外 0

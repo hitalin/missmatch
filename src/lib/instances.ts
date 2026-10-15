@@ -21,6 +21,8 @@ export interface JoinMisskeyInstance {
 		approvalRequiredForSignup?: boolean;
 		iconUrl?: string;
 		serverRules?: string[];
+		policies?: { ltlAvailable?: boolean };
+		features?: { localTimeline?: boolean };
 	};
 	nodeinfo?: {
 		software?: { name?: string; version?: string };
@@ -42,19 +44,37 @@ export function stripHtml(text: string): string {
 		.trim();
 }
 
-function inferAgeRestriction(instance: JoinMisskeyInstance): AgeRestriction {
+// 「登録者の年齢を制限する」文言だけを拾う。
+// 「R-18 は投稿禁止」「未成年の自撮り禁止」のような内容ルールは年齢制限ではないので対象外。
+const RESTRICT_SUFFIX =
+	'(の方|の人|のユーザー|の登録|の利用)?(のみ|限定|に限|であること|が対象|を推奨)';
+const FORBID_SUFFIX = '[^。.\\n]{0,12}?(できません|出来ません|禁止|お断り|不可|ご遠慮)';
+const AGE_18 = new RegExp(
+	[
+		`満?18歳以上${RESTRICT_SUFFIX}`,
+		`18歳未満${FORBID_SUFFIX}`,
+		`未成年者?(の|は)(登録|利用|ご利用|参加)${FORBID_SUFFIX}`,
+		`成人(の方)?(のみ|限定)`,
+		'(^|[^r\\-])18\\+'
+	].join('|')
+);
+const AGE_13 = new RegExp(
+	[`満?13歳以上${RESTRICT_SUFFIX}`, `13歳未満${FORBID_SUFFIX}`, '中学生以上'].join('|')
+);
+
+export function inferAgeRestriction(instance: JoinMisskeyInstance): AgeRestriction {
 	const text = [
 		instance.name,
 		instance.description,
 		instance.meta?.description,
 		...(instance.meta?.serverRules ?? [])
 	]
-		.filter(Boolean)
+		.filter((t): t is string => Boolean(t))
+		.map(stripHtml)
 		.join(' ')
 		.toLowerCase();
-	if (/18\+|18歳以上|成人|成年|アダルト|r-?18|nsfw/.test(text)) return '18+';
-	if (/13\+|13歳|13才|中学生以上/.test(text)) return '13+';
-	if (instance.meta?.emailRequiredForSignup) return '13+';
+	if (AGE_18.test(text)) return '18+';
+	if (AGE_13.test(text)) return '13+';
 	return 'unknown';
 }
 
@@ -95,6 +115,8 @@ export function normalizeInstance(instance: JoinMisskeyInstance): ServerInfo | n
 		approvalRequired: instance.meta?.approvalRequiredForSignup === true,
 		emailRequired: instance.meta?.emailRequiredForSignup === true,
 		ageRestriction: inferAgeRestriction(instance),
+		ltlAvailable:
+			instance.meta?.policies?.ltlAvailable ?? instance.meta?.features?.localTimeline ?? true,
 		serverRules: instance.meta?.serverRules ?? [],
 		langs: instance.langs ?? []
 	};

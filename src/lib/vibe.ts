@@ -1,7 +1,7 @@
 import { GENRE_LABELS, GENRES, type Genre, type ServerInfo, type VibeProfile } from './types';
 
 // VibeProfile のスキーマを変えたら上げる（古いキャッシュを無効化する）
-export const VIBE_VERSION = 1;
+export const VIBE_VERSION = 2;
 const KV_TTL_SECONDS = 60 * 60 * 24 * 7;
 
 // Clef (System One API) の入出力
@@ -47,22 +47,22 @@ const STRICTNESS_LEVELS = [
 	'ルールが多く細かい、または厳格に運用されている'
 ];
 
-const GENRE_CRITERIA: Record<Genre, string> = {
-	general: '日常の雑談が中心で特定のテーマがない',
-	creative: 'イラスト・小説・音楽などの創作活動の投稿が多い',
-	tech: 'プログラミングや技術の話題が多い',
-	game: 'ゲームの話題が多い',
-	otaku: 'アニメ・VTuber・アイドルなどの推し活の話題が多い',
-	adult: '性的・成人向けの話題が中心',
-	niche: '地域・職業・趣味など特定のテーマや身内向けに限定されている'
+// ジャンルは択一ではなく軸ごとに独立して問う。「創作も推し活も多い」サーバーを表現するため
+const GENRE_QUESTIONS: Record<Genre, string> = {
+	general: '日常の雑談が投稿の中心を占めているか',
+	creative: 'イラスト・小説・音楽などの創作活動の投稿が目立つか',
+	tech: 'プログラミングや技術の話題が目立つか',
+	game: 'ゲームの話題が目立つか',
+	otaku: 'アニメ・VTuber・アイドルなどの推し活の話題が目立つか',
+	niche: '地域・職業・特定の趣味など、限られたテーマのためのサーバーか'
 };
 
+export const genreQuestionId = (g: Genre) => `genre.${g}`;
+
 export const VIBE_QUESTIONS: Record<string, ClefQuestion> = {
-	genre: {
-		type: 'choice',
-		instructions: 'このサーバーで主に投稿されている話題のジャンルはどれか',
-		criteria: GENRE_CRITERIA
-	},
+	...Object.fromEntries(
+		GENRES.map((g) => [genreQuestionId(g), { type: 'noul', instructions: GENRE_QUESTIONS[g] }])
+	),
 	tone: {
 		type: 'score',
 		instructions: 'サーバーの空気感（投稿の口調やユーザー同士の関わり方）を評価せよ',
@@ -122,9 +122,8 @@ export function parseVibeAnswers(
 	answers: Record<string, ClefAnswer>,
 	sampleCount: number
 ): VibeProfile {
-	const genreAnswer = requireAnswer(answers, 'genre', 'choice');
 	const genre = Object.fromEntries(
-		GENRES.map((g) => [g, genreAnswer.probabilities[g] ?? 0])
+		GENRES.map((g) => [g, requireAnswer(answers, genreQuestionId(g), 'noul').noul])
 	) as Record<Genre, number>;
 
 	const tone = requireAnswer(answers, 'tone', 'score').score / (TONE_LEVELS.length - 1);
@@ -154,9 +153,10 @@ export function topGenre(vibe: VibeProfile): Genre {
 }
 
 export function vibeTags(vibe: VibeProfile): string[] {
-	const tags: string[] = [];
-	const g = topGenre(vibe);
-	if (vibe.genre[g] >= 0.4) tags.push(GENRE_LABELS[g]);
+	const tags: string[] = GENRES.filter((g) => vibe.genre[g] >= 0.6)
+		.sort((a, b) => vibe.genre[b] - vibe.genre[a])
+		.slice(0, 2)
+		.map((g) => GENRE_LABELS[g]);
 	if (vibe.tone >= 0.7) tags.push('ほのぼの');
 	else if (vibe.tone <= 0.3) tags.push('ドライ');
 	if (vibe.strictness >= 0.65) tags.push('ルール厳しめ');
@@ -180,7 +180,7 @@ export interface VibeKv {
 export interface VibeDeps {
 	kv: Pick<VibeKv, 'get' | 'put'>;
 	runner: ClefRunner;
-	sampler: (host: string) => Promise<string[]>;
+	sampler: (server: ServerInfo) => Promise<string[]>;
 }
 
 const KEY_PREFIX = 'vibe:';
@@ -218,7 +218,7 @@ export async function getOrComputeVibe(
 	}
 
 	try {
-		const notes = await deps.sampler(server.host);
+		const notes = await deps.sampler(server);
 		const output = await deps.runner(buildVibeRequest(server, notes));
 		const vibe = parseVibeAnswers(server.host, output.answers, notes.length);
 		await deps.kv.put(key, JSON.stringify(vibe), { expirationTtl: KV_TTL_SECONDS });
