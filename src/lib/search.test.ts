@@ -62,7 +62,9 @@ describe('search', () => {
 		]);
 	});
 
-	it('refineSearch は言葉が無ければ最初の言葉に、あれば絞り込みに足す', () => {
+	it('refineSearch は言葉が無ければ最初の言葉に、あれば絞り込みに足し、最後に動いた時刻を更新する', () => {
+		const old = { ...newSearch(), at: 1 };
+		expect(refineSearch(old, 'x').at).toBeGreaterThan(1);
 		const first = refineSearch(newSearch(), '病み垢');
 		expect(first.query).toBe('病み垢');
 		expect(first.turns).toEqual([]);

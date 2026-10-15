@@ -39,11 +39,11 @@ export function currentSearch(p: SavedProfile): Search | null {
 }
 
 // 検索を current にする。既存の id なら差し替え、無ければ加える
+// 開いただけでは at（最後に動いた時刻 = 一覧の並び順）を変えない
 export function selectSearch(p: SavedProfile, s: Search): SavedProfile {
-	const next = { ...s, at: Date.now() };
 	const searches = p.searches.some((x) => x.id === s.id)
-		? p.searches.map((x) => (x.id === s.id ? next : x))
-		: [...p.searches, next];
+		? p.searches.map((x) => (x.id === s.id ? s : x))
+		: [...p.searches, s];
 	return { ...p, searches, current: s.id };
 }
 
@@ -60,10 +60,11 @@ export function renameSearch(p: SavedProfile, id: string, title: string): SavedP
 	return { ...p, searches: p.searches.map((s) => (s.id === id ? { ...s, title: t } : s)) };
 }
 
+// 中身が変わったら at を更新し、一覧の上に上げる（AI のチャット一覧と同じ）
 export function patchSearch(p: SavedProfile, patch: Partial<Search>): SavedProfile {
 	return {
 		...p,
-		searches: p.searches.map((s) => (s.id === p.current ? { ...s, ...patch } : s))
+		searches: p.searches.map((s) => (s.id === p.current ? { ...s, ...patch, at: Date.now() } : s))
 	};
 }
 

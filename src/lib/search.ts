@@ -62,7 +62,8 @@ export function searchText(s: Search): string {
 
 // 言葉を足す。まだ最初の言葉が無ければそれになり、あれば絞り込みになる
 export function refineSearch(s: Search, text: string): Search {
-	return s.query ? { ...s, turns: [...s.turns, text] } : { ...s, query: text };
+	const at = Date.now();
+	return s.query ? { ...s, turns: [...s.turns, text], at } : { ...s, query: text, at };
 }
 
 // 今の言葉の並びに対して噛み合いが読み取り済みか（言葉を足したり消したりすると古くなる）

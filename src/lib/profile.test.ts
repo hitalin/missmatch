@@ -218,6 +218,20 @@ describe('検索の切り替え', () => {
 		expect(currentSearch(p)?.liked).toEqual(['x.tld']);
 	});
 
+	it('開いただけでは並び順（最後に動いた時刻）を変えず、中身が変わったら更新する（AI のチャット一覧と同じ）', () => {
+		const a = { ...newSearch('a'), at: 100 };
+		const b = { ...newSearch('b'), at: 200 };
+		let p = { ...emptyProfile(), searches: [a, b], current: b.id };
+		p = selectSearch(p, a);
+		expect(currentSearch(p)?.at).toBe(100);
+		p = patchSearch(p, { liked: ['x.tld'] });
+		expect(currentSearch(p)?.at).toBeGreaterThan(200);
+		// 名前を変えても並びは変えない
+		const before = currentSearch(p)?.at;
+		p = renameSearch(p, a.id, '名前');
+		expect(currentSearch(p)?.at).toBe(before);
+	});
+
 	it('patchSearch は current の検索だけを書き換える', () => {
 		const a = newSearch('a');
 		const b = newSearch('b');
