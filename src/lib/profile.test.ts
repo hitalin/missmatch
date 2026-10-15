@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
+import { defaultPreferences } from './prefs';
 import {
 	currentSearch,
 	deleteSearch,
 	emptyProfile,
+	PREFS_VERSION,
 	parseSavedProfile,
 	patchSearch,
 	renameSearch,
@@ -20,6 +22,7 @@ describe('parseSavedProfile', () => {
 	it('妥当な値だけ残し、設定項目の増減に耐える', () => {
 		const p = parseSavedProfile(
 			JSON.stringify({
+				prefsVersion: PREFS_VERSION,
 				prefs: {
 					age: 'minor',
 					activity: 'lively',
@@ -115,6 +118,39 @@ describe('parseSavedProfile', () => {
 		expect(s.choices).toEqual({ scale: 'small' });
 		expect(s.taste).toEqual({ tone: 0.4 });
 		expect(s.swipes).toBe(2);
+	});
+
+	it('読み取り結果が全体の設定に書き込まれていた頃の保存値は、絞り込みと加点を初期値に戻す（年齢・R-18・登録のしかたは残す）', () => {
+		const old = {
+			prefs: {
+				age: 'adult',
+				nsfw: 'welcome',
+				registrations: ['open', 'invite'],
+				activity: 'lively',
+				scales: ['small'],
+				paces: ['quiet'],
+				topics: ['game'],
+				tone: 'right',
+				community: 'left',
+				rules: 'right',
+				dealbreakers: { emailFree: true, chat: true }
+			}
+		};
+		const p = parseSavedProfile(JSON.stringify(old)).prefs;
+		const d = defaultPreferences();
+		expect(p.age).toBe('adult');
+		expect(p.nsfw).toBe('welcome');
+		expect(p.registrations).toEqual(['open', 'invite']);
+		expect(p.activity).toBe(d.activity);
+		expect(p.scales).toEqual([]);
+		expect(p.paces).toEqual([]);
+		expect(p.topics).toEqual([]);
+		expect([p.tone, p.community, p.rules]).toEqual(['any', 'any', 'any']);
+		expect(p.dealbreakers).toEqual(d.dealbreakers);
+		// 今の形式で保存したものはそのまま
+		const now = parseSavedProfile(JSON.stringify({ ...old, prefsVersion: PREFS_VERSION })).prefs;
+		expect(now.topics).toEqual(['game']);
+		expect(now.dealbreakers.emailFree).toBe(true);
 	});
 
 	it('年齢: 旧形式の adult を移し、知らない値は未設定にする', () => {

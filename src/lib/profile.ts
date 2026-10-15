@@ -19,15 +19,19 @@ import type { ClefAnswer } from './vibe';
 // ブラウザに保持するもの。マッチングアプリと同じく、作ったプロフィールと履歴は残す。
 // 設定と学習した好みは「その人」のものなので 1 本、いいね / よくないねは検索ごと
 export interface SavedProfile {
+	prefsVersion: number; // 保存したときの設定の形式（PREFS_VERSION）
 	prefs: Preferences;
 	searches: Search[]; // 探した言葉ごとのセッション
 	current: string; // 今開いている検索の id（searches が空なら ''）
 }
 
 export const PROFILE_KEY = 'missmatch:profile:v2';
+// 2: 言葉の読み取り結果を全体の設定に書き込まなくなった。それより前の保存値は、
+// 絞り込みと加点に読み取り結果が混ざっている（自分で選んだものと区別できない）ので初期値に戻す
+export const PREFS_VERSION = 2;
 
 export function emptyProfile(): SavedProfile {
-	return { prefs: defaultPreferences(), searches: [], current: '' };
+	return { prefsVersion: PREFS_VERSION, prefs: defaultPreferences(), searches: [], current: '' };
 }
 
 export function currentSearch(p: SavedProfile): Search | null {
@@ -206,6 +210,15 @@ export function parseSavedProfile(raw: string | null): SavedProfile {
 		isStr(d.current) && profile.searches.some((s) => s.id === d.current)
 			? d.current
 			: (profile.searches[0]?.id ?? '');
+	if (d.prefsVersion !== PREFS_VERSION) {
+		const fresh = defaultPreferences();
+		profile.prefs = {
+			...fresh,
+			age: prefs.age,
+			nsfw: prefs.nsfw,
+			registrations: prefs.registrations
+		};
+	}
 	// 旧形式: 学習した好みは全体で 1 本だった。開いている検索がまだ何も学んでいなければそこへ移す
 	const legacyTaste = tasteOf(d.taste);
 	const cur = profile.searches.find((s) => s.id === profile.current);

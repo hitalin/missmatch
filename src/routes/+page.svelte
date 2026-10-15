@@ -22,7 +22,7 @@
 		type Taste,
 		withRelativeVibes
 	} from '$lib/match';
-	import { isComplete, needsAllServers } from '$lib/prefs';
+	import { defaultPreferences, isComplete, needsAllServers } from '$lib/prefs';
 	import {
 		currentSearch,
 		deleteSearch,
@@ -391,6 +391,8 @@
 					swipes={search.swipes}
 					{profiles}
 					onresettaste={() => (profile = patchSearch(profile, { taste: {}, swipes: 0 }))}
+					onresetprefs={() =>
+						(profile = { ...profile, prefs: { ...defaultPreferences(), age: profile.prefs.age } })}
 					onforget={(f) => {
 						const { [f]: _drop, ...rest } = search.taste;
 						profile = patchSearch(profile, { taste: rest });

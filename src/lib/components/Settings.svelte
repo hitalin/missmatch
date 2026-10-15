@@ -28,7 +28,8 @@
 		swipes,
 		profiles,
 		onresettaste,
-		onforget
+		onforget,
+		onresetprefs
 	}: {
 		prefs: Preferences;
 		taste: Taste;
@@ -36,6 +37,7 @@
 		profiles: ServerProfile[] | null;
 		onresettaste: () => void;
 		onforget: (feature: keyof Taste) => void;
+		onresetprefs: () => void; // 年齢以外を初期値に戻す
 	} = $props();
 
 	const count = $derived(profiles ? applyFilters(profiles, prefs).length : null);
@@ -84,6 +86,7 @@
 	<header class="head">
 		<h1>あなた</h1>
 		<p class="muted">{#if count !== null}いまの条件に合うサーバーは <b>{count} 件</b>{:else}サーバー情報を取得中…{/if}</p>
+		<button class="btn secondary reset-all" onclick={onresetprefs}>初期値に戻す</button>
 	</header>
 
 	<div class="col">
@@ -242,6 +245,11 @@
 	.head p {
 		margin: 0;
 		font-size: 0.86rem;
+	}
+	.reset-all {
+		margin-left: auto;
+		padding: 6px 14px;
+		font-size: 0.8rem;
 	}
 	.block {
 		padding: 18px 20px;

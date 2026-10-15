@@ -17,6 +17,9 @@ describe('年齢', () => {
 		const d = defaultPreferences();
 		expect(isComplete(d)).toBe(false);
 		expect(d.activity).toBe('any');
+		// 初期値はできるだけ多く通す: R-18 は気にしない、絶対条件はすべてオフ
+		expect(d.nsfw).toBe('neutral');
+		expect(Object.values(d.dealbreakers).every((v) => v === false)).toBe(true);
 		expect(isComplete({ ...d, age: 'child' })).toBe(true);
 	});
 });

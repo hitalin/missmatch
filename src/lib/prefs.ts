@@ -116,7 +116,7 @@ export function defaultPreferences(): Preferences {
 	return {
 		age: null,
 		activity: 'any',
-		nsfw: 'avoid',
+		nsfw: 'neutral',
 		registrations: ['open', 'approval'],
 		scales: [],
 		paces: [],
