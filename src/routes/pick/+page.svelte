@@ -1,11 +1,11 @@
 <script lang="ts">
 	import { onDestroy, onMount } from 'svelte';
-	import { resolve } from '$app/paths';
 	import AppNav, { type Tab } from '$lib/components/AppNav.svelte';
 	import Discover from '$lib/components/Discover.svelte';
 	import LikesGrid from '$lib/components/LikesGrid.svelte';
 	import MatchOverlay from '$lib/components/MatchOverlay.svelte';
 	import Onboarding from '$lib/components/Onboarding.svelte';
+	import SearchBar from '$lib/components/SearchBar.svelte';
 	import Settings from '$lib/components/Settings.svelte';
 	import { featuresOf } from '$lib/features';
 	import { applyIntent } from '$lib/intent';
@@ -20,7 +20,15 @@
 		type SavedProfile,
 		selectSearch
 	} from '$lib/profile';
-	import { hasAffinity, newSearch, seenHosts } from '$lib/search';
+	import {
+		hasAffinity,
+		newSearch,
+		refineSearch,
+		type Search,
+		searchText,
+		searchTurns,
+		seenHosts
+	} from '$lib/search';
 	import type { Match, ServerProfile } from '$lib/types';
 	import type { ClefAnswer } from '$lib/vibe';
 
@@ -52,7 +60,11 @@
 
 	// 条件（フィルター・加点・どの検索か・噛み合い済みか）の文字列キー。変わったらデッキを作り直す
 	const prefsKey = $derived(
-		JSON.stringify({ ...profile.prefs, search: search.id, affinity: hasAffinity(search) })
+		JSON.stringify({
+			...profile.prefs,
+			search: search.id,
+			affinity: hasAffinity(search) ? search.affinityFor : ''
+		})
 	);
 	const ready = $derived(isComplete(profile.prefs));
 	const wishApplied = $derived(hasAffinity(search));
@@ -77,8 +89,9 @@
 		onboarding = !isComplete(saved.prefs);
 		hydrated = true;
 		loadProfiles();
-		if (cur && cur.query.length >= 2 && !hasAffinity(cur)) readWish(cur.query);
+		if (cur && needsRead(cur)) readSearch();
 	});
+	const needsRead = (s: Search) => searchText(s).length >= 2 && !hasAffinity(s);
 
 	// 保存（入力のたびに書かず、少し待ってまとめる）。
 	// ページを離れるときは待たずに確定させる。でないと読み取り直後の移動で検索結果が消える
@@ -130,23 +143,30 @@
 		}
 	}
 
-	// ひとことを Clef に読み取らせ、空いている設定を埋め、各サーバーとの噛み合いを付ける
-	async function readWish(text: string) {
+	// いまの検索の言葉の並びを Clef に読み取らせ、空いている設定を埋め、各サーバーとの噛み合いを付ける
+	async function readSearch() {
+		const target = search;
+		const text = searchText(target);
 		reading = true;
 		readError = '';
 		try {
 			const res = await fetch('/api/intent', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ text, scope: wantedScope })
+				body: JSON.stringify({ turns: searchTurns(target), scope: wantedScope })
 			});
 			if (!res.ok) throw new Error(`HTTP ${res.status}`);
 			const data = (await res.json()) as {
 				answers?: Record<string, ClefAnswer>;
 				affinity?: Record<string, number>;
 			};
+			// 待っている間に別の検索へ移っていたら捨てる
+			if (profile.current !== target.id) return;
 			const prefs = applyIntent(profile.prefs, data.answers ?? {});
-			profile = patchSearch({ ...profile, prefs }, { affinity: data.affinity ?? {} });
+			profile = patchSearch(
+				{ ...profile, prefs },
+				{ affinity: data.affinity ?? {}, affinityFor: text }
+			);
 			tab = 'discover';
 		} catch (e) {
 			readError = e instanceof Error ? e.message : String(e);
@@ -216,7 +236,15 @@
 		const plain = profile.searches.find((s) => s.query === '') ?? newSearch();
 		profile = selectSearch(profile, plain);
 	}
-	const wishPending = $derived(reading || (search.query.length >= 2 && !wishApplied));
+	// 言葉を足す / 外す。並びが変わったので噛み合いを読み直す
+	function refine(text: string) {
+		profile = selectSearch(profile, refineSearch(search, text));
+		readSearch();
+	}
+	function dropTurn(index: number) {
+		profile = patchSearch(profile, { turns: search.turns.filter((_, i) => i !== index) });
+		if (needsRead(search)) readSearch();
+	}
 
 	function go(next: Tab) {
 		tab = next;
@@ -252,20 +280,14 @@
 			{/if}
 
 			{#if tab === 'discover'}
-				<div class="query" class:applied={wishApplied}>
-					{#if wishPending}
-						<span class="spin" aria-hidden="true"></span>
-						<span class="q">「{search.query}」を読み取っています…</span>
-					{:else if wishApplied}
-						<span class="mark" aria-hidden="true">✦</span>
-						<span class="q">「{search.query}」に合う順</span>
-						<a class="change" href={resolve('/')}>変える</a>
-						<button class="x" aria-label="検索を外す" onclick={clearWish}>✕</button>
-					{:else}
-						<span class="q muted">条件だけで並べています</span>
-						<a class="change" href={resolve('/')}>探す言葉を入れる</a>
-					{/if}
-				</div>
+				<SearchBar
+					{search}
+					{reading}
+					applied={wishApplied}
+					onrefine={refine}
+					ondrop={dropTurn}
+					onclear={clearWish}
+				/>
 				{#if !profiles}
 					<div class="loading"><div class="pulse">♥</div><p class="muted">サーバー情報を取得中…</p></div>
 				{:else}
@@ -345,60 +367,6 @@
 		cursor: pointer;
 		text-decoration: underline;
 		padding: 0;
-	}
-	.query {
-		display: flex;
-		align-items: center;
-		gap: 8px;
-		margin-bottom: 10px;
-		padding: 8px 12px;
-		border-radius: 999px;
-		background: var(--panel);
-		border: 1px solid var(--border);
-		font-size: 0.82rem;
-	}
-	.query.applied {
-		border-color: var(--accent);
-		background: var(--accent-soft);
-		color: var(--accent-fg);
-	}
-	.query .q {
-		flex: 1;
-		min-width: 0;
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-		font-weight: 700;
-	}
-	.query .mark {
-		color: var(--accent);
-	}
-	.change {
-		font-weight: 800;
-		font-size: 0.8rem;
-		white-space: nowrap;
-	}
-	.x {
-		background: none;
-		border: none;
-		cursor: pointer;
-		color: var(--fg-muted);
-		font-weight: 800;
-		padding: 2px 4px;
-	}
-	.spin {
-		width: 14px;
-		height: 14px;
-		border-radius: 50%;
-		border: 2px solid var(--border);
-		border-top-color: var(--accent);
-		animation: spin 0.8s linear infinite;
-		flex-shrink: 0;
-	}
-	@keyframes spin {
-		to {
-			transform: rotate(360deg);
-		}
 	}
 	.loading {
 		text-align: center;

@@ -67,7 +67,9 @@ function parseSearch(x: unknown): Search | null {
 	return {
 		id: s.id,
 		query: s.query,
+		turns: strArray(s.turns),
 		affinity: affinityOf(s.affinity),
+		affinityFor: isStr(s.affinityFor) ? s.affinityFor : '',
 		liked: strArray(s.liked),
 		passed: strArray(s.passed),
 		at: typeof s.at === 'number' ? s.at : 0
@@ -83,9 +85,11 @@ function migrateLegacySearch(
 	const liked = strArray(d.liked);
 	const passed = strArray(d.passed);
 	if (!query && liked.length === 0 && passed.length === 0) return null;
+	const fresh = query.length > 0 && p.affinityFor === query;
 	return {
 		...newSearch(query),
-		affinity: query && p.affinityFor === query ? affinityOf(p.affinity) : {},
+		affinity: fresh ? affinityOf(p.affinity) : {},
+		affinityFor: fresh ? query : '',
 		liked,
 		passed
 	};

@@ -2,7 +2,8 @@ import { DEALBREAKER_LABELS, type Preferences, TOPIC_LABELS, TOPICS, type Topic 
 import type { ServerProfile } from './types';
 import { type ClefAnswer, type ClefInput, type ClefQuestion, vibeTags } from './vibe';
 
-export const MAX_INTENT_LENGTH = 300;
+export const MAX_INTENT_LENGTH = 300; // 1 回の発言の長さ
+export const MAX_TURNS = 8; // 最初の言葉 + 絞り込みの数
 // この確率未満の読み取りは採用しない
 const MIN_PROBABILITY = 0.6;
 const NONE = 'none';
@@ -63,12 +64,17 @@ const INTENT_QUESTIONS: Record<string, ClefQuestion> = {
 	}
 };
 
-export function buildIntentRequest(text: string): ClefInput {
+// ユーザーの発言の並び。最初が「どんな場所を探している？」への一言、あとは絞り込み。
+// 後の発言ほど新しい希望なので、食い違うときは後を優先するよう添える
+export function userState(turns: string[]): Record<string, unknown> {
 	return {
-		model: 'clef',
-		state: { userMessage: text.slice(0, MAX_INTENT_LENGTH) },
-		questions: INTENT_QUESTIONS
+		userMessages: turns.slice(0, MAX_TURNS).map((t) => t.slice(0, MAX_INTENT_LENGTH)),
+		note: 'userMessages はユーザーの発言を古い順に並べたもの。後の発言ほど新しい希望で、食い違うときは後の発言を優先する'
 	};
+}
+
+export function buildIntentRequest(turns: string[]): ClefInput {
+	return { model: 'clef', state: userState(turns), questions: INTENT_QUESTIONS };
 }
 
 function confidentChoice(a: ClefAnswer | undefined): string | null {
@@ -113,7 +119,7 @@ const RULES_CHARS = 160;
 
 // 「この一言と各サーバーは噛み合うか」を、サーバーの説明・ルール・雰囲気タグを見せて直接判定させる。
 // 設定項目に無い切り口（例: 病み垢の居場所）でも説明文に書いてあれば拾える
-export function buildAffinityRequests(text: string, profiles: ServerProfile[]): ClefInput[] {
+export function buildAffinityRequests(turns: string[], profiles: ServerProfile[]): ClefInput[] {
 	const requests: ClefInput[] = [];
 	for (let i = 0; i < profiles.length; i += AFFINITY_BATCH) {
 		const batch = profiles.slice(i, i + AFFINITY_BATCH);
@@ -131,7 +137,7 @@ export function buildAffinityRequests(text: string, profiles: ServerProfile[]): 
 		requests.push({
 			model: 'clef',
 			state: {
-				userMessage: text.slice(0, MAX_INTENT_LENGTH),
+				...userState(turns),
 				servers: batch.map((p) => ({
 					host: p.server.host,
 					name: p.server.name ?? p.server.host,

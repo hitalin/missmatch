@@ -5,6 +5,7 @@ import {
 	applyIntent,
 	buildAffinityRequests,
 	buildIntentRequest,
+	MAX_TURNS,
 	parseAffinity
 } from './intent';
 import { defaultPreferences } from './prefs';
@@ -20,17 +21,20 @@ const noul = (n: number): ClefAnswer => ({ type: 'noul', noul: n });
 
 describe('buildIntentRequest', () => {
 	it('話題は noul、空気感・規模・流速は choice にし、年齢と R-18 は読み取らない', () => {
-		const req = buildIntentRequest('創作垢を置ける落ち着いたサーバーがいい');
+		const req = buildIntentRequest(['創作垢を置ける落ち着いたサーバーがいい']);
 		expect(req.questions['topic.illust'].type).toBe('noul');
 		expect(req.questions.tone.type).toBe('choice');
 		expect(req.questions.age).toBeUndefined();
 		expect(req.questions.nsfw).toBeUndefined();
-		expect((req.state as { userMessage: string }).userMessage).toContain('創作');
+		expect((req.state as { userMessages: string[] }).userMessages[0]).toContain('創作');
 	});
-	it('長すぎる入力は切り詰める', () => {
-		expect(
-			(buildIntentRequest('あ'.repeat(1000)).state as { userMessage: string }).userMessage.length
-		).toBe(300);
+	it('発言は順に並べ、長すぎる発言と多すぎる発言は切り詰める', () => {
+		const state = buildIntentRequest(['あ'.repeat(1000), ...Array(20).fill('小さめ')]).state as {
+			userMessages: string[];
+		};
+		expect(state.userMessages).toHaveLength(MAX_TURNS);
+		expect(state.userMessages[0].length).toBe(300);
+		expect(state.userMessages[1]).toBe('小さめ');
 	});
 });
 
@@ -65,12 +69,12 @@ describe('buildAffinityRequests / parseAffinity', () => {
 		const profiles = Array.from({ length: AFFINITY_BATCH + 6 }, (_, i) =>
 			mk({ host: `s${i}.tld`, description: `説明 ${i}` })
 		);
-		const reqs = buildAffinityRequests('病み垢を置きたい', profiles);
+		const reqs = buildAffinityRequests(['病み垢を置きたい', '小さめ'], profiles);
 		expect(reqs).toHaveLength(2);
 		expect(Object.keys(reqs[0].questions)).toHaveLength(AFFINITY_BATCH);
 		expect(Object.keys(reqs[1].questions)).toHaveLength(6);
-		const state = reqs[1].state as { userMessage: string; servers: { host: string }[] };
-		expect(state.userMessage).toBe('病み垢を置きたい');
+		const state = reqs[1].state as { userMessages: string[]; servers: { host: string }[] };
+		expect(state.userMessages).toEqual(['病み垢を置きたい', '小さめ']);
 		expect(state.servers.map((s) => s.host)).toEqual(Object.keys(reqs[1].questions));
 	});
 

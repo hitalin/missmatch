@@ -265,7 +265,11 @@ describe('buildDeck', () => {
 
 	it('検索の噛み合いで並び、別の検索でスワイプした鯖は除かれない', () => {
 		const profiles = [mk({ host: 'a.tld' }), mk({ host: 'b.tld' })];
-		const search = { ...newSearch('病み垢'), affinity: { 'a.tld': 0.2, 'b.tld': 0.9 }, passed: [] };
+		const search = {
+			...newSearch('病み垢'),
+			affinity: { 'a.tld': 0.2, 'b.tld': 0.9 },
+			affinityFor: '病み垢'
+		};
 		const deck = buildDeck(profiles, prefs(), {}, 0, search, 10);
 		expect(deck.map((m) => m.server.host)).toEqual(['b.tld', 'a.tld']);
 		expect(deck[0].reasons).toContain('書いてくれた希望と噛み合う');

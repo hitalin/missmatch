@@ -35,7 +35,9 @@ describe('parseSavedProfile', () => {
 					{
 						id: 's1',
 						query: '病み垢',
+						turns: ['小さめ', 3],
 						affinity: { 'a.tld': 0.9, 'b.tld': 2 },
+						affinityFor: '病み垢\n小さめ',
 						liked: ['a.tld', 1],
 						passed: null,
 						at: 100
@@ -62,7 +64,9 @@ describe('parseSavedProfile', () => {
 			{
 				id: 's1',
 				query: '病み垢',
+				turns: ['小さめ'],
 				affinity: { 'a.tld': 0.9 },
+				affinityFor: '病み垢\n小さめ',
 				liked: ['a.tld'],
 				passed: [],
 				at: 100
@@ -96,6 +100,7 @@ describe('parseSavedProfile', () => {
 		const s = p.searches[0];
 		expect(s.query).toBe('病み垢');
 		expect(s.affinity).toEqual({ 'a.tld': 0.9 });
+		expect(s.affinityFor).toBe('病み垢');
 		expect(s.liked).toEqual(['a.tld']);
 		expect(s.passed).toEqual(['b.tld']);
 		expect(p.current).toBe(s.id);
