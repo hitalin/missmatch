@@ -19,7 +19,7 @@
 	--shadow-lg: 0 16px 44px rgba(0, 0, 0, 0.18);
 	--nav-h: 62px;
 	--maxw: 480px; /* モバイルの本文幅 */
-	--rail-w: 220px; /* デスクトップの左レール幅 */
+	--rail-w: 250px; /* デスクトップのサイドバー幅（モバイルのドロワーも同じ） */
 	--desktop-maxw: 1080px;
 	color-scheme: light dark;
 }

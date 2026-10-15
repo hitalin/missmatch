@@ -1,15 +1,15 @@
 <script lang="ts">
 	import { onDestroy, onMount } from 'svelte';
 	import { page } from '$app/state';
-	import AppNav, { type Tab, TABS } from '$lib/components/AppNav.svelte';
+	
 	import AskChips from '$lib/components/AskChips.svelte';
 	import Discover from '$lib/components/Discover.svelte';
 	import LikesGrid from '$lib/components/LikesGrid.svelte';
 	import MatchOverlay from '$lib/components/MatchOverlay.svelte';
 	import Onboarding from '$lib/components/Onboarding.svelte';
 	import SearchBar from '$lib/components/SearchBar.svelte';
-	import SearchList from '$lib/components/SearchList.svelte';
-	import Settings from '$lib/components/Settings.svelte';
+		import Settings from '$lib/components/Settings.svelte';
+	import Shell, { type Tab, TABS } from '$lib/components/Shell.svelte';
 	import { featuresOf } from '$lib/features';
 	import { applyIntent, type AskAxis, chooseAxis, isAxisDefault, unsureAxes } from '$lib/intent';
 	import { applyFilters, buildDeck, learn, scoreProfile, type Taste } from '$lib/match';
@@ -253,12 +253,10 @@
 		if (needsRead(search)) readSearch();
 	}
 	// 過去の検索に移る / 消す
-	let showHistory = $state(false);
 	function openSearch(id: string) {
 		const s = profile.searches.find((x) => x.id === id);
 		if (!s) return;
 		profile = selectSearch(profile, s);
-		showHistory = false;
 		go('discover');
 		if (needsRead(s)) readSearch();
 	}
@@ -286,8 +284,8 @@
 	<meta name="description" content="プロフィールを作って、雰囲気まで考慮したおすすめ Misskey サーバーをスワイプで選ぼう。" />
 </svelte:head>
 
-<div class="app" class:onboarding>
-	{#if onboarding}
+{#if onboarding}
+	<div class="onboarding">
 		<Onboarding
 			bind:prefs={profile.prefs}
 			startAtQuestions
@@ -296,7 +294,19 @@
 				tab = 'discover';
 			}}
 		/>
-	{:else}
+	</div>
+{:else}
+	<Shell
+		{tab}
+		likes={search.liked.length}
+		passed={search.passed.length}
+		discoverEnabled={ready && !!profiles}
+		searches={profile.searches}
+		current={profile.current}
+		onchange={go}
+		onselect={openSearch}
+		ondelete={removeSearch}
+	>
 		<main>
 			{#if loadError}
 				<p class="banner">
@@ -319,18 +329,6 @@
 				/>
 				{#if !reading && asks.length > 0}
 					<AskChips axes={asks} onpick={answerAsk} />
-				{/if}
-				{#if profile.searches.length > 1}
-					<!-- モバイルだけ: さがした言葉の一覧（デスクトップはレールに出る） -->
-					<details class="history" bind:open={showHistory}>
-						<summary>さがした言葉（{profile.searches.length}）</summary>
-						<SearchList
-							searches={profile.searches}
-							current={profile.current}
-							onselect={openSearch}
-							ondelete={removeSearch}
-						/>
-					</details>
 				{/if}
 				{#if !profiles}
 					<div class="loading"><div class="pulse">♥</div><p class="muted">サーバー情報を取得中…</p></div>
@@ -372,33 +370,19 @@
 				</p>
 			</footer>
 		</main>
-		<AppNav
-			{tab}
-			likes={search.liked.length}
-			passed={search.passed.length}
-			discoverEnabled={ready && !!profiles}
-			searches={profile.searches}
-			current={profile.current}
-			onchange={go}
-			onselect={openSearch}
-			ondelete={removeSearch}
-		/>
-	{/if}
+	</Shell>
+{/if}
 
-	{#if celebrate}
-		<MatchOverlay match={celebrate} onclose={() => (celebrate = null)} />
-	{/if}
-</div>
+{#if celebrate}
+	<MatchOverlay match={celebrate} onclose={() => (celebrate = null)} />
+{/if}
 
 <style>
-	.app {
+	.onboarding {
 		max-width: var(--maxw);
 		margin: 0 auto;
 		padding: 0 16px;
 		min-height: 100dvh;
-	}
-	main {
-		padding: 10px 0 calc(var(--nav-h) + env(safe-area-inset-bottom) + 16px);
 	}
 	.banner {
 		margin: 0 0 12px;
@@ -415,16 +399,6 @@
 		cursor: pointer;
 		text-decoration: underline;
 		padding: 0;
-	}
-	.history {
-		margin-bottom: 10px;
-		font-size: 0.82rem;
-	}
-	.history summary {
-		cursor: pointer;
-		font-weight: 700;
-		color: var(--fg-muted);
-		padding: 4px 2px;
 	}
 	.loading {
 		text-align: center;
@@ -455,23 +429,5 @@
 	}
 	footer a {
 		color: var(--fg-muted);
-	}
-	@media (min-width: 900px) {
-		.history {
-			display: none;
-		}
-		.app {
-			max-width: none;
-			margin: 0;
-			padding: 0 0 0 var(--rail-w);
-		}
-		.app.onboarding {
-			padding-left: 0;
-		}
-		main {
-			max-width: var(--desktop-maxw);
-			margin: 0 auto;
-			padding: 28px 40px 48px;
-		}
 	}
 </style>

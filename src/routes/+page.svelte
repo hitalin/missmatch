@@ -2,7 +2,7 @@
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import AppNav, { type Tab } from '$lib/components/AppNav.svelte';
+	import Shell, { type Tab } from '$lib/components/Shell.svelte';
 	import { MAX_INTENT_LENGTH } from '$lib/intent';
 	import { isComplete } from '$lib/prefs';
 	import {
@@ -71,84 +71,71 @@
 	/>
 </svelte:head>
 
-<main class="landing" class:withnav={hasProfile}>
-	<div class="center">
-		<h1 class="brand"><span class="logo">♥</span> みすまっち</h1>
-		<p class="tagline">Misskey のサーバーと、マッチング。</p>
+<Shell
+	tab={null}
+	likes={search?.liked.length ?? 0}
+	passed={search?.passed.length ?? 0}
+	discoverEnabled={hasProfile}
+	searches={profile.searches}
+	current={profile.current}
+	onchange={goTab}
+	onselect={openSearch}
+	ondelete={removeSearch}
+>
+	<main class="landing">
+		<div class="center">
+			<h1 class="brand"><span class="logo">♥</span> みすまっち</h1>
+			<p class="tagline">Misskey のサーバーと、マッチング。</p>
 
-		<form class="search" onsubmit={submit} role="search">
-			<label class="sr-only" for="q">どんな場所を探している？</label>
-			<div class="box">
-				<span class="icon" aria-hidden="true">✦</span>
-				<!-- svelte-ignore a11y_autofocus -->
-				<input
-					id="q"
-					type="search"
-					bind:value={text}
-					maxlength={MAX_INTENT_LENGTH}
-					placeholder="どんな場所を探している？"
-					enterkeyhint="search"
-					autocomplete="off"
-					autofocus
-				/>
-				<button type="submit" class="go" disabled={text.trim().length < 2} aria-label="探す">→</button>
-			</div>
-		</form>
+			<form class="search" onsubmit={submit} role="search">
+				<label class="sr-only" for="q">どんな場所を探している？</label>
+				<div class="box">
+					<span class="icon" aria-hidden="true">✦</span>
+					<!-- svelte-ignore a11y_autofocus -->
+					<input
+						id="q"
+						type="search"
+						bind:value={text}
+						maxlength={MAX_INTENT_LENGTH}
+						placeholder="どんな場所を探している？"
+						enterkeyhint="search"
+						autocomplete="off"
+						autofocus
+					/>
+					<button type="submit" class="go" disabled={text.trim().length < 2} aria-label="探す">→</button>
+				</div>
+			</form>
 
-		<ul class="examples">
-			{#each EXAMPLES as ex (ex)}
-				<li><button onclick={() => go(ex)}>{ex}</button></li>
-			{/each}
-		</ul>
+			<ul class="examples">
+				{#each EXAMPLES as ex (ex)}
+					<li><button onclick={() => go(ex)}>{ex}</button></li>
+				{/each}
+			</ul>
 
-		<p class="skip">
-			<a href={resolve('/pick')}>{hasProfile ? '前回の続きからさがす' : '言葉を入れずに条件だけでさがす'} →</a>
-		</p>
-	</div>
+			<p class="skip">
+				<a href={resolve('/pick')}>{hasProfile ? '前回の続きからさがす' : '言葉を入れずに条件だけでさがす'} →</a>
+			</p>
+		</div>
 
-	<footer>
-		<p>
-			登録できる日本語 Misskey サーバー約 100 件（招待制・停止中を含めると約 580 件）を、説明文・ルール・最近の投稿から読み取った雰囲気と条件で並べます。
-			プロフィールはこのブラウザにだけ保存。
-		</p>
-		<p>
-			データ: <a href="https://join.misskey.page/" target="_blank" rel="noopener">joinmisskey</a>
-			· 判定: Cloudflare Workers AI (Clef)
-			· <a href="https://github.com/hitalin/missmatch" target="_blank" rel="noopener">GitHub</a>
-		</p>
-	</footer>
-</main>
-
-{#if hasProfile}
-	<AppNav
-		tab={null}
-		likes={search?.liked.length ?? 0}
-		passed={search?.passed.length ?? 0}
-		discoverEnabled
-		searches={profile.searches}
-		current={profile.current}
-		onchange={goTab}
-		onselect={openSearch}
-		ondelete={removeSearch}
-	/>
-{/if}
+		<footer>
+			<p>
+				登録できる日本語 Misskey サーバー約 100 件（招待制・停止中を含めると約 580 件）を、説明文・ルール・最近の投稿から読み取った雰囲気と条件で並べます。
+				プロフィールはこのブラウザにだけ保存。
+			</p>
+			<p>
+				データ: <a href="https://join.misskey.page/" target="_blank" rel="noopener">joinmisskey</a>
+				· 判定: Cloudflare Workers AI (Clef)
+				· <a href="https://github.com/hitalin/missmatch" target="_blank" rel="noopener">GitHub</a>
+			</p>
+		</footer>
+	</main>
+</Shell>
 
 <style>
 	.landing {
-		min-height: 100dvh;
+		flex: 1;
 		display: flex;
 		flex-direction: column;
-		padding: 0 16px;
-	}
-	/* プロフィールがあればナビが出るので、その分を空ける */
-	.landing.withnav {
-		padding-bottom: calc(var(--nav-h) + env(safe-area-inset-bottom));
-	}
-	@media (min-width: 900px) {
-		.landing.withnav {
-			padding-bottom: 0;
-			padding-left: calc(var(--rail-w) + 16px);
-		}
 	}
 	.center {
 		flex: 1;
