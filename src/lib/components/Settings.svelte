@@ -83,9 +83,9 @@
 		<h2>基本</h2>
 		<div class="field">
 			<span class="label">年齢</span>
-			<div class="seg2">
-				<button class:on={prefs.adult === true} onclick={() => (prefs = { ...prefs, adult: true })}>18 歳以上</button>
-				<button class:on={prefs.adult === false} onclick={() => (prefs = { ...prefs, adult: false })}>18 歳未満</button>
+			<div class="seg seg2" role="radiogroup">
+				<button role="radio" aria-checked={prefs.adult === true} class:on={prefs.adult === true} onclick={() => (prefs = { ...prefs, adult: true })}>18 歳以上</button>
+				<button role="radio" aria-checked={prefs.adult === false} class:on={prefs.adult === false} onclick={() => (prefs = { ...prefs, adult: false })}>18 歳未満</button>
 			</div>
 		</div>
 		<div class="field">
@@ -102,6 +102,7 @@
 								if (next.length > 0) prefs = { ...prefs, registrations: next };
 							}}
 						>
+							{#if prefs.registrations.includes(r)}<Icon name="check" size={13} />{/if}
 							{REGISTRATION_LABELS[r]} <small>{REGISTRATION_HINTS[r]}</small>
 						</button>
 					</li>
@@ -110,9 +111,9 @@
 		</div>
 		<div class="field">
 			<span class="label">R-18 の投稿</span>
-			<div class="seg3">
+			<div class="seg seg3" role="radiogroup">
 				{#each [['avoid', '見たくない'], ['neutral', '気にしない'], ['welcome', '歓迎']] as [v, label] (v)}
-					<button class:on={prefs.nsfw === v} onclick={() => (prefs = { ...prefs, nsfw: v as Preferences['nsfw'] })}>{label}</button>
+					<button role="radio" aria-checked={prefs.nsfw === v} class:on={prefs.nsfw === v} onclick={() => (prefs = { ...prefs, nsfw: v as Preferences['nsfw'] })}>{label}</button>
 				{/each}
 			</div>
 		</div>
@@ -122,7 +123,7 @@
 		<h2>話したいこと <span class="muted small">複数可・加点</span></h2>
 		<ul class="chips">
 			{#each TOPICS as t (t)}
-				<li><button class="chip" class:on={prefs.topics.includes(t)} aria-pressed={prefs.topics.includes(t)} onclick={() => (prefs = { ...prefs, topics: toggleIn(prefs.topics, t) })}>{TOPIC_LABELS[t]}</button></li>
+				<li><button class="chip" class:on={prefs.topics.includes(t)} aria-pressed={prefs.topics.includes(t)} onclick={() => (prefs = { ...prefs, topics: toggleIn(prefs.topics, t) })}>{#if prefs.topics.includes(t)}<Icon name="check" size={13} />{/if}{TOPIC_LABELS[t]}</button></li>
 			{/each}
 		</ul>
 	</div>
@@ -140,7 +141,7 @@
 			<span class="label">規模</span>
 			<ul class="chips">
 				{#each SCALES as s (s)}
-					<li><button class="chip" class:on={prefs.scales.includes(s)} aria-pressed={prefs.scales.includes(s)} onclick={() => (prefs = { ...prefs, scales: toggleIn(prefs.scales, s) })}>{SCALE_LABELS[s]} <small>{SCALE_HINTS[s]}</small></button></li>
+					<li><button class="chip" class:on={prefs.scales.includes(s)} aria-pressed={prefs.scales.includes(s)} onclick={() => (prefs = { ...prefs, scales: toggleIn(prefs.scales, s) })}>{#if prefs.scales.includes(s)}<Icon name="check" size={13} />{/if}{SCALE_LABELS[s]} <small>{SCALE_HINTS[s]}</small></button></li>
 				{/each}
 			</ul>
 		</div>
@@ -148,7 +149,7 @@
 			<span class="label">流速</span>
 			<ul class="chips">
 				{#each PACES as p (p)}
-					<li><button class="chip" class:on={prefs.paces.includes(p)} aria-pressed={prefs.paces.includes(p)} onclick={() => (prefs = { ...prefs, paces: toggleIn(prefs.paces, p) })}>{PACE_LABELS[p]} <small>{PACE_HINTS[p]}</small></button></li>
+					<li><button class="chip" class:on={prefs.paces.includes(p)} aria-pressed={prefs.paces.includes(p)} onclick={() => (prefs = { ...prefs, paces: toggleIn(prefs.paces, p) })}>{#if prefs.paces.includes(p)}<Icon name="check" size={13} />{/if}{PACE_LABELS[p]} <small>{PACE_HINTS[p]}</small></button></li>
 				{/each}
 			</ul>
 		</div>
@@ -175,7 +176,7 @@
 	.settings {
 		display: flex;
 		flex-direction: column;
-		gap: 12px;
+		gap: 14px;
 	}
 	.head h1 {
 		margin: 8px 0 4px;
@@ -187,21 +188,22 @@
 		font-size: 0.9rem;
 	}
 	.block {
-		padding: 14px 16px;
+		padding: 18px 20px;
 		display: flex;
 		flex-direction: column;
-		gap: 10px;
+		gap: 14px;
+		break-inside: avoid;
 	}
 	h2 {
 		margin: 0;
-		font-size: 1.02rem;
+		font-size: 1rem;
 		display: flex;
 		align-items: baseline;
 		gap: 8px;
 		flex-wrap: wrap;
 	}
 	.small {
-		font-size: 0.75rem;
+		font-size: 0.74rem;
 		font-weight: 400;
 	}
 	.help {
@@ -222,26 +224,30 @@
 		align-items: center;
 	}
 	.sm {
-		padding: 9px 16px;
-		font-size: 0.88rem;
+		padding: 8px 16px;
+		font-size: 0.85rem;
 	}
 	.field {
 		display: flex;
 		flex-direction: column;
-		gap: 6px;
+		gap: 8px;
 	}
 	.label {
-		font-size: 0.78rem;
+		font-size: 0.74rem;
 		font-weight: 700;
 		color: var(--fg-muted);
 	}
-	.seg2,
-	.seg3 {
+	.label small {
+		font-weight: 400;
+	}
+	/* 単一選択: ピル型のトラックに、選んだものだけ黄緑のピル（misskey-hub の btn-check） */
+	.seg {
 		display: grid;
-		gap: 3px;
+		gap: 4px;
+		padding: 4px;
+		border-radius: 999px;
 		background: var(--panel-2);
-		border-radius: 12px;
-		padding: 3px;
+		box-shadow: inset 0 0 0 1px var(--border);
 	}
 	.seg2 {
 		grid-template-columns: 1fr 1fr;
@@ -249,23 +255,26 @@
 	.seg3 {
 		grid-template-columns: 1fr 1fr 1fr;
 	}
-	.seg2 button,
-	.seg3 button {
+	.seg button {
 		border: none;
 		background: none;
-		border-radius: 10px;
-		padding: 9px 10px;
-		font-size: 0.85rem;
+		border-radius: 999px;
+		padding: 8px 10px;
+		font-size: 0.84rem;
 		font-weight: 700;
 		color: var(--fg-muted);
 		cursor: pointer;
+		transition: color 0.15s;
 	}
-	.seg2 button.on,
-	.seg3 button.on {
-		background: var(--panel);
-		color: var(--accent-fg);
-		box-shadow: var(--shadow);
+	.seg button:hover:not(.on) {
+		color: var(--fg);
 	}
+	.seg button.on {
+		background: var(--accent-grad);
+		color: #fff;
+		box-shadow: var(--shadow-accent);
+	}
+	/* 複数選択: app.css の .chip。ヒントは小さく添える */
 	.chips {
 		list-style: none;
 		margin: 0;
@@ -274,30 +283,14 @@
 		flex-wrap: wrap;
 		gap: 8px;
 	}
-	.chip {
-		background: var(--bg);
-		border: 1.5px solid var(--border);
-		border-radius: 999px;
-		padding: 8px 14px;
-		font-weight: 700;
-		font-size: 0.9rem;
-		cursor: pointer;
-		display: inline-flex;
-		align-items: baseline;
-		gap: 6px;
-		transition:
-			border-color 0.12s,
-			background 0.12s;
-	}
 	.chip small {
-		font-weight: 500;
-		font-size: 0.72rem;
+		font-weight: 400;
+		font-size: 0.7rem;
 		color: var(--fg-muted);
 	}
-	.chip.on {
-		border-color: var(--accent);
-		background: var(--accent-soft);
-		color: var(--accent-fg);
+	.chip.on small {
+		color: inherit;
+		opacity: 0.75;
 	}
 	.chip .x {
 		display: inline-flex;
@@ -308,13 +301,14 @@
 		align-items: center;
 		justify-content: space-between;
 		gap: 12px;
-		padding: 8px 0;
+		padding: 10px 0;
 		border-top: 1px solid var(--border);
 		cursor: pointer;
-		font-size: 0.92rem;
+		font-size: 0.9rem;
 	}
 	.switch:first-of-type {
 		border-top: none;
+		padding-top: 0;
 	}
 	.switch input {
 		position: absolute;
@@ -324,10 +318,11 @@
 	}
 	.switch i {
 		flex-shrink: 0;
-		width: 46px;
-		height: 28px;
+		width: 44px;
+		height: 26px;
 		border-radius: 999px;
 		background: var(--panel-2);
+		box-shadow: inset 0 0 0 1px var(--border);
 		position: relative;
 		transition: background 0.15s;
 	}
@@ -336,15 +331,16 @@
 		position: absolute;
 		top: 3px;
 		left: 3px;
-		width: 22px;
-		height: 22px;
+		width: 20px;
+		height: 20px;
 		border-radius: 50%;
 		background: #fff;
 		box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
-		transition: transform 0.15s;
+		transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
 	}
 	.switch input:checked + i {
-		background: var(--accent);
+		background: var(--accent-grad);
+		box-shadow: var(--shadow-accent);
 	}
 	.switch input:checked + i::after {
 		transform: translateX(18px);
@@ -353,14 +349,19 @@
 		outline: 2px solid var(--accent);
 		outline-offset: 2px;
 	}
+	/* デスクトップは段組み（高さの違うパネルを隙間なく詰める） */
 	@media (min-width: 900px) {
 		.settings {
-			display: grid;
-			grid-template-columns: 1fr 1fr;
-			gap: 16px;
+			display: block;
+			columns: 2;
+			column-gap: 16px;
 		}
 		.head {
-			grid-column: 1 / -1;
+			column-span: all;
+			margin-bottom: 16px;
+		}
+		.block {
+			margin-bottom: 16px;
 		}
 	}
 </style>

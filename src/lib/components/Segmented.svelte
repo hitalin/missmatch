@@ -29,31 +29,37 @@
 </div>
 
 <style>
+	/* Settings の .seg と同じ形（ピル型トラック + 選んだものだけ黄緑のピル） */
 	.seg {
 		display: grid;
-		grid-template-columns: 1fr auto 1fr;
+		grid-template-columns: 1fr 1fr 1fr;
+		gap: 4px;
+		padding: 4px;
+		border-radius: 999px;
 		background: var(--panel-2);
-		border-radius: 12px;
-		padding: 3px;
-		gap: 3px;
+		box-shadow: inset 0 0 0 1px var(--border);
 	}
 	button {
 		border: none;
 		background: none;
-		border-radius: 10px;
-		padding: 9px 10px;
-		font-size: 0.85rem;
+		border-radius: 999px;
+		padding: 8px 10px;
+		font-size: 0.84rem;
 		font-weight: 700;
 		color: var(--fg-muted);
 		cursor: pointer;
+		transition: color 0.15s;
+	}
+	button:hover:not(.on) {
+		color: var(--fg);
 	}
 	button.any {
 		font-weight: 400;
 		font-size: 0.78rem;
 	}
 	button.on {
-		background: var(--panel);
-		color: var(--accent-fg);
-		box-shadow: var(--shadow);
+		background: var(--accent-grad);
+		color: #fff;
+		box-shadow: var(--shadow-accent);
 	}
 </style>
