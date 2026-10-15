@@ -12,6 +12,7 @@
 		disabled = false,
 		minRows = 1,
 		autofocus = false,
+		fill = false,
 		onsubmit,
 		top,
 		left
@@ -22,6 +23,7 @@
 		disabled?: boolean;
 		minRows?: number;
 		autofocus?: boolean;
+		fill?: boolean; // デスクトップで親の高さいっぱいに広げる（textarea が残りを埋める）
 		onsubmit: (text: string) => void;
 		top?: Snippet; // 箱の上の行（選択肢など）
 		left?: Snippet; // 下端の左（補助ボタン）
@@ -32,8 +34,13 @@
 	let el = $state<HTMLTextAreaElement | null>(null);
 	const ready = $derived(value.trim().length >= 2 && !disabled);
 
+	const wide = () => fill && window.matchMedia('(min-width: 900px)').matches;
 	function autosize() {
 		if (!el) return;
+		if (wide()) {
+			el.style.height = '';
+			return;
+		}
 		el.style.height = 'auto';
 		el.style.height = `${Math.min(MAX_HEIGHT, el.scrollHeight)}px`;
 	}
@@ -55,7 +62,7 @@
 	}
 </script>
 
-<div class="box" class:disabled>
+<div class="box" class:disabled class:fill>
 	{#if top}
 		<div class="top">{@render top()}</div>
 	{/if}
@@ -94,6 +101,15 @@
 	}
 	.box:focus-within {
 		border-color: var(--accent);
+	}
+	@media (min-width: 900px) {
+		.box.fill {
+			flex: 1;
+		}
+		.box.fill textarea {
+			flex: 1;
+			min-height: 3em;
+		}
 	}
 	.box.disabled {
 		opacity: 0.7;

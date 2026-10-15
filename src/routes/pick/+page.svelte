@@ -265,9 +265,9 @@
 		const next = deleteSearch(profile, id);
 		profile = currentSearch(next) ? next : selectSearch(next, newSearch());
 	}
-	// 読み取れなかった軸は 2 つずつ選択肢で聞く（設定で既に決めた軸は聞かない）
+	// 読み取れなかった軸は 1 つずつ選択肢で聞く（設定で既に決めた軸は聞かない）
 	const asks = $derived(
-		search.unsure.filter((a) => isAxisDefault(profile.prefs, a)).slice(0, 2)
+		search.unsure.filter((a) => isAxisDefault(profile.prefs, a)).slice(0, 1)
 	);
 	function answerAsk(axis: AskAxis, choice: string | null) {
 		const prefs = choice ? chooseAxis(profile.prefs, axis, choice) : profile.prefs;
@@ -396,10 +396,8 @@
 		height: calc(100dvh - 10px - var(--nav-h) - env(safe-area-inset-bottom) - 16px);
 	}
 	@media (min-width: 900px) {
-		/* デスクトップはカードを縮めない。収まらない画面では縦に伸びる */
 		.discover-tab {
-			height: auto;
-			min-height: calc(100dvh - 16px - 24px);
+			height: calc(100dvh - 12px - 12px);
 		}
 	}
 	.banner {

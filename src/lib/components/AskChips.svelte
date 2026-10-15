@@ -23,6 +23,7 @@
 {/each}
 
 <style>
+	/* 1 問 1 行に固定し、入りきらない選択肢は横にスクロール（右端はフェード）。入力欄の高さを変えない */
 	.ask {
 		display: flex;
 		flex-wrap: nowrap;
@@ -31,14 +32,16 @@
 		white-space: nowrap;
 		align-items: center;
 		gap: 6px;
-		margin-bottom: 8px;
+		padding: 2px 24px 6px 2px;
+		margin: 0 -12px 2px 0;
 		font-size: 0.82rem;
+		mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent);
 	}
-	@media (min-width: 900px) {
-		.ask {
-			flex-wrap: wrap;
-			overflow: visible;
-		}
+	.ask::-webkit-scrollbar {
+		display: none;
+	}
+	.ask > :global(*) {
+		flex-shrink: 0;
 	}
 	.prompt {
 		font-weight: 700;

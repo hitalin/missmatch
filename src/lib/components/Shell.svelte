@@ -121,7 +121,7 @@
 			border-right: 1px solid var(--border);
 		}
 		.content {
-			padding: 16px 40px 24px;
+			padding: 12px 40px;
 		}
 		.inner {
 			max-width: var(--desktop-maxw);

@@ -199,7 +199,7 @@
 		</span>
 	</div>
 	{/if}
-	{#if m.reasons.length > 0}
+	{#if full && m.reasons.length > 0}
 		<ul class="reasons">
 			{#each m.reasons as r (r)}<li><Icon name="check" size={14} />{r}</li>{/each}
 		</ul>
@@ -307,7 +307,6 @@
 			<button class="round like" onclick={() => fly('right')} aria-label="いいね"><Icon name="heart" size={26} filled /></button>
 		</div>
 		<p class="hint">左右にスワイプ · タップで詳細 · ← → キー</p>
-		{#if composer}<div class="composer-slot">{@render composer()}</div>{/if}
 	{:else}
 		<div class="panel done">
 			<p class="big"><Icon name={total === 0 && matches.length === 0 ? 'search' : 'sparkle'} size={40} /></p>
@@ -322,10 +321,15 @@
 		</div>
 	{/if}
 
+	<!-- 右列: 判定パネル（縮む・内側スクロール）+ 言葉を足す箱（中身の高さを保って残りを埋める）。
+	     モバイルでは display: contents で束の下に並ぶ -->
 	{#if current}
-		<aside class="aside panel">
-			{@render details(current, false)}
-		</aside>
+		<div class="right">
+			<aside class="aside panel">
+				{@render details(current, false)}
+			</aside>
+			{#if composer}<div class="composer-slot">{@render composer()}</div>{/if}
+		</div>
 	{/if}
 
 	{#if sheet && current}
@@ -786,6 +790,9 @@
 	.aside {
 		display: none;
 	}
+	.right {
+		display: contents;
+	}
 	.composer-slot {
 		width: 100%;
 	}
@@ -795,20 +802,32 @@
 		.discover {
 			display: grid;
 			grid-template-columns: 420px minmax(320px, 460px);
-			grid-template-rows: minmax(0, 1fr) auto auto;
+			grid-template-rows: minmax(0, 1fr) auto;
 			grid-template-areas:
-				'stack aside'
-				'stack composer'
-				'actions composer';
+				'stack right'
+				'actions right';
 			justify-content: center;
 			column-gap: 32px;
 			align-items: start;
-			align-content: start;
+			flex: 1;
+			min-height: 0;
+			max-height: calc(640px + 82px);
 		}
+		/* 画面が低いときだけ束が縮む（640px 取れる画面では縮めない） */
 		.stack {
 			grid-area: stack;
 			flex: none;
-			height: 640px;
+			height: auto;
+			min-height: 0;
+			max-height: 640px;
+			align-self: stretch;
+		}
+		.round {
+			width: 56px;
+			height: 56px;
+		}
+		.actions {
+			margin-top: 10px;
 		}
 		.actions {
 			grid-area: actions;
@@ -817,22 +836,31 @@
 		.hint {
 			display: none;
 		}
+		.right {
+			grid-area: right;
+			display: flex;
+			flex-direction: column;
+			gap: 16px;
+			min-height: 0;
+			height: 100%;
+		}
+		/* 右パネルの下の残りを入力欄が埋める */
 		.composer-slot {
-			grid-area: composer;
-			align-self: end;
+			flex: 1 0 auto;
+			display: flex;
+			flex-direction: column;
 		}
 		.round.info {
 			display: none;
 		}
+		/* 低い画面では判定パネルが先に縮み、内側でスクロールする */
 		.aside {
-			grid-area: aside;
 			display: flex;
 			flex-direction: column;
 			gap: 18px;
 			padding: 22px 24px 24px;
-			/* 高さは中身に合わせる（行の高さには寄与させず、溢れたら内側でスクロール） */
-			max-height: 100%;
-			align-self: start;
+			flex: 0 1 auto;
+			min-height: 0;
 			overflow-y: auto;
 		}
 		.aside .banner {

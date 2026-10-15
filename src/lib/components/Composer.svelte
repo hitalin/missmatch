@@ -34,6 +34,7 @@
 		label={search.query ? 'もっと絞る' : '言葉を入れて絞る'}
 		placeholder={search.query ? 'もっと絞る（例: 小さめ、イラストの話が多い）' : '言葉を入れて絞る'}
 		disabled={reading}
+		fill
 		onsubmit={submit}
 	>
 		{#snippet top()}
@@ -60,7 +61,10 @@
 	@media (min-width: 900px) {
 		.composer {
 			position: static;
-			padding: 12px 0 0;
+			flex: 1;
+			display: flex;
+			flex-direction: column;
+			padding: 0;
 			background: none;
 		}
 	}
