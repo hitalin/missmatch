@@ -47,8 +47,8 @@
 		border: none;
 		background: none;
 		border-radius: 999px;
-		padding: 8px 6px;
-		font-size: 0.82rem;
+		padding: 10px 8px;
+		font-size: 0.84rem;
 		font-weight: 700;
 		color: var(--fg-muted);
 		cursor: pointer;

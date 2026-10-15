@@ -204,10 +204,10 @@
 		font-size: 0.86rem;
 	}
 	.block {
-		padding: 16px 18px;
+		padding: 20px 22px;
 		display: flex;
 		flex-direction: column;
-		gap: 12px;
+		gap: 16px;
 		break-inside: avoid;
 	}
 	h2 {
@@ -251,7 +251,7 @@
 	.field {
 		display: flex;
 		flex-direction: column;
-		gap: 8px;
+		gap: 10px;
 	}
 	.label {
 		font-size: 0.74rem;
@@ -281,8 +281,8 @@
 		border: none;
 		background: none;
 		border-radius: 999px;
-		padding: 8px 6px;
-		font-size: 0.82rem;
+		padding: 10px 8px;
+		font-size: 0.84rem;
 		font-weight: 700;
 		color: var(--fg-muted);
 		cursor: pointer;
@@ -303,7 +303,11 @@
 		padding: 0;
 		display: flex;
 		flex-wrap: wrap;
-		gap: 6px;
+		gap: 8px;
+	}
+	.chips .chip {
+		padding: 7px 14px;
+		font-size: 0.82rem;
 	}
 	.chip small {
 		font-weight: 400;
@@ -324,14 +328,14 @@
 		.settings {
 			display: block;
 			columns: 3 300px;
-			column-gap: 14px;
+			column-gap: 18px;
 		}
 		.head {
 			column-span: all;
-			margin-bottom: 12px;
+			margin-bottom: 18px;
 		}
 		.block {
-			margin-bottom: 14px;
+			margin-bottom: 18px;
 		}
 	}
 </style>
