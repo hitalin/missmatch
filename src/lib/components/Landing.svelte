@@ -6,12 +6,36 @@
 	// 言葉がまだ無い「さがす」: 検索ボックスだけのランディング。送るとこの検索の言葉になる
 	let { onsubmit }: { onsubmit: (text: string) => void } = $props();
 
+	// 例文の候補。初めての人とサブ垢の居場所を探す人が実際に書きそうなものから、毎回いくつか選んで出す
 	const EXAMPLES = [
-		'病み垢を置ける、静かで干渉が少ない場所',
-		'一次創作のイラストを見せたい',
-		'メアドなしで登録できてゲームの話ができる',
-		'VRChat の人が多いところ'
+		'初めての Misskey。のんびり雑談できるところ',
+		'人が多くてにぎやかなところ',
+		'小さめで、顔見知りができやすいところ',
+		'推しの話を気兼ねなくできる場所',
+		'絵を描く人が多くて、作品を見てもらえる',
+		'小説や二次創作を載せたい',
+		'ゲームの話ができて、一緒に遊ぶ人も見つかる',
+		'プログラミングや技術の話がしたい',
+		'愚痴や弱音を吐いても浮かない、静かな場所',
+		'日記やひとりごとを気軽に書きたい',
+		'VTuber の配信の感想を語りたい',
+		'アニメの実況で盛り上がりたい',
+		'VRChat の人が多いところ',
+		'ペットや動物の写真を見たい',
+		'メアドなしで登録できるところ',
+		'広告がなくて、ルールがしっかりしている'
 	];
+	const SHOWN = 8; // モバイルは CSS で 5 個まで
+	// SSR では先頭から、表示後に並びをシャッフルする（毎回違う例が目に入るように）
+	let examples = $state(EXAMPLES.slice(0, SHOWN));
+	$effect(() => {
+		const pool = [...EXAMPLES];
+		for (let i = pool.length - 1; i > 0; i--) {
+			const j = Math.floor(Math.random() * (i + 1));
+			[pool[i], pool[j]] = [pool[j], pool[i]];
+		}
+		examples = pool.slice(0, SHOWN);
+	});
 	let text = $state('');
 	const go = (t: string) => onsubmit(t.trim().slice(0, MAX_INTENT_LENGTH));
 </script>
@@ -62,7 +86,7 @@
 		</div>
 
 		<ul class="examples">
-			{#each EXAMPLES as ex (ex)}
+			{#each examples as ex (ex)}
 				<li><button class="chip ghost" onclick={() => go(ex)}>{ex}</button></li>
 			{/each}
 		</ul>
@@ -147,6 +171,11 @@
 		flex-wrap: wrap;
 		justify-content: center;
 		gap: 8px;
+	}
+	@media (max-width: 899px) {
+		.examples li:nth-child(n + 6) {
+			display: none;
+		}
 	}
 	footer {
 		padding: 16px 0 24px;
