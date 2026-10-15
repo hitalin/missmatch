@@ -1,6 +1,5 @@
 <script lang="ts">
 	import type { Preferences } from '$lib/prefs';
-	import Icon from './Icon.svelte';
 
 	// 20 秒で終わるオンボーディング: 年齢 → R-18。すぐデッキへ（探したい場所はデッキ上の検索ボックスで）
 	let {
@@ -27,7 +26,7 @@
 	{#if step === 0}
 		<div class="hero">
 			<div class="blob" aria-hidden="true"></div>
-			<p class="brand"><span class="logo"><Icon name="heart" size={22} filled /></span> みすまっち</p>
+			<p class="brand"><img class="logo" src="/logo.svg" alt="" width="26" height="26" /> みすまっち</p>
 			<h1>Swipe.<br />Match.<br /><span class="text-grad">with Misskey.</span></h1>
 			<p class="lead">
 				登録できる日本語 Misskey サーバー約 100 件を、マッチングアプリのようにスワイプで選べます。
@@ -94,7 +93,7 @@
 		font-size: 1.1rem;
 	}
 	.logo {
-		color: var(--accent);
+		vertical-align: -0.3em;
 	}
 	h1 {
 		margin: 0;

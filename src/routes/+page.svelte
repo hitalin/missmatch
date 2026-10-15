@@ -2,7 +2,7 @@
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import Icon from '$lib/components/Icon.svelte';
+	import LandingBackdrop from '$lib/components/LandingBackdrop.svelte';
 	import { MAX_INTENT_LENGTH } from '$lib/intent';
 	import PromptBox from '$lib/components/PromptBox.svelte';
 	import Shell, { type Tab } from '$lib/components/Shell.svelte';
@@ -87,8 +87,9 @@
 	ondelete={removeSearch}
 >
 	<main class="landing">
+		<LandingBackdrop />
 		<div class="center">
-			<h1 class="brand"><span class="logo"><Icon name="heart" size={40} filled /></span> <span class="text-grad">みすまっち</span></h1>
+			<h1 class="brand"><img class="logo" src="/logo.svg" alt="" width="48" height="48" /> <span class="text-grad">みすまっち</span></h1>
 			<p class="tagline">Misskey のサーバーと、マッチング。</p>
 			<p class="ask">どんな場所を探している？</p>
 
@@ -136,17 +137,6 @@
 		position: relative;
 		isolation: isolate;
 	}
-	/* misskey-hub のドット背景。上下はフェードさせる */
-	.landing::before {
-		content: '';
-		position: absolute;
-		inset: 0;
-		z-index: -1;
-		background-image: radial-gradient(circle, color-mix(in srgb, var(--fg) 14%, transparent) 2px, transparent 2.5px);
-		background-size: 22px 22px;
-		mask-image: radial-gradient(ellipse at center, #000 20%, transparent 70%);
-		pointer-events: none;
-	}
 	.center {
 		flex: 1;
 		display: flex;
@@ -166,9 +156,9 @@
 		letter-spacing: -0.02em;
 	}
 	.logo {
-		color: var(--accent);
-		display: inline-flex;
-		vertical-align: -6px;
+		width: 1.1em;
+		height: 1.1em;
+		vertical-align: -0.18em;
 	}
 	.tagline {
 		margin: -8px 0 8px;

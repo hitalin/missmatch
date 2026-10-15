@@ -41,7 +41,7 @@
 
 <div class="sidebar">
 	<a href="/" class="logo" aria-label="みすまっち（ホーム）">
-		<Icon name="heart" size={24} filled />
+		<img src="/logo.svg" alt="" width="26" height="26" />
 		<span>みすまっち</span>
 	</a>
 	<nav aria-label="画面切り替え">
