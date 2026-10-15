@@ -16,7 +16,7 @@ remote = true
 # `wrangler kv namespace create VIBE_KV` で作成した id に差し替える
 [[kv_namespaces]]
 binding = "VIBE_KV"
-id = "REPLACE_ME"
+id = "be9cfe4fae00490ca3fc2bb6a38e2a2b"
 
 [observability]
 enabled = true
