@@ -78,6 +78,14 @@
 </div>
 
 <style>
+	/* 宇宙の上ではカーソルを 🚀 に（misspace と同じ）。本文の余白も含めるため、本文の枠ごと指定する。
+	   入力欄やボタンは自分のカーソル（文字・指）のまま */
+	:global(.content:has(.landing)) {
+		cursor:
+			url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'><text y='24' font-size='24'>🚀</text></svg>")
+				4 4,
+			auto;
+	}
 	/* 宇宙の背景の上に載るので、ライト / ダークに関わらず暗い配色にする */
 	.landing {
 		--fg: #f0f2f5;
