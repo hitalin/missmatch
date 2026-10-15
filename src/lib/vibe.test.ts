@@ -33,6 +33,12 @@ const server: ServerInfo = {
 	driveCapacityMb: 1024,
 	adsEnabled: false,
 	noteSearchableScope: 'global',
+	noteSearch: true,
+	translator: true,
+	chat: true,
+	videoUpload: true,
+	hasTos: true,
+	hasPrivacyPolicy: true,
 	serverRules: ['誹謗中傷禁止'],
 	langs: ['ja']
 };

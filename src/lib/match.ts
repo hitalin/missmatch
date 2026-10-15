@@ -6,7 +6,7 @@ import {
 	featuresOf,
 	GENRE_FEATURES
 } from './features';
-import { type Preferences, paceOf, scaleOf } from './prefs';
+import { BIG_DRIVE_MB, type Preferences, paceOf, scaleOf } from './prefs';
 import { hasAffinity, type Search, seenHosts } from './search';
 import type { Match, ServerInfo, ServerProfile } from './types';
 import { vibeTags } from './vibe';
@@ -54,6 +54,14 @@ export function passesFilters(p: ServerProfile, prefs: Preferences): boolean {
 	if (d.gtl && !s.gtlAvailable) return false;
 	if (d.official && !s.officialMisskey) return false;
 	if (d.fresh && (s.versionMonthsBehind === null || s.versionMonthsBehind > 1)) return false;
+	if (d.ltl && !s.ltlAvailable) return false;
+	if (d.noteSearch && !s.noteSearch) return false;
+	if (d.translator && !s.translator) return false;
+	if (d.chat && !s.chat) return false;
+	if (d.videoUpload && !s.videoUpload) return false;
+	if (d.bigDrive && (s.driveCapacityMb ?? 0) < BIG_DRIVE_MB) return false;
+	if (d.tos && !s.hasTos) return false;
+	if (d.privacyPolicy && !s.hasPrivacyPolicy) return false;
 	return true;
 }
 

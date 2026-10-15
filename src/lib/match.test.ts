@@ -72,6 +72,50 @@ describe('passesFilters', () => {
 		expect(hosts(prefs({ age: 'child' }))).toContain('ok.tld');
 	});
 
+	it('機能と運営の絶対条件で絞る', () => {
+		const ps = [
+			mk({
+				host: 'full.tld',
+				ltlAvailable: true,
+				noteSearch: true,
+				translator: true,
+				chat: true,
+				videoUpload: true,
+				driveCapacityMb: 20480,
+				hasTos: true,
+				hasPrivacyPolicy: true
+			}),
+			mk({
+				host: 'bare.tld',
+				ltlAvailable: false,
+				noteSearch: false,
+				translator: false,
+				chat: false,
+				videoUpload: false,
+				driveCapacityMb: 1024,
+				hasTos: false,
+				hasPrivacyPolicy: false
+			})
+		];
+		const only = (d: Partial<Preferences['dealbreakers']>) =>
+			applyFilters(ps, prefs({ dealbreakers: { ...defaultPreferences().dealbreakers, ...d } })).map(
+				(x) => x.server.host
+			);
+		for (const key of [
+			'ltl',
+			'noteSearch',
+			'translator',
+			'chat',
+			'videoUpload',
+			'bigDrive',
+			'tos',
+			'privacyPolicy'
+		] as const) {
+			expect(only({ [key]: true })).toEqual(['full.tld']);
+		}
+		expect(only({})).toEqual(['full.tld', 'bare.tld']);
+	});
+
 	it('招待制・停止中を含める設定なら生きているものだけ出す（休眠は出さない）', () => {
 		const all = hosts(prefs({ registrations: ['open', 'approval', 'invite', 'closed'] }));
 		expect(all).toContain('invite.tld');

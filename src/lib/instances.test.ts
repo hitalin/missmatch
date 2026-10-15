@@ -61,6 +61,48 @@ describe('normalizeInstance', () => {
 		expect(s?.officialMisskey).toBe(true);
 	});
 
+	it('機能と運営の情報を読む（無ければ「ない」とみなす）', () => {
+		const s = normalizeInstance({
+			...base,
+			meta: {
+				...base.meta,
+				translatorAvailable: true,
+				tosUrl: 'https://example.tld/tos',
+				privacyPolicyUrl: '',
+				policies: {
+					...base.meta?.policies,
+					canSearchNotes: true,
+					canUseTranslator: true,
+					chatAvailability: 'available',
+					uploadableFileTypes: ['image/*', 'video/*']
+				}
+			}
+		});
+		expect(s?.noteSearch).toBe(true);
+		expect(s?.translator).toBe(true);
+		expect(s?.chat).toBe(true);
+		expect(s?.videoUpload).toBe(true);
+		expect(s?.hasTos).toBe(true);
+		expect(s?.hasPrivacyPolicy).toBe(false);
+		const none = normalizeInstance({ ...base, meta: { ...base.meta, policies: {} } });
+		expect(none?.noteSearch).toBe(false);
+		expect(none?.translator).toBe(false);
+		expect(none?.chat).toBe(false);
+		expect(none?.videoUpload).toBe(false);
+		// 翻訳はサーバーで有効でも、一般ユーザーに許可されていなければ使えない
+		const noRole = normalizeInstance({
+			...base,
+			meta: { ...base.meta, translatorAvailable: true, policies: { canUseTranslator: false } }
+		});
+		expect(noRole?.translator).toBe(false);
+		// 「何でも」は動画も含む
+		const any = normalizeInstance({
+			...base,
+			meta: { ...base.meta, policies: { uploadableFileTypes: ['*/*'] } }
+		});
+		expect(any?.videoUpload).toBe(true);
+	});
+
 	it('最新安定版からの遅れを月数で持つ', () => {
 		expect(normalizeInstance(base, '2026.10.0')?.versionMonthsBehind).toBe(13);
 		expect(normalizeInstance(base)?.versionMonthsBehind).toBeNull();

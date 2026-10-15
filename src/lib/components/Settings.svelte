@@ -42,14 +42,37 @@
 	function toggleIn<T extends string>(list: T[], v: T): T[] {
 		return list.includes(v) ? list.filter((x) => x !== v) : [...list, v];
 	}
-	// 絶対条件はチップで並べるので短い名前にする
-	const DEALBREAKER_SHORT: Record<keyof Dealbreakers, string> = {
-		emailFree: 'メアドなしで登録',
-		adsFree: '広告なし',
-		gtl: 'グローバル TL あり',
-		official: '本家 Misskey のみ',
-		fresh: '最新版に追従'
-	};
+	// 絶対条件はチップで並べるので短い名前にし、種類ごとに分ける
+	const DEALBREAKER_GROUPS: { label: string; items: [keyof Dealbreakers, string][] }[] = [
+		{
+			label: '登録・タイムライン',
+			items: [
+				['emailFree', 'メアドなしで登録'],
+				['adsFree', '広告なし'],
+				['ltl', 'ローカル TL あり'],
+				['gtl', 'グローバル TL あり']
+			]
+		},
+		{
+			label: '機能',
+			items: [
+				['noteSearch', 'ノート検索'],
+				['translator', '翻訳'],
+				['chat', 'チャット'],
+				['videoUpload', '動画アップロード'],
+				['bigDrive', 'ドライブ 10GB 以上']
+			]
+		},
+		{
+			label: '運営',
+			items: [
+				['official', '本家 Misskey のみ'],
+				['fresh', '最新版に追従'],
+				['tos', '利用規約あり'],
+				['privacyPolicy', 'プライバシーポリシーあり']
+			]
+		}
+	];
 	function setDealbreaker(key: keyof Dealbreakers, value: boolean) {
 		prefs = { ...prefs, dealbreakers: { ...prefs.dealbreakers, [key]: value } };
 	}
@@ -61,125 +84,131 @@
 		<p class="muted">{#if count !== null}いまの条件に合うサーバーは <b>{count} 件</b>{:else}サーバー情報を取得中…{/if}</p>
 	</header>
 
-	{#if swipes > 0}
+	<div class="col">
 		<div class="panel block">
-			<h2>
-				いいねから学んだ好み <span class="muted small">{swipes} スワイプ</span>
-				<button class="reset" onclick={onresettaste}>リセット</button>
-			</h2>
-			{#if chips.length === 0}
-				<p class="help">まだはっきりした傾向はありません。スワイプを続けると出てきます。</p>
-			{:else}
+			<h2>基本</h2>
+			<div class="field">
+				<span class="label">年齢</span>
+				<div class="seg seg3" role="radiogroup">
+					<button role="radio" aria-checked={prefs.age === 'adult'} class:on={prefs.age === 'adult'} onclick={() => (prefs = { ...prefs, age: 'adult' })}>18 歳以上</button>
+					<button role="radio" aria-checked={prefs.age === 'minor'} class:on={prefs.age === 'minor'} onclick={() => (prefs = { ...prefs, age: 'minor' })}>12〜17 歳</button>
+					<button role="radio" aria-checked={prefs.age === 'child'} class:on={prefs.age === 'child'} onclick={() => (prefs = { ...prefs, age: 'child' })}>12 歳未満</button>
+				</div>
+			</div>
+			<div class="field">
+				<span class="label">登録のしかた</span>
 				<ul class="chips">
-					{#each chips as c (c.feature)}
+					{#each REGISTRATIONS as r (r)}
 						<li>
-							<button class="chip on" onclick={() => onforget(c.feature)} title="この傾向を忘れる">
-								{c.label} <span class="x"><Icon name="x" size={12} /></span>
+							<button
+								class="chip"
+								class:on={prefs.registrations.includes(r)}
+								aria-pressed={prefs.registrations.includes(r)}
+								onclick={() => {
+									const next = toggleIn(prefs.registrations, r);
+									if (next.length > 0) prefs = { ...prefs, registrations: next };
+								}}
+							>
+								{#if prefs.registrations.includes(r)}<Icon name="check" size={13} />{/if}
+								{REGISTRATION_LABELS[r]}
 							</button>
 						</li>
 					{/each}
 				</ul>
+			</div>
+			<div class="field">
+				<span class="label">R-18 の投稿</span>
+				<div class="seg seg3" role="radiogroup">
+					{#each [['avoid', '見たくない'], ['neutral', '気にしない'], ['welcome', '歓迎']] as [v, label] (v)}
+						<button role="radio" aria-checked={prefs.nsfw === v} class:on={prefs.nsfw === v} onclick={() => (prefs = { ...prefs, nsfw: v as Preferences['nsfw'] })}>{label}</button>
+					{/each}
+				</div>
+			</div>
+		</div>
+		<div class="panel block">
+			<h2>規模と流速 <span class="muted small">選んだ区分だけ出す</span></h2>
+			<div class="field">
+				<span class="label">規模</span>
+				<ul class="chips">
+					{#each SCALES as s (s)}
+						<li><button class="chip" class:on={prefs.scales.includes(s)} aria-pressed={prefs.scales.includes(s)} onclick={() => (prefs = { ...prefs, scales: toggleIn(prefs.scales, s) })}>{#if prefs.scales.includes(s)}<Icon name="check" size={13} />{/if}{SCALE_LABELS[s]} <small>{SCALE_HINTS[s]}</small></button></li>
+					{/each}
+				</ul>
+			</div>
+			<div class="field">
+				<span class="label">流速</span>
+				<ul class="chips">
+					{#each PACES as p (p)}
+						<li><button class="chip" class:on={prefs.paces.includes(p)} aria-pressed={prefs.paces.includes(p)} onclick={() => (prefs = { ...prefs, paces: toggleIn(prefs.paces, p) })}>{#if prefs.paces.includes(p)}<Icon name="check" size={13} />{/if}{PACE_LABELS[p]} <small>{PACE_HINTS[p]}</small></button></li>
+					{/each}
+				</ul>
+			</div>
+		</div>
+	</div>
+	<div class="col">
+		<div class="panel block">
+			<h2>話したいこと <span class="muted small">複数可・加点</span></h2>
+			<ul class="chips">
+				{#each TOPICS as t (t)}
+					<li><button class="chip" class:on={prefs.topics.includes(t)} aria-pressed={prefs.topics.includes(t)} onclick={() => (prefs = { ...prefs, topics: toggleIn(prefs.topics, t) })}>{#if prefs.topics.includes(t)}<Icon name="check" size={13} />{/if}{TOPIC_LABELS[t]}</button></li>
+				{/each}
+			</ul>
+		</div>
+		<div class="panel block">
+			<h2>空気感</h2>
+			<div class="field"><span class="label">空気</span><Segmented value={prefs.tone} left="ドライ・自由" right="ほのぼの" onchange={(v) => (prefs = { ...prefs, tone: v })} /></div>
+			<div class="field"><span class="label">関わり方</span><Segmented value={prefs.community} left="濃い身内" right="初心者歓迎" onchange={(v) => (prefs = { ...prefs, community: v })} /></div>
+			<div class="field"><span class="label">ルール</span><Segmented value={prefs.rules} left="ゆるめ" right="しっかり" onchange={(v) => (prefs = { ...prefs, rules: v })} /></div>
+		</div>
+	</div>
+	<div class="col">
+		{#if swipes > 0}
+			<div class="panel block">
+				<h2>
+					いいねから学んだ好み <span class="muted small">{swipes} スワイプ</span>
+					<button class="reset" onclick={onresettaste}>リセット</button>
+				</h2>
+				{#if chips.length === 0}
+					<p class="help">まだはっきりした傾向はありません。スワイプを続けると出てきます。</p>
+				{:else}
+					<ul class="chips">
+						{#each chips as c (c.feature)}
+							<li>
+								<button class="chip on" onclick={() => onforget(c.feature)} title="この傾向を忘れる">
+									{c.label} <span class="x"><Icon name="x" size={12} /></span>
+								</button>
+							</li>
+						{/each}
+					</ul>
+				{/if}
+			</div>
+		{/if}
+		<div class="panel block">
+			<h2>絶対条件 <span class="muted small">当てはまらない鯖は出さない</span></h2>
+			{#each DEALBREAKER_GROUPS as g (g.label)}
+				<div class="field">
+					<span class="label">{g.label}</span>
+					<ul class="chips">
+						{#each g.items as [k, label] (k)}
+							<li>
+								<button
+									class="chip"
+									class:on={prefs.dealbreakers[k]}
+									aria-pressed={prefs.dealbreakers[k]}
+									title={DEALBREAKER_LABELS[k]}
+									onclick={() => setDealbreaker(k, !prefs.dealbreakers[k])}
+								>
+									{#if prefs.dealbreakers[k]}<Icon name="check" size={13} />{/if}{label}
+								</button>
+							</li>
+						{/each}
+					</ul>
+				</div>
+			{/each}
+			{#if count !== null && count < 5}
+				<p class="warn">条件が厳しく、該当が {count} 件です。絶対条件を減らすと増えます。</p>
 			{/if}
 		</div>
-	{/if}
-
-	<div class="panel block">
-		<h2>基本</h2>
-		<div class="field">
-			<span class="label">年齢</span>
-			<div class="seg seg3" role="radiogroup">
-				<button role="radio" aria-checked={prefs.age === 'adult'} class:on={prefs.age === 'adult'} onclick={() => (prefs = { ...prefs, age: 'adult' })}>18 歳以上</button>
-				<button role="radio" aria-checked={prefs.age === 'minor'} class:on={prefs.age === 'minor'} onclick={() => (prefs = { ...prefs, age: 'minor' })}>12〜17 歳</button>
-				<button role="radio" aria-checked={prefs.age === 'child'} class:on={prefs.age === 'child'} onclick={() => (prefs = { ...prefs, age: 'child' })}>12 歳未満</button>
-			</div>
-		</div>
-		<div class="field">
-			<span class="label">登録のしかた</span>
-			<ul class="chips">
-				{#each REGISTRATIONS as r (r)}
-					<li>
-						<button
-							class="chip"
-							class:on={prefs.registrations.includes(r)}
-							aria-pressed={prefs.registrations.includes(r)}
-							onclick={() => {
-								const next = toggleIn(prefs.registrations, r);
-								if (next.length > 0) prefs = { ...prefs, registrations: next };
-							}}
-						>
-							{#if prefs.registrations.includes(r)}<Icon name="check" size={13} />{/if}
-							{REGISTRATION_LABELS[r]}
-						</button>
-					</li>
-				{/each}
-			</ul>
-		</div>
-		<div class="field">
-			<span class="label">R-18 の投稿</span>
-			<div class="seg seg3" role="radiogroup">
-				{#each [['avoid', '見たくない'], ['neutral', '気にしない'], ['welcome', '歓迎']] as [v, label] (v)}
-					<button role="radio" aria-checked={prefs.nsfw === v} class:on={prefs.nsfw === v} onclick={() => (prefs = { ...prefs, nsfw: v as Preferences['nsfw'] })}>{label}</button>
-				{/each}
-			</div>
-		</div>
-	</div>
-
-	<div class="panel block">
-		<h2>話したいこと <span class="muted small">複数可・加点</span></h2>
-		<ul class="chips">
-			{#each TOPICS as t (t)}
-				<li><button class="chip" class:on={prefs.topics.includes(t)} aria-pressed={prefs.topics.includes(t)} onclick={() => (prefs = { ...prefs, topics: toggleIn(prefs.topics, t) })}>{#if prefs.topics.includes(t)}<Icon name="check" size={13} />{/if}{TOPIC_LABELS[t]}</button></li>
-			{/each}
-		</ul>
-	</div>
-
-	<div class="panel block">
-		<h2>空気感</h2>
-		<div class="field"><span class="label">空気</span><Segmented value={prefs.tone} left="ドライ・自由" right="ほのぼの" onchange={(v) => (prefs = { ...prefs, tone: v })} /></div>
-		<div class="field"><span class="label">関わり方</span><Segmented value={prefs.community} left="濃い身内" right="初心者歓迎" onchange={(v) => (prefs = { ...prefs, community: v })} /></div>
-		<div class="field"><span class="label">ルール</span><Segmented value={prefs.rules} left="ゆるめ" right="しっかり" onchange={(v) => (prefs = { ...prefs, rules: v })} /></div>
-	</div>
-
-	<div class="panel block">
-		<h2>規模と流速 <span class="muted small">選んだ区分だけ出す</span></h2>
-		<div class="field">
-			<span class="label">規模</span>
-			<ul class="chips">
-				{#each SCALES as s (s)}
-					<li><button class="chip" class:on={prefs.scales.includes(s)} aria-pressed={prefs.scales.includes(s)} onclick={() => (prefs = { ...prefs, scales: toggleIn(prefs.scales, s) })}>{#if prefs.scales.includes(s)}<Icon name="check" size={13} />{/if}{SCALE_LABELS[s]} <small>{SCALE_HINTS[s]}</small></button></li>
-				{/each}
-			</ul>
-		</div>
-		<div class="field">
-			<span class="label">流速</span>
-			<ul class="chips">
-				{#each PACES as p (p)}
-					<li><button class="chip" class:on={prefs.paces.includes(p)} aria-pressed={prefs.paces.includes(p)} onclick={() => (prefs = { ...prefs, paces: toggleIn(prefs.paces, p) })}>{#if prefs.paces.includes(p)}<Icon name="check" size={13} />{/if}{PACE_LABELS[p]} <small>{PACE_HINTS[p]}</small></button></li>
-				{/each}
-			</ul>
-		</div>
-	</div>
-
-	<div class="panel block">
-		<h2>絶対条件 <span class="muted small">当てはまらない鯖は出さない</span></h2>
-		<ul class="chips">
-			{#each Object.keys(DEALBREAKER_LABELS) as key (key)}
-				{@const k = key as keyof Dealbreakers}
-				<li>
-					<button
-						class="chip"
-						class:on={prefs.dealbreakers[k]}
-						aria-pressed={prefs.dealbreakers[k]}
-						onclick={() => setDealbreaker(k, !prefs.dealbreakers[k])}
-					>
-						{#if prefs.dealbreakers[k]}<Icon name="check" size={13} />{/if}{DEALBREAKER_SHORT[k]}
-					</button>
-				</li>
-			{/each}
-		</ul>
-		{#if count !== null && count < 5}
-			<p class="warn">条件が厳しく、該当が {count} 件です。絶対条件を減らすと増えます。</p>
-		{/if}
 	</div>
 
 </section>
@@ -321,19 +350,25 @@
 		opacity: 0.7;
 	}
 	/* デスクトップは段組み（高さの違うパネルを隙間なく詰める） */
-	/* デスクトップは 3 段組みで 1 画面に収める */
+	/* モバイルは 1 列にそのまま並べる */
+	.col {
+		display: contents;
+	}
+	/* デスクトップは高さが揃うよう 3 列に振り分け、1 画面に収める */
 	@media (min-width: 900px) {
 		.settings {
-			display: block;
-			columns: 3 300px;
-			column-gap: 18px;
+			display: grid;
+			grid-template-columns: repeat(3, minmax(0, 1fr));
+			align-items: start;
+			gap: 14px 18px;
 		}
 		.head {
-			column-span: all;
-			margin-bottom: 14px;
+			grid-column: 1 / -1;
 		}
-		.block {
-			margin-bottom: 16px;
+		.col {
+			display: flex;
+			flex-direction: column;
+			gap: 16px;
 		}
 	}
 </style>

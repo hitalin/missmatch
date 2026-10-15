@@ -31,6 +31,12 @@ export interface ServerInfo {
 	driveCapacityMb: number | null; // 一般ユーザーのドライブ容量
 	adsEnabled: boolean; // 広告が表示されるか
 	noteSearchableScope: 'global' | 'local' | null; // 投稿がどこから検索されうるか
+	noteSearch: boolean; // 一般ユーザーがノートを検索できる
+	translator: boolean; // 翻訳機能が有効で、一般ユーザーも使える
+	chat: boolean; // チャットが使える
+	videoUpload: boolean; // 動画をアップロードできる
+	hasTos: boolean; // 利用規約の URL がある
+	hasPrivacyPolicy: boolean; // プライバシーポリシーの URL がある
 	serverRules: string[];
 	langs: string[];
 }

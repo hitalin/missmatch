@@ -28,11 +28,18 @@ export interface JoinMisskeyInstance {
 		repositoryUrl?: string;
 		notesPerOneAd?: number;
 		noteSearchableScope?: string;
+		translatorAvailable?: boolean;
+		tosUrl?: string;
+		privacyPolicyUrl?: string;
 		policies?: {
 			ltlAvailable?: boolean;
 			gtlAvailable?: boolean;
 			driveCapacityMb?: number;
 			canInvite?: boolean;
+			canSearchNotes?: boolean;
+			canUseTranslator?: boolean;
+			chatAvailability?: string;
+			uploadableFileTypes?: string[];
 		};
 		features?: { localTimeline?: boolean; globalTimeline?: boolean };
 	};
@@ -143,6 +150,7 @@ export function normalizeInstance(
 	const meta = instance.meta;
 	const repository = (instance.nodeinfo?.software?.repository ?? meta?.repositoryUrl ?? '').trim();
 	const scope = meta?.noteSearchableScope;
+	const policies = meta?.policies;
 
 	let iconUrl = instance.iconUrl ?? meta?.iconUrl ?? null;
 	if (iconUrl && !iconUrl.startsWith('http')) {
@@ -183,6 +191,15 @@ export function normalizeInstance(
 		driveCapacityMb: meta?.policies?.driveCapacityMb ?? null,
 		adsEnabled: (meta?.notesPerOneAd ?? 0) > 0,
 		noteSearchableScope: scope === 'global' || scope === 'local' ? scope : null,
+		// 機能はロールのポリシー（一般ユーザー）で見る。書いていなければ「ない」とみなす
+		noteSearch: policies?.canSearchNotes === true,
+		translator: meta?.translatorAvailable === true && policies?.canUseTranslator !== false,
+		chat: policies?.chatAvailability === 'available',
+		videoUpload: (policies?.uploadableFileTypes ?? []).some(
+			(t) => t === '*/*' || t.startsWith('video/')
+		),
+		hasTos: !!meta?.tosUrl?.trim(),
+		hasPrivacyPolicy: !!meta?.privacyPolicyUrl?.trim(),
 		serverRules: meta?.serverRules ?? [],
 		langs: instance.langs ?? []
 	};

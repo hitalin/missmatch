@@ -49,13 +49,31 @@ export interface Dealbreakers {
 	gtl: boolean; // グローバル TL がある
 	official: boolean; // 本家 Misskey のみ
 	fresh: boolean; // 最新版に追従（1 ヶ月以内）
+	ltl: boolean; // ローカル TL がある
+	noteSearch: boolean; // ノートを検索できる
+	translator: boolean; // 翻訳機能が使える
+	chat: boolean; // チャットが使える
+	videoUpload: boolean; // 動画を上げられる
+	bigDrive: boolean; // ドライブ 10GB 以上
+	tos: boolean; // 利用規約がある
+	privacyPolicy: boolean; // プライバシーポリシーがある
 }
+// 「大容量ドライブ」の閾値（登録受付中の日本語サーバーの上位 15% ほど）
+export const BIG_DRIVE_MB = 10 * 1024;
 export const DEALBREAKER_LABELS: Record<keyof Dealbreakers, string> = {
 	emailFree: 'メールアドレスなしで登録できる',
 	adsFree: '広告が出ない',
 	gtl: 'グローバル TL がある',
 	official: '本家 Misskey のみ（カスタム版を除く）',
-	fresh: '最新版に追従している'
+	fresh: '最新版に追従している',
+	ltl: 'ローカル TL がある',
+	noteSearch: 'ノートを検索できる',
+	translator: '翻訳機能が使える',
+	chat: 'チャットが使える',
+	videoUpload: '動画をアップロードできる',
+	bigDrive: 'ドライブが 10GB 以上',
+	tos: '利用規約がある',
+	privacyPolicy: 'プライバシーポリシーがある'
 };
 
 // 年齢区分。登録年齢を制限しているサーバーの絞り込みに使う
@@ -92,7 +110,15 @@ export function defaultPreferences(): Preferences {
 			adsFree: false,
 			gtl: false,
 			official: false,
-			fresh: false
+			fresh: false,
+			ltl: false,
+			noteSearch: false,
+			translator: false,
+			chat: false,
+			videoUpload: false,
+			bigDrive: false,
+			tos: false,
+			privacyPolicy: false
 		},
 		topics: [],
 		tone: 'any',

@@ -23,6 +23,12 @@ export const mkServer = (over: Partial<ServerInfo> = {}): ServerInfo => ({
 	driveCapacityMb: 1024,
 	adsEnabled: false,
 	noteSearchableScope: 'global',
+	noteSearch: true,
+	translator: true,
+	chat: true,
+	videoUpload: true,
+	hasTos: true,
+	hasPrivacyPolicy: true,
 	serverRules: [],
 	langs: ['ja'],
 	...over

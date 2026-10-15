@@ -13,13 +13,13 @@ import {
 } from '$lib/vibe';
 
 // ServerInfo の形を変えたら上げる
-const SERVERS_KEY = 'servers:v5';
+const SERVERS_KEY = 'servers:v6';
 const SERVERS_TTL_SECONDS = 60 * 60;
 // 1 リクエストで新たに Clef にかける候補の上限（レイテンシとコストの上限になる）
 export const CANDIDATE_LIMIT = 40;
 // 組み立て済みの属性表のキャッシュ。欠けが無くなったときだけ置き、毎回 97〜576 件の KV 読みを避ける
 const PROFILES_TTL_SECONDS = 60 * 5;
-const profilesKey = (scope: Scope) => `profiles:v1:${scope}`;
+const profilesKey = (scope: Scope) => `profiles:v2:${scope}`;
 const CONCURRENCY = 8;
 
 // `vite dev` などバインディングがない環境向けの代替
