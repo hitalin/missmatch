@@ -48,6 +48,11 @@ export function deleteSearch(p: SavedProfile, id: string): SavedProfile {
 	return { ...p, searches, current: latest?.id ?? '' };
 }
 
+export function renameSearch(p: SavedProfile, id: string, title: string): SavedProfile {
+	const t = title.trim();
+	return { ...p, searches: p.searches.map((s) => (s.id === id ? { ...s, title: t } : s)) };
+}
+
 export function patchSearch(p: SavedProfile, patch: Partial<Search>): SavedProfile {
 	return {
 		...p,
@@ -76,6 +81,7 @@ function parseSearch(x: unknown): Search | null {
 	return {
 		id: s.id,
 		query: s.query,
+		title: isStr(s.title) ? s.title : '',
 		turns: strArray(s.turns),
 		affinity: affinityOf(s.affinity),
 		affinityFor: isStr(s.affinityFor) ? s.affinityFor : '',

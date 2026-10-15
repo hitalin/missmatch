@@ -15,6 +15,7 @@
 		current,
 		onchange,
 		onselect,
+		onrename,
 		ondelete
 	}: {
 		tab: Tab | null;
@@ -25,6 +26,7 @@
 		current: string;
 		onchange: (t: Tab) => void;
 		onselect: (id: string) => void;
+		onrename: (id: string, title: string) => void;
 		ondelete: (id: string) => void;
 	} = $props();
 
@@ -59,7 +61,7 @@
 	<div class="history">
 		<p class="head">さがした言葉</p>
 		{#if searches.length > 0}
-			<SearchList {searches} {current} {onselect} {ondelete} />
+			<SearchList {searches} {current} {onselect} {onrename} {ondelete} />
 		{:else}
 			<p class="empty">まだありません</p>
 		{/if}

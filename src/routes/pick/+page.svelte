@@ -21,6 +21,7 @@
 		loadSavedProfile,
 		patchSearch,
 		persistProfile,
+		renameSearch,
 		type SavedProfile,
 		selectSearch
 	} from '$lib/profile';
@@ -260,6 +261,9 @@
 		go('discover');
 		if (needsRead(s)) readSearch();
 	}
+	function rename(id: string, title: string) {
+		profile = renameSearch(profile, id, title);
+	}
 	function removeSearch(id: string) {
 		const next = deleteSearch(profile, id);
 		profile = currentSearch(next) ? next : selectSearch(next, newSearch());
@@ -305,6 +309,7 @@
 		current={profile.current}
 		onchange={go}
 		onselect={openSearch}
+		onrename={rename}
 		ondelete={removeSearch}
 	>
 		<main>

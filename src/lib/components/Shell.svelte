@@ -21,6 +21,7 @@
 		current,
 		onchange,
 		onselect,
+		onrename,
 		ondelete,
 		children
 	}: {
@@ -32,6 +33,7 @@
 		current: string;
 		onchange: (t: Tab) => void;
 		onselect: (id: string) => void;
+		onrename: (id: string, title: string) => void;
 		ondelete: (id: string) => void;
 		children: Snippet;
 	} = $props();
@@ -57,6 +59,7 @@
 			{current}
 			{onchange}
 			{onselect}
+			{onrename}
 			{ondelete}
 		/>
 	</aside>
@@ -77,6 +80,7 @@
 				{current}
 				onchange={closing(onchange)}
 				onselect={closing(onselect)}
+				{onrename}
 				{ondelete}
 			/>
 		</Drawer>

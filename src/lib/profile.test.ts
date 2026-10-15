@@ -5,6 +5,7 @@ import {
 	emptyProfile,
 	parseSavedProfile,
 	patchSearch,
+	renameSearch,
 	selectSearch
 } from './profile';
 import { newSearch } from './search';
@@ -36,6 +37,7 @@ describe('parseSavedProfile', () => {
 					{
 						id: 's1',
 						query: '病み垢',
+						title: '弱音用',
 						turns: ['小さめ', 3],
 						affinity: { 'a.tld': 0.9, 'b.tld': 2 },
 						affinityFor: '病み垢\n小さめ',
@@ -66,6 +68,7 @@ describe('parseSavedProfile', () => {
 			{
 				id: 's1',
 				query: '病み垢',
+				title: '弱音用',
 				turns: ['小さめ'],
 				affinity: { 'a.tld': 0.9 },
 				affinityFor: '病み垢\n小さめ',
@@ -156,6 +159,16 @@ describe('検索の切り替え', () => {
 		p = deleteSearch(p, b.id);
 		expect(p.searches).toEqual([]);
 		expect(p.current).toBe('');
+	});
+
+	it('renameSearch は名前だけ変え、空白なら名前を外す', () => {
+		const a = newSearch('a');
+		let p = selectSearch(emptyProfile(), a);
+		p = renameSearch(p, a.id, '  弱音用 ');
+		expect(p.searches[0].title).toBe('弱音用');
+		expect(p.searches[0].query).toBe('a');
+		p = renameSearch(p, a.id, '   ');
+		expect(p.searches[0].title).toBe('');
 	});
 
 	it('currentSearch は検索が無ければ null', () => {

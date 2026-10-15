@@ -11,6 +11,7 @@
 		emptyProfile,
 		loadSavedProfile,
 		persistProfile,
+		renameSearch,
 		type SavedProfile,
 		selectSearch
 	} from '$lib/profile';
@@ -57,6 +58,10 @@
 		persistProfile(selectSearch(profile, s));
 		goto(resolve('/pick'));
 	}
+	function rename(id: string, title: string) {
+		profile = renameSearch(profile, id, title);
+		persistProfile(profile);
+	}
 	function removeSearch(id: string) {
 		profile = deleteSearch(profile, id);
 		persistProfile(profile);
@@ -80,6 +85,7 @@
 	current={profile.current}
 	onchange={goTab}
 	onselect={openSearch}
+	onrename={rename}
 	ondelete={removeSearch}
 >
 	<main class="landing">

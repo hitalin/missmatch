@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { hasAffinity, newSearch, refineSearch, searchTurns, seenHosts } from './search';
+import {
+	groupSearches,
+	hasAffinity,
+	newSearch,
+	refineSearch,
+	searchTitle,
+	searchTurns,
+	seenHosts
+} from './search';
 
 describe('search', () => {
 	it('newSearch は空のいいね・よくないねで始まり、言葉を持つ', () => {
@@ -41,6 +49,30 @@ describe('search', () => {
 		expect(hasAffinity({ ...newSearch(''), affinity: { 'a.tld': 0.9 }, affinityFor: '' })).toBe(
 			false
 		);
+	});
+
+	it('searchTitle は付けた名前 → 最初の言葉 → 条件だけ の順', () => {
+		expect(searchTitle(newSearch())).toBe('条件だけ');
+		expect(searchTitle(newSearch('病み垢'))).toBe('病み垢');
+		expect(searchTitle({ ...newSearch('病み垢'), title: '弱音用' })).toBe('弱音用');
+	});
+
+	it('groupSearches は新しい順に 今日 / 昨日 / 過去 7 日 / それ以前 で分け、空の組は出さない', () => {
+		const now = new Date(2026, 9, 16, 15, 0).getTime(); // 2026-10-16 15:00
+		const day = 24 * 60 * 60 * 1000;
+		const at = (ms: number) => ({ ...newSearch('x'), at: ms });
+		const today = at(now - 60 * 1000);
+		const todayEarly = at(new Date(2026, 9, 16, 0, 30).getTime());
+		const yesterday = at(now - day);
+		const fiveDays = at(now - 5 * day);
+		const old = at(now - 30 * day);
+		const groups = groupSearches([old, fiveDays, todayEarly, yesterday, today], now);
+		expect(groups.map((g) => g.label)).toEqual(['今日', '昨日', '過去 7 日', 'それ以前']);
+		expect(groups[0].searches.map((s) => s.at)).toEqual([today.at, todayEarly.at]);
+		expect(groups[1].searches).toEqual([yesterday]);
+		expect(groups[2].searches).toEqual([fiveDays]);
+		expect(groups[3].searches).toEqual([old]);
+		expect(groupSearches([], now)).toEqual([]);
 	});
 
 	it('seenHosts はいいねとよくないねの両方', () => {
