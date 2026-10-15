@@ -1,6 +1,7 @@
 import { ASK_AXES, type AskAxis } from './intent';
 import type { Taste } from './match';
 import {
+	ACTIVITIES,
 	AGES,
 	type Age,
 	DEALBREAKER_LABELS,
@@ -133,6 +134,7 @@ export function parseSavedProfile(raw: string | null): SavedProfile {
 	if (typeof p.adult === 'boolean') prefs.age = p.adult ? 'adult' : 'minor';
 	if (isStr(p.age) && (AGES as string[]).includes(p.age)) prefs.age = p.age as Age;
 	prefs.nsfw = oneOf(p.nsfw, ['avoid', 'neutral', 'welcome'] as const, 'avoid');
+	prefs.activity = oneOf(p.activity, ACTIVITIES, 'any');
 	const regs = strArray(p.registrations).filter((x): x is Preferences['registrations'][number] =>
 		(REGISTRATIONS as string[]).includes(x)
 	);

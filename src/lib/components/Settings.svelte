@@ -3,6 +3,8 @@
 	import Segmented from '$lib/components/Segmented.svelte';
 	import { applyFilters, type Taste, tasteSummary } from '$lib/match';
 	import {
+		ACTIVITIES,
+		ACTIVITY_LABELS,
 		DEALBREAKER_LABELS,
 		type Dealbreakers,
 		PACE_HINTS,
@@ -96,25 +98,12 @@
 				</div>
 			</div>
 			<div class="field">
-				<span class="label">登録のしかた</span>
-				<ul class="chips">
-					{#each REGISTRATIONS as r (r)}
-						<li>
-							<button
-								class="chip"
-								class:on={prefs.registrations.includes(r)}
-								aria-pressed={prefs.registrations.includes(r)}
-								onclick={() => {
-									const next = toggleIn(prefs.registrations, r);
-									if (next.length > 0) prefs = { ...prefs, registrations: next };
-								}}
-							>
-								{#if prefs.registrations.includes(r)}<Icon name="check" size={13} />{/if}
-								{REGISTRATION_LABELS[r]}
-							</button>
-						</li>
+				<span class="label">毎日いる人 <small class="muted">1 日に読んでいる人の数（15 日平均）</small></span>
+				<div class="seg seg3" role="radiogroup">
+					{#each ACTIVITIES as a (a)}
+						<button role="radio" aria-checked={prefs.activity === a} class:on={prefs.activity === a} onclick={() => (prefs = { ...prefs, activity: a })}>{ACTIVITY_LABELS[a]}</button>
 					{/each}
-				</ul>
+				</div>
 			</div>
 			<div class="field">
 				<span class="label">R-18 の投稿</span>
@@ -185,6 +174,27 @@
 		{/if}
 		<div class="panel block">
 			<h2>絶対条件 <span class="muted small">当てはまらない鯖は出さない</span></h2>
+			<div class="field">
+				<span class="label">登録のしかた</span>
+				<ul class="chips">
+					{#each REGISTRATIONS as r (r)}
+						<li>
+							<button
+								class="chip"
+								class:on={prefs.registrations.includes(r)}
+								aria-pressed={prefs.registrations.includes(r)}
+								onclick={() => {
+									const next = toggleIn(prefs.registrations, r);
+									if (next.length > 0) prefs = { ...prefs, registrations: next };
+								}}
+							>
+								{#if prefs.registrations.includes(r)}<Icon name="check" size={13} />{/if}
+								{REGISTRATION_LABELS[r]}
+							</button>
+						</li>
+					{/each}
+				</ul>
+			</div>
 			{#each DEALBREAKER_GROUPS as g (g.label)}
 				<div class="field">
 					<span class="label">{g.label}</span>
@@ -287,6 +297,9 @@
 		font-size: 0.74rem;
 		font-weight: 700;
 		color: var(--fg-muted);
+	}
+	.label small {
+		font-weight: 400;
 	}
 	/* 単一選択: ピル型のトラックに、選んだものだけ黄緑のピル（misskey-hub の btn-check） */
 	.seg {

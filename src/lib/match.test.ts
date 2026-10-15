@@ -72,6 +72,19 @@ describe('passesFilters', () => {
 		expect(hosts(prefs({ age: 'child' }))).toContain('ok.tld');
 	});
 
+	it('毎日いる人の数（15 日平均の読者数）で絞る', () => {
+		const ps = [
+			mk({ host: 'quiet.tld', dru15: 3 }),
+			mk({ host: 'some.tld', dru15: 40 }),
+			mk({ host: 'busy.tld', dru15: 300 })
+		];
+		const hs = (activity: Preferences['activity']) =>
+			applyFilters(ps, prefs({ activity })).map((x) => x.server.host);
+		expect(hs('any')).toEqual(['quiet.tld', 'some.tld', 'busy.tld']);
+		expect(hs('some')).toEqual(['some.tld', 'busy.tld']);
+		expect(hs('lively')).toEqual(['busy.tld']);
+	});
+
 	it('機能と運営の絶対条件で絞る', () => {
 		const ps = [
 			mk({

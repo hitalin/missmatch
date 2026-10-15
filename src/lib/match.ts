@@ -6,7 +6,7 @@ import {
 	featuresOf,
 	GENRE_FEATURES
 } from './features';
-import { BIG_DRIVE_MB, type Preferences, paceOf, scaleOf } from './prefs';
+import { BIG_DRIVE_MB, meetsActivity, type Preferences, paceOf, scaleOf } from './prefs';
 import { hasAffinity, type Search, seenHosts } from './search';
 import type { Match, ServerInfo, ServerProfile } from './types';
 import { vibeTags } from './vibe';
@@ -46,6 +46,7 @@ export function passesFilters(p: ServerProfile, prefs: Preferences): boolean {
 	// 年齢: 12〜17 歳には 18 歳以上限定を、12 歳未満にはさらに 13 歳以上限定も出さない
 	if (prefs.age !== 'adult' && s.ageRestriction === '18+') return false;
 	if (prefs.age === 'child' && s.ageRestriction === '13+') return false;
+	if (!meetsActivity(s, prefs.activity)) return false;
 	if (prefs.scales.length > 0 && !prefs.scales.includes(scaleOf(s))) return false;
 	if (prefs.paces.length > 0 && !prefs.paces.includes(paceOf(s))) return false;
 	const d = prefs.dealbreakers;

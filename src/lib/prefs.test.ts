@@ -16,6 +16,7 @@ describe('年齢', () => {
 	it('年齢を決めるまでは未完了', () => {
 		const d = defaultPreferences();
 		expect(isComplete(d)).toBe(false);
+		expect(d.activity).toBe('any');
 		expect(isComplete({ ...d, age: 'child' })).toBe(true);
 	});
 });

@@ -22,6 +22,7 @@ describe('parseSavedProfile', () => {
 			JSON.stringify({
 				prefs: {
 					age: 'minor',
+					activity: 'lively',
 					nsfw: 'welcome',
 					registrations: ['invite', 'bogus'],
 					scales: ['small', 'huge'],
@@ -53,6 +54,7 @@ describe('parseSavedProfile', () => {
 			})
 		);
 		expect(p.prefs.age).toBe('minor');
+		expect(p.prefs.activity).toBe('lively');
 		expect(p.prefs.nsfw).toBe('welcome');
 		expect(p.prefs.registrations).toEqual(['invite']);
 		expect(p.prefs.scales).toEqual(['small']);

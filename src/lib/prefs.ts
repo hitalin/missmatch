@@ -85,8 +85,22 @@ export const AGE_LABELS: Record<Age, string> = {
 	child: '12 歳未満'
 };
 
+// 毎日いる人の数（dru15: 15 日平均で 1 日に読んでいる人）。過疎を避けたいときに使う
+export type Activity = 'any' | 'some' | 'lively';
+export const ACTIVITIES: Activity[] = ['any', 'some', 'lively'];
+export const ACTIVITY_LABELS: Record<Activity, string> = {
+	any: '気にしない',
+	some: '10 人以上',
+	lively: '100 人以上'
+};
+const ACTIVITY_MIN: Record<Activity, number> = { any: 0, some: 10, lively: 100 };
+export function meetsActivity(s: ServerInfo, a: Activity): boolean {
+	return (s.dru15 ?? 0) >= ACTIVITY_MIN[a];
+}
+
 export interface Preferences {
 	age: Age | null; // null = 未設定（オンボーディングで必ず決める）
+	activity: Activity;
 	nsfw: 'avoid' | 'neutral' | 'welcome';
 	registrations: Registration[]; // 出す登録状態。招待制・停止中を含めると候補が約 100 → 約 580 件に広がる
 	scales: Scale[]; // 空 = 指定なし
@@ -101,6 +115,7 @@ export interface Preferences {
 export function defaultPreferences(): Preferences {
 	return {
 		age: null,
+		activity: 'any',
 		nsfw: 'avoid',
 		registrations: ['open', 'approval'],
 		scales: [],
