@@ -21,7 +21,7 @@ describe('parseSavedProfile', () => {
 		const p = parseSavedProfile(
 			JSON.stringify({
 				prefs: {
-					adult: true,
+					age: 'minor',
 					nsfw: 'welcome',
 					registrations: ['invite', 'bogus'],
 					scales: ['small', 'huge'],
@@ -52,7 +52,7 @@ describe('parseSavedProfile', () => {
 				current: 's1'
 			})
 		);
-		expect(p.prefs.adult).toBe(true);
+		expect(p.prefs.age).toBe('minor');
 		expect(p.prefs.nsfw).toBe('welcome');
 		expect(p.prefs.registrations).toEqual(['invite']);
 		expect(p.prefs.scales).toEqual(['small']);
@@ -79,6 +79,15 @@ describe('parseSavedProfile', () => {
 			}
 		]);
 		expect(p.current).toBe('s1');
+	});
+
+	it('年齢: 旧形式の adult を移し、知らない値は未設定にする', () => {
+		const age = (prefs: unknown) => parseSavedProfile(JSON.stringify({ prefs })).prefs.age;
+		expect(age({ adult: true })).toBe('adult');
+		expect(age({ adult: false })).toBe('minor');
+		expect(age({ age: 'child' })).toBe('child');
+		expect(age({ age: 'bogus' })).toBeNull();
+		expect(age({})).toBeNull();
 	});
 
 	it('current が無い・存在しない id なら先頭の検索を指す', () => {

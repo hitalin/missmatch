@@ -58,8 +58,17 @@ export const DEALBREAKER_LABELS: Record<keyof Dealbreakers, string> = {
 	fresh: '最新版に追従している'
 };
 
+// 年齢区分。登録年齢を制限しているサーバーの絞り込みに使う
+export type Age = 'adult' | 'minor' | 'child';
+export const AGES: Age[] = ['adult', 'minor', 'child'];
+export const AGE_LABELS: Record<Age, string> = {
+	adult: '18 歳以上',
+	minor: '12〜17 歳',
+	child: '12 歳未満'
+};
+
 export interface Preferences {
-	adult: boolean | null; // null = 未設定（オンボーディングで必ず決める）
+	age: Age | null; // null = 未設定（オンボーディングで必ず決める）
 	nsfw: 'avoid' | 'neutral' | 'welcome';
 	registrations: Registration[]; // 出す登録状態。招待制・停止中を含めると候補が約 100 → 約 580 件に広がる
 	scales: Scale[]; // 空 = 指定なし
@@ -73,7 +82,7 @@ export interface Preferences {
 
 export function defaultPreferences(): Preferences {
 	return {
-		adult: null,
+		age: null,
 		nsfw: 'avoid',
 		registrations: ['open', 'approval'],
 		scales: [],
@@ -109,5 +118,5 @@ export function paceOf(s: ServerInfo): Pace {
 
 // デッキを出すのに最低限必要な設定が済んでいるか
 export function isComplete(prefs: Preferences): boolean {
-	return prefs.adult !== null;
+	return prefs.age !== null;
 }

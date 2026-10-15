@@ -1,6 +1,8 @@
 import { ASK_AXES, type AskAxis } from './intent';
 import type { Taste } from './match';
 import {
+	AGES,
+	type Age,
 	DEALBREAKER_LABELS,
 	defaultPreferences,
 	PACES,
@@ -127,7 +129,9 @@ export function parseSavedProfile(raw: string | null): SavedProfile {
 	const d = data as Record<string, unknown>;
 	const p = (d.prefs && typeof d.prefs === 'object' ? d.prefs : {}) as Record<string, unknown>;
 	const prefs = profile.prefs;
-	if (typeof p.adult === 'boolean') prefs.adult = p.adult;
+	// 旧形式は adult: boolean（18 歳以上か）
+	if (typeof p.adult === 'boolean') prefs.age = p.adult ? 'adult' : 'minor';
+	if (isStr(p.age) && (AGES as string[]).includes(p.age)) prefs.age = p.age as Age;
 	prefs.nsfw = oneOf(p.nsfw, ['avoid', 'neutral', 'welcome'] as const, 'avoid');
 	const regs = strArray(p.registrations).filter((x): x is Preferences['registrations'][number] =>
 		(REGISTRATIONS as string[]).includes(x)

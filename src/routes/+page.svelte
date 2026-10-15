@@ -300,19 +300,7 @@
 	/>
 </svelte:head>
 
-{#if onboarding}
-	<div class="onboarding">
-		<Onboarding
-			bind:prefs={profile.prefs}
-			startAtQuestions
-			onfinish={() => {
-				onboarding = false;
-				tab = 'discover';
-			}}
-		/>
-	</div>
-{:else}
-	<Shell
+<Shell
 		{tab}
 		likes={search.liked.length}
 		passed={search.passed.length}
@@ -326,6 +314,18 @@
 		ondelete={removeSearch}
 	>
 		<main>
+			{#if onboarding}
+				<div class="onboarding">
+					<Onboarding
+						bind:prefs={profile.prefs}
+						startAtQuestions
+						onfinish={() => {
+							onboarding = false;
+							tab = 'discover';
+						}}
+					/>
+				</div>
+			{:else}
 			{#if loadError}
 				<p class="banner">
 					サーバー情報を取得できませんでした（{loadError}）。
@@ -388,9 +388,9 @@
 					}}
 				/>
 			{/if}
+			{/if}
 		</main>
 	</Shell>
-{/if}
 
 {#if celebrate}
 	<MatchOverlay match={celebrate} onclose={() => (celebrate = null)} />
@@ -398,10 +398,12 @@
 
 <style>
 	.onboarding {
+		flex: 1;
+		display: flex;
+		flex-direction: column;
+		width: 100%;
 		max-width: var(--maxw);
 		margin: 0 auto;
-		padding: 0 16px;
-		min-height: 100dvh;
 	}
 	/* さがす: 見出し → デッキ → 下に貼り付く入力欄 の縦並びで、画面に収める */
 	main {

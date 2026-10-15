@@ -43,7 +43,9 @@ export function isListed(s: ServerInfo): boolean {
 export function passesFilters(p: ServerProfile, prefs: Preferences): boolean {
 	const s = p.server;
 	if (!isListed(s) || !prefs.registrations.includes(s.registration)) return false;
-	if (prefs.adult === false && s.ageRestriction === '18+') return false;
+	// 年齢: 12〜17 歳には 18 歳以上限定を、12 歳未満にはさらに 13 歳以上限定も出さない
+	if (prefs.age !== 'adult' && s.ageRestriction === '18+') return false;
+	if (prefs.age === 'child' && s.ageRestriction === '13+') return false;
 	if (prefs.scales.length > 0 && !prefs.scales.includes(scaleOf(s))) return false;
 	if (prefs.paces.length > 0 && !prefs.paces.includes(paceOf(s))) return false;
 	const d = prefs.dealbreakers;

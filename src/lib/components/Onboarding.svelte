@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { Preferences } from '$lib/prefs';
+	import type { Age, Preferences } from '$lib/prefs';
 
 	// 20 秒で終わるオンボーディング: 年齢 → R-18。すぐデッキへ（探したい場所はデッキ上の検索ボックスで）
 	let {
@@ -12,8 +12,8 @@
 	let step = $state<0 | 1 | 2>(startAtQuestions ? 1 : 0);
 	const total = 2;
 
-	function pickAge(adult: boolean) {
-		prefs = { ...prefs, adult };
+	function pickAge(age: Age) {
+		prefs = { ...prefs, age };
 		step = 2;
 	}
 	function pickNsfw(nsfw: Preferences['nsfw']) {
@@ -42,11 +42,12 @@
 			</div>
 
 			{#if step === 1}
-				<h2>あなたは 18 歳以上ですか？</h2>
+				<h2>あなたの年齢は？</h2>
 				<p class="help">登録年齢を制限しているサーバーを出さないために使います。</p>
 				<div class="choices">
-					<button class="choice" onclick={() => pickAge(true)}>はい、18 歳以上</button>
-					<button class="choice" onclick={() => pickAge(false)}>いいえ、18 歳未満</button>
+					<button class="choice" onclick={() => pickAge('adult')}>18 歳以上</button>
+					<button class="choice" onclick={() => pickAge('minor')}>12〜17 歳</button>
+					<button class="choice" onclick={() => pickAge('child')}>12 歳未満</button>
 				</div>
 			{:else}
 				<h2>成人向け（R-18）の投稿が流れてくるのは？</h2>
@@ -63,7 +64,7 @@
 
 <style>
 	.ob {
-		min-height: calc(100dvh - 24px);
+		flex: 1;
 		display: flex;
 		flex-direction: column;
 		justify-content: center;

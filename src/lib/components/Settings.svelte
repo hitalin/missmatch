@@ -87,9 +87,10 @@
 		<h2>基本</h2>
 		<div class="field">
 			<span class="label">年齢</span>
-			<div class="seg seg2" role="radiogroup">
-				<button role="radio" aria-checked={prefs.adult === true} class:on={prefs.adult === true} onclick={() => (prefs = { ...prefs, adult: true })}>18 歳以上</button>
-				<button role="radio" aria-checked={prefs.adult === false} class:on={prefs.adult === false} onclick={() => (prefs = { ...prefs, adult: false })}>18 歳未満</button>
+			<div class="seg seg3" role="radiogroup">
+				<button role="radio" aria-checked={prefs.age === 'adult'} class:on={prefs.age === 'adult'} onclick={() => (prefs = { ...prefs, age: 'adult' })}>18 歳以上</button>
+				<button role="radio" aria-checked={prefs.age === 'minor'} class:on={prefs.age === 'minor'} onclick={() => (prefs = { ...prefs, age: 'minor' })}>12〜17 歳</button>
+				<button role="radio" aria-checked={prefs.age === 'child'} class:on={prefs.age === 'child'} onclick={() => (prefs = { ...prefs, age: 'child' })}>12 歳未満</button>
 			</div>
 		</div>
 		<div class="field">
@@ -266,9 +267,6 @@
 		border-radius: 999px;
 		background: var(--panel-2);
 		box-shadow: inset 0 0 0 1px var(--border);
-	}
-	.seg2 {
-		grid-template-columns: 1fr 1fr;
 	}
 	.seg3 {
 		grid-template-columns: 1fr 1fr 1fr;

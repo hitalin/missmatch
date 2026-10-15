@@ -36,7 +36,7 @@ const emptyGenre = (): Record<Genre, number> => ({
 
 const prefs = (over: Partial<Preferences> = {}): Preferences => ({
 	...defaultPreferences(),
-	adult: true,
+	age: 'adult',
 	nsfw: 'neutral',
 	...over
 });
@@ -50,20 +50,26 @@ describe('passesFilters', () => {
 		mk({ host: 'dead.tld', registration: 'closed', dru15: 0 }),
 		mk({ host: 'approval.tld', registration: 'approval' }),
 		mk({ host: 'adult.tld', ageRestriction: '18+' }),
+		mk({ host: 'teen.tld', ageRestriction: '13+' }),
 		mk({ host: 'ads.tld', adsEnabled: true }),
 		mk({ host: 'fork.tld', officialMisskey: false, versionMonthsBehind: 5 }),
 		mk({ host: 'small.tld', usersCount: 20, npd15: 5, emailRequired: false })
 	];
 	const hosts = (p: Preferences) => applyFilters(profiles, p).map((x) => x.server.host);
 
-	it('既定は日本語・登録受付中（承認制含む）。18 歳未満には 18+ を出さない', () => {
+	it('既定は日本語・登録受付中（承認制含む）。年齢に合わない年齢制限のサーバーは出さない', () => {
 		expect(isJoinable(profiles[1].server)).toBe(false);
 		expect(hosts(prefs())).not.toContain('en.tld');
 		expect(hosts(prefs())).not.toContain('closed.tld');
 		expect(hosts(prefs())).not.toContain('invite.tld');
 		expect(hosts(prefs())).toContain('approval.tld');
 		expect(hosts(prefs())).toContain('adult.tld');
-		expect(hosts(prefs({ adult: false }))).not.toContain('adult.tld');
+		expect(hosts(prefs({ age: 'minor' }))).not.toContain('adult.tld');
+		expect(hosts(prefs({ age: 'minor' }))).toContain('teen.tld');
+		// 12 歳未満には 13 歳以上限定も出さない
+		expect(hosts(prefs({ age: 'child' }))).not.toContain('adult.tld');
+		expect(hosts(prefs({ age: 'child' }))).not.toContain('teen.tld');
+		expect(hosts(prefs({ age: 'child' }))).toContain('ok.tld');
 	});
 
 	it('招待制・停止中を含める設定なら生きているものだけ出す（休眠は出さない）', () => {
@@ -94,7 +100,7 @@ describe('passesFilters', () => {
 		expect(hosts(prefs({ scales: ['small'] }))).toEqual(['small.tld']);
 		expect(hosts(prefs({ paces: ['quiet'] }))).toEqual(['small.tld']);
 		expect(hosts(prefs({ scales: ['personal'] }))).toEqual([]);
-		expect(hosts(prefs({ scales: [], paces: [] })).length).toBe(6);
+		expect(hosts(prefs({ scales: [], paces: [] })).length).toBe(7);
 	});
 });
 
