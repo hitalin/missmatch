@@ -2,7 +2,6 @@
 	import { onDestroy, onMount } from 'svelte';
 	import { page } from '$app/state';
 	
-	import AskChips from '$lib/components/AskChips.svelte';
 	import Discover from '$lib/components/Discover.svelte';
 	import LikesGrid from '$lib/components/LikesGrid.svelte';
 	import MatchOverlay from '$lib/components/MatchOverlay.svelte';
@@ -328,13 +327,12 @@
 					{search}
 					{reading}
 					applied={wishApplied}
+					{asks}
 					onrefine={refine}
 					ondrop={dropTurn}
 					onclear={clearWish}
+					onask={answerAsk}
 				/>
-				{#if !reading && asks.length > 0}
-					<AskChips axes={asks} onpick={answerAsk} />
-				{/if}
 				{#if !profiles}
 					<div class="loading"><div class="pulse">♥</div><p class="muted">サーバー情報を取得中…</p></div>
 				{:else}

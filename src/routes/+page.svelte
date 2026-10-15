@@ -2,8 +2,10 @@
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import Shell, { type Tab } from '$lib/components/Shell.svelte';
+	import Icon from '$lib/components/Icon.svelte';
 	import { MAX_INTENT_LENGTH } from '$lib/intent';
+	import PromptBox from '$lib/components/PromptBox.svelte';
+	import Shell, { type Tab } from '$lib/components/Shell.svelte';
 	import { isComplete } from '$lib/prefs';
 	import {
 		currentSearch,
@@ -41,10 +43,6 @@
 		const existing = profile.searches.find((s) => s.query === trimmed);
 		persistProfile(selectSearch(profile, existing ?? newSearch(trimmed)));
 		goto(resolve('/pick'));
-	}
-	function submit(e: SubmitEvent) {
-		e.preventDefault();
-		if (text.trim().length >= 2) go(text);
 	}
 
 	// ナビ: タブを押したら「さがす」のそのタブへ。一覧から選んだ検索はそのまま開く
@@ -90,27 +88,24 @@
 >
 	<main class="landing">
 		<div class="center">
-			<h1 class="brand"><span class="logo">♥</span> みすまっち</h1>
+			<h1 class="brand"><span class="logo"><Icon name="heart" size={40} filled /></span> みすまっち</h1>
 			<p class="tagline">Misskey のサーバーと、マッチング。</p>
+			<p class="ask">どんな場所を探している？</p>
 
-			<form class="search" onsubmit={submit} role="search">
-				<label class="sr-only" for="q">どんな場所を探している？</label>
-				<div class="box">
-					<span class="icon" aria-hidden="true">✦</span>
-					<!-- svelte-ignore a11y_autofocus -->
-					<input
-						id="q"
-						type="search"
-						bind:value={text}
-						maxlength={MAX_INTENT_LENGTH}
-						placeholder="どんな場所を探している？"
-						enterkeyhint="search"
-						autocomplete="off"
-						autofocus
-					/>
-					<button type="submit" class="go" disabled={text.trim().length < 2} aria-label="探す">→</button>
-				</div>
-			</form>
+			<div class="search">
+				<PromptBox
+					bind:value={text}
+					label="どんな場所を探している？"
+					placeholder="例: 病み垢を置ける、静かで干渉が少ない場所"
+					minRows={3}
+					autofocus
+					onsubmit={go}
+				>
+					{#snippet left()}
+						<span>Enter で探す · Shift+Enter で改行</span>
+					{/snippet}
+				</PromptBox>
+			</div>
 
 			<ul class="examples">
 				{#each EXAMPLES as ex (ex)}
@@ -119,7 +114,7 @@
 			</ul>
 
 			<p class="skip">
-				<a href={resolve('/pick')}>{hasProfile ? '前回の続きからさがす' : '言葉を入れずに条件だけでさがす'} →</a>
+				<a href={resolve('/pick')}>{hasProfile ? '前回の続きからさがす' : '言葉を入れずに条件だけでさがす'}</a>
 			</p>
 		</div>
 
@@ -163,62 +158,20 @@
 	}
 	.logo {
 		color: var(--accent);
+		display: inline-flex;
+		vertical-align: -6px;
 	}
 	.tagline {
 		margin: -8px 0 8px;
 		color: var(--fg-muted);
 	}
+	.ask {
+		margin: 4px 0 -6px;
+		font-size: 1.05rem;
+		color: var(--fg-muted);
+	}
 	.search {
 		width: 100%;
-	}
-	.box {
-		display: flex;
-		align-items: center;
-		gap: 10px;
-		background: var(--panel);
-		border: 1.5px solid var(--border);
-		border-radius: 999px;
-		padding: 8px 8px 8px 18px;
-		box-shadow: var(--shadow-lg);
-	}
-	.box:focus-within {
-		border-color: var(--accent);
-	}
-	.icon {
-		color: var(--accent);
-		font-size: 1.1rem;
-	}
-	input {
-		flex: 1;
-		min-width: 0;
-		font: inherit;
-		font-size: 1.1rem;
-		background: none;
-		border: none;
-		color: var(--fg);
-		padding: 10px 0;
-	}
-	input:focus {
-		outline: none;
-	}
-	input::-webkit-search-cancel-button {
-		display: none;
-	}
-	.go {
-		width: 46px;
-		height: 46px;
-		border-radius: 50%;
-		border: none;
-		background: var(--accent);
-		color: #fff;
-		font-size: 1.3rem;
-		font-weight: 900;
-		cursor: pointer;
-		flex-shrink: 0;
-	}
-	.go:disabled {
-		opacity: 0.35;
-		cursor: not-allowed;
 	}
 	.examples {
 		list-style: none;
