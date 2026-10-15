@@ -2,9 +2,14 @@
 	import type { Preferences } from '$lib/prefs';
 
 	// 20 秒で終わるオンボーディング: 年齢 → R-18。すぐデッキへ（探したい場所はデッキ上の検索ボックスで）
-	let { prefs = $bindable(), onfinish }: { prefs: Preferences; onfinish: () => void } = $props();
+	let {
+		prefs = $bindable(),
+		startAtQuestions = false,
+		onfinish
+	}: { prefs: Preferences; startAtQuestions?: boolean; onfinish: () => void } = $props();
 
-	let step = $state<0 | 1 | 2>(0);
+	// svelte-ignore state_referenced_locally
+	let step = $state<0 | 1 | 2>(startAtQuestions ? 1 : 0);
 	const total = 2;
 
 	function pickAge(adult: boolean) {

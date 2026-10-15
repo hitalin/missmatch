@@ -16,13 +16,18 @@
 </script>
 
 <nav class="nav" aria-label="画面切り替え">
-	<p class="brand" aria-hidden="true"><span class="logo">♥</span> みすまっち</p>
+	<a href="/" class="home" aria-label="みすまっち（ホーム）">
+		<svg viewBox="0 0 24 24" aria-hidden="true">
+			<path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10Z" />
+		</svg>
+		<span>みすまっち</span>
+	</a>
 	<button
 		class="main"
 		class:active={tab === 'discover'}
 		disabled={!discoverEnabled}
 		onclick={() => onchange('discover')}
-		aria-label="さがす"
+		aria-label="選ぶ"
 	>
 		<svg viewBox="0 0 24 24" aria-hidden="true">
 			<path
@@ -30,7 +35,7 @@
 			/>
 			<path d="M6.5 13.5C6.5 17 9 20 12 20s5.5-3 5.5-6.5" />
 		</svg>
-		<span>さがす</span>
+		<span>選ぶ</span>
 	</button>
 	<button class:active={tab === 'likes'} onclick={() => onchange('likes')} aria-label="いいね">
 		<svg viewBox="0 0 24 24" aria-hidden="true">
@@ -69,13 +74,22 @@
 		display: flex;
 		justify-content: center;
 	}
-	.brand {
-		display: none;
+	.nav a {
+		text-decoration: none;
 	}
-	.nav button {
+	/* ホーム（みすまっち）はロゴ色で、アクティブ扱いにはしない */
+	.nav .home {
+		color: var(--accent);
+	}
+	.nav .home svg {
+		fill: var(--accent);
+		stroke: var(--accent);
+	}
+	.nav button,
+	.nav a {
 		position: relative;
 		flex: 1;
-		max-width: calc(var(--maxw) / 4);
+		max-width: calc(var(--maxw) / 5);
 		background: none;
 		border: none;
 		cursor: pointer;
@@ -141,16 +155,13 @@
 			justify-content: flex-start;
 			gap: 4px;
 		}
-		.brand {
-			display: block;
-			margin: 0 0 18px 12px;
+		.nav .home {
+			margin-bottom: 14px;
+			font-size: 1.15rem;
 			font-weight: 900;
-			font-size: 1.25rem;
 		}
-		.logo {
-			color: var(--accent);
-		}
-		.nav button {
+		.nav button,
+		.nav a {
 			flex: 0 0 auto;
 			max-width: none;
 			width: 100%;
@@ -161,6 +172,7 @@
 			border-radius: 12px;
 			font-size: 0.98rem;
 		}
+		.nav a:hover,
 		.nav button:hover:not(:disabled) {
 			background: var(--panel-2);
 		}

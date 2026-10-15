@@ -86,3 +86,19 @@ export function parseSavedProfile(raw: string | null): SavedProfile {
 	profile.passed = strArray(d.passed);
 	return profile;
 }
+
+// localStorage との読み書き。読めない・書けない環境でも動く
+export function loadSavedProfile(): SavedProfile {
+	try {
+		return parseSavedProfile(localStorage.getItem(PROFILE_KEY));
+	} catch {
+		return emptyProfile();
+	}
+}
+export function persistProfile(profile: SavedProfile): void {
+	try {
+		localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
+	} catch {
+		// 保存できなくても続ける
+	}
+}
