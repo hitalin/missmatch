@@ -152,13 +152,14 @@ export function scoreProfile(
 		.map((a) => a.reason as string);
 
 	let fit = prefFit;
+	let a: number | undefined;
 	if (Object.keys(affinity).length > 0) {
-		const a = affinity[p.server.host] ?? UNKNOWN;
+		a = affinity[p.server.host] ?? UNKNOWN;
 		fit = AFFINITY_SHARE * a + (1 - AFFINITY_SHARE) * prefFit;
 		if (a >= 0.6) reasons.unshift('書いてくれた希望と噛み合う');
 	}
 	const score = Math.round(fit * 100);
-	return { server: p.server, vibe: v, score, reasons, tags: v ? vibeTags(v) : [] };
+	return { server: p.server, vibe: v, score, affinity: a, reasons, tags: v ? vibeTags(v) : [] };
 }
 
 // 次に見せるカード: フィルターを通り、この検索でまだスワイプしていないものを相性順に

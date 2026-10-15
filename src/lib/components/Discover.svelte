@@ -1,5 +1,7 @@
 <script lang="ts">
-	import { type Match, REGISTRATION_LABELS } from '$lib/types';
+	import type { Snippet } from 'svelte';
+	import { GENRE_LABELS, GENRES, type Match, REGISTRATION_LABELS, type VibeProfile } from '$lib/types';
+	import { formatCount } from '$lib/format';
 	import Icon from './Icon.svelte';
 	import ServerCard from './ServerCard.svelte';
 
@@ -11,7 +13,8 @@
 		onundo,
 		onexhausted,
 		onsettings,
-		total
+		total,
+		composer
 	}: {
 		matches: Match[];
 		total: number; // いまの条件で残っているカードの総数（このデッキ以外も含む）
@@ -20,6 +23,7 @@
 		onundo: (m: Match, action: 'like' | 'pass') => void;
 		onexhausted: () => void; // このデッキを見終わった（次の束を頼む）
 		onsettings: () => void;
+		composer?: Snippet; // 言葉を足す箱。モバイルは束の下、デスクトップは右パネルの下に置く
 	} = $props();
 
 	const THRESHOLD = 90;
@@ -37,7 +41,6 @@
 	let pointerId: number | null = null;
 
 	const current = $derived(matches[index] as Match | undefined);
-	const remaining = $derived(Math.max(0, total - index));
 	const stack = $derived(matches.slice(index, index + 3));
 	const rotation = $derived(dx * 0.05);
 	const likeOpacity = $derived(Math.min(1, Math.max(0, dx / THRESHOLD)));
@@ -110,18 +113,33 @@
 		else if (e.key === 'Backspace') undo();
 	}
 
+	// Clef の判定を右パネルで見せる（左のカードには無い情報）。0..1 の確率をバーにする
+	const GENRE_TOP = 3;
+	function vibeRows(v: VibeProfile): { label: string; value: number; left?: string; right?: string }[] {
+		const genres = GENRES.map((g) => ({ g, p: v.genre[g] }))
+			.sort((a, b) => b.p - a.p)
+			.slice(0, GENRE_TOP)
+			.map(({ g, p }) => ({ label: GENRE_LABELS[g], value: p }));
+		return [
+			{ label: '空気感', value: v.tone, left: 'ドライ', right: 'ほのぼの' },
+			{ label: 'ルール', value: v.strictness, left: 'ゆるめ', right: 'しっかり' },
+			{ label: '初心者歓迎', value: v.newcomerFriendly },
+			{ label: '身内ノリ', value: v.closedCommunity },
+			{ label: '成人向け', value: v.nsfw },
+			...genres
+		];
+	}
+
 	const facts = $derived.by(() => {
 		const s = current?.server;
 		if (!s) return [] as { k: string; v: string }[];
 		const list: { k: string; v: string }[] = [];
-		if (s.usersCount !== null) list.push({ k: 'ユーザー', v: `${s.usersCount.toLocaleString()}人` });
-		if (s.npd15 !== null) list.push({ k: '投稿', v: `${Math.round(s.npd15).toLocaleString()}/日` });
+		if (s.dru15 !== null) list.push({ k: 'アクティブ', v: `${formatCount(s.dru15)}人/日` });
 		if (s.driveCapacityMb !== null)
 			list.push({
 				k: 'ドライブ',
 				v: s.driveCapacityMb >= 1024 ? `${Math.round(s.driveCapacityMb / 1024)}GB` : `${s.driveCapacityMb}MB`
 			});
-		list.push({ k: '登録', v: REGISTRATION_LABELS[s.registration] });
 		list.push({ k: 'メアド', v: s.emailRequired ? '必須' : '不要' });
 		list.push({ k: '広告', v: s.adsEnabled ? 'あり' : 'なし' });
 		list.push({ k: 'GTL', v: s.gtlAvailable ? 'あり' : 'なし' });
@@ -135,23 +153,88 @@
 
 <svelte:window {onkeydown} />
 
-{#snippet details(m: Match)}
+<!-- misspace の ServerInfoPopup。full=false（デスクトップの右パネル）では、左のカードに出ている
+     バナー・アイコン・名前・host・人数・投稿数・雰囲気タグ・説明文を省き、カードに無い情報だけ出す -->
+{#snippet details(m: Match, full: boolean)}
 	{@const s = m.server}
-	<header class="sheet-head">
+	{@const color = s.themeColor ?? '#86b300'}
+	{#if full}
+	<div
+		class="banner"
+		style:background={`linear-gradient(135deg, ${color}, color-mix(in srgb, ${color} 55%, #000))`}
+	>
+		{#if s.bannerUrl}<img src={s.bannerUrl} alt="" loading="lazy" decoding="async" />{/if}
+	</div>
+	<div class="identity">
+		{#if s.iconUrl}
+			<img class="avatar" src={s.iconUrl} alt="" width="64" height="64" loading="lazy" />
+		{:else}
+			<div class="avatar placeholder">{(s.name ?? s.host).slice(0, 1)}</div>
+		{/if}
 		<h2>{s.name ?? s.host}</h2>
-		<span class="pill"><Icon name="heart" size={13} filled /> {m.score}%</span>
-	</header>
-	<p class="host muted">{s.host}</p>
-
+		<a class="hostlink" href="https://{s.host}/" target="_blank" rel="noopener">
+			{s.host}
+			<Icon name="external" size={12} />
+		</a>
+	</div>
+	<div class="stats">
+		<div><b>{s.usersCount !== null ? formatCount(s.usersCount) : '–'}</b><span>ユーザー</span></div>
+		<div><b>{s.npd15 !== null ? formatCount(s.npd15) : '–'}</b><span>投稿 / 日</span></div>
+		<div><b>{s.dru15 !== null ? formatCount(s.dru15) : '–'}</b><span>アクティブ / 日</span></div>
+	</div>
+	{/if}
+	<div class="meta">
+		{#if full}<span class="tag score"><Icon name="heart" size={12} filled /> {m.score}%</span>{/if}
+		<span class="tag"><i class="dot" style:background={color}></i>{s.softwareName}</span>
+		<span class="tag reg" class:open={s.registration === 'open'} class:closed={s.registration === 'closed'}>
+			{REGISTRATION_LABELS[s.registration]}
+		</span>
+	</div>
 	{#if m.reasons.length > 0}
 		<ul class="reasons">
-			{#each m.reasons as r (r)}<li>{r}</li>{/each}
+			{#each m.reasons as r (r)}<li><Icon name="check" size={14} />{r}</li>{/each}
 		</ul>
 	{/if}
-	{#if m.tags.length > 0}
+	{#if full && m.tags.length > 0}
 		<p class="tags">{m.tags.join(' · ')}</p>
 	{/if}
-	{#if s.description}<p class="desc">{s.description}</p>{/if}
+	<section class="clef">
+		<h3>Clef の判定</h3>
+		{#if m.affinity !== undefined}
+			<div class="row">
+				<span class="k">言葉との噛み合い</span>
+				<span class="bar"><i style:width="{Math.round(m.affinity * 100)}%"></i></span>
+				<span class="v">{Math.round(m.affinity * 100)}%</span>
+			</div>
+		{/if}
+		{#if m.vibe}
+			{#each vibeRows(m.vibe) as r (r.label)}
+				<div class="row" class:two={!!r.left}>
+					<span class="k">{r.label}</span>
+					{#if r.left}<span class="end">{r.left}</span>{/if}
+					<span class="bar"><i style:width="{Math.round(r.value * 100)}%"></i></span>
+					{#if r.right}<span class="end">{r.right}</span>{:else}<span class="v">{Math.round(r.value * 100)}%</span>{/if}
+				</div>
+			{/each}
+			<p class="small muted">投稿 {m.vibe.sampleCount} 件と説明文・ルールから判定</p>
+		{:else}
+			<p class="small muted">雰囲気はまだ判定されていません。</p>
+		{/if}
+	</section>
+	<div class="sheet-actions">
+		<a class="btn secondary" href="https://{s.host}/" target="_blank" rel="noopener">サーバーを見る</a>
+		<button class="btn primary" onclick={() => fly('right')}><Icon name="heart" size={15} filled /> いいね</button>
+	</div>
+	{#if s.description}
+		{#if full}
+			<p class="desc">{s.description}</p>
+		{:else}
+			<details class="more">
+				<summary>説明の全文</summary>
+				<p class="desc plain">{s.description}</p>
+			</details>
+		{/if}
+	{/if}
 
 	<dl class="facts">
 		{#each facts as f (f.k)}
@@ -166,20 +249,10 @@
 			</ol>
 		</details>
 	{/if}
-	{#if !m.vibe}<p class="muted small">雰囲気はまだ判定されていません。</p>{/if}
-
-	<div class="sheet-actions">
-		<a class="btn secondary" href="https://{s.host}/" target="_blank" rel="noopener">サーバーを見る</a>
-		<button class="btn primary" onclick={() => fly('right')}><Icon name="heart" size={16} filled /> いいね</button>
-	</div>
 {/snippet}
 
 <section class="discover">
 	{#if current}
-		<p class="counter">
-		<span>あと {remaining} 件</span>
-		<button class="filter" onclick={onsettings} aria-label="条件を変える"><Icon name="sliders" size={14} /> 条件</button>
-	</p>
 		<div class="stack">
 			{#each stack.toReversed() as m, rev (m.server.host)}
 				{@const depth = stack.length - 1 - rev}
@@ -215,6 +288,7 @@
 			<button class="round like" onclick={() => fly('right')} aria-label="いいね"><Icon name="heart" size={26} filled /></button>
 		</div>
 		<p class="hint">左右にスワイプ · タップで詳細 · ← → キー</p>
+		{#if composer}<div class="composer-slot">{@render composer()}</div>{/if}
 	{:else}
 		<div class="panel done">
 			<p class="big"><Icon name={total === 0 && matches.length === 0 ? 'search' : 'sparkle'} size={40} /></p>
@@ -231,7 +305,7 @@
 
 	{#if current}
 		<aside class="aside panel">
-			{@render details(current)}
+			{@render details(current, false)}
 		</aside>
 	{/if}
 
@@ -239,46 +313,28 @@
 		<button class="backdrop" aria-label="閉じる" onclick={() => (sheet = false)}></button>
 		<div class="sheet" role="dialog" aria-modal="true" aria-label="{current.server.name ?? current.server.host} の詳細">
 			<div class="grip"></div>
-			{@render details(current)}
+			{@render details(current, true)}
 		</div>
 	{/if}
 </section>
 
 <style>
+	/* 親（さがすタブ）の残りの高さに収まるよう、カードの束が伸び縮みする */
 	.discover {
+		flex: 1;
+		min-height: 0;
 		display: flex;
 		flex-direction: column;
 		align-items: center;
 		gap: 10px;
 		padding-top: 6px;
 	}
-	.counter {
-		margin: 0;
-		width: 100%;
-		display: flex;
-		justify-content: space-between;
-		align-items: center;
-		font-size: 0.8rem;
-		color: var(--fg-muted);
-	}
-	.filter {
-		display: inline-flex;
-		align-items: center;
-		gap: 4px;
-		font-size: 0.78rem;
-		font-weight: 700;
-		background: var(--panel);
-		border: 1px solid var(--border);
-		border-radius: 999px;
-		padding: 5px 10px;
-		cursor: pointer;
-		color: var(--fg-muted);
-	}
 	.stack {
 		position: relative;
 		width: 100%;
-		height: min(640px, calc(100dvh - var(--nav-h) - 190px));
-		min-height: 420px;
+		flex: 1;
+		min-height: 380px;
+		max-height: 640px;
 	}
 	.slot {
 		position: absolute;
@@ -435,32 +491,122 @@
 		background: var(--border);
 		margin: 0 auto 6px;
 	}
-	.sheet-head {
+	.banner {
+		position: relative;
+		height: 80px;
+		margin: -8px -20px 0;
+		overflow: hidden;
+		flex-shrink: 0;
+	}
+	.banner img {
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+	}
+	.identity {
 		display: flex;
+		flex-direction: column;
 		align-items: center;
-		justify-content: space-between;
-		gap: 10px;
+		text-align: center;
+		margin-top: -32px;
+		gap: 2px;
 	}
-	.sheet-head h2 {
-		margin: 0;
-		font-size: 1.3rem;
+	.avatar {
+		width: 64px;
+		height: 64px;
+		border-radius: 14px;
+		border: 3px solid var(--panel);
+		background: var(--panel);
+		object-fit: cover;
+		box-shadow: var(--shadow);
+	}
+	.avatar.placeholder {
+		display: grid;
+		place-items: center;
 		font-weight: 900;
+		font-size: 1.6rem;
+		color: var(--accent-fg);
+		background: var(--accent-soft);
 	}
-	.pill {
+	.identity h2 {
+		margin: 6px 0 0;
+		font-size: 1.1rem;
+		font-weight: 800;
+		max-width: 100%;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+	.hostlink {
 		display: inline-flex;
 		align-items: center;
 		gap: 3px;
-		background: var(--accent-soft);
-		color: var(--accent-fg);
-		border-radius: 999px;
-		padding: 4px 10px;
-		font-weight: 800;
-		font-size: 0.85rem;
-		white-space: nowrap;
+		font-size: 0.74rem;
+		color: var(--fg-muted);
+		text-decoration: none;
 	}
-	.host {
-		margin: -6px 0 0;
-		font-size: 0.85rem;
+	.hostlink:hover {
+		color: var(--accent-fg);
+	}
+	.stats {
+		display: grid;
+		grid-template-columns: repeat(3, 1fr);
+		gap: 6px;
+		padding: 8px 6px;
+		border-radius: 10px;
+		background: var(--panel-2);
+		text-align: center;
+	}
+	.stats div {
+		display: flex;
+		flex-direction: column;
+		min-width: 0;
+	}
+	.stats b {
+		font-size: 1.05rem;
+		font-weight: 800;
+	}
+	.stats span {
+		font-size: 0.62rem;
+		letter-spacing: 0.04em;
+		text-transform: uppercase;
+		color: var(--fg-muted);
+	}
+	.meta {
+		display: flex;
+		flex-wrap: wrap;
+		justify-content: center;
+		gap: 6px;
+	}
+	.tag {
+		display: inline-flex;
+		align-items: center;
+		gap: 5px;
+		padding: 3px 9px;
+		border-radius: 999px;
+		border: 1px solid var(--border);
+		background: var(--panel);
+		font-size: 0.72rem;
+		font-weight: 700;
+		color: var(--fg-muted);
+	}
+	.tag.score {
+		background: var(--accent-soft);
+		border-color: transparent;
+		color: var(--accent-fg);
+	}
+	.tag.reg.open {
+		color: var(--accent-fg);
+		border-color: color-mix(in srgb, var(--accent) 40%, transparent);
+	}
+	.tag.reg.closed {
+		color: var(--nope);
+		border-color: color-mix(in srgb, var(--nope) 40%, transparent);
+	}
+	.dot {
+		width: 8px;
+		height: 8px;
+		border-radius: 50%;
 	}
 	.reasons {
 		list-style: none;
@@ -469,11 +615,15 @@
 		display: flex;
 		flex-direction: column;
 		gap: 4px;
+		font-size: 0.88rem;
 	}
-	.reasons li::before {
-		content: '✓ ';
+	.reasons li {
+		display: flex;
+		align-items: center;
+		gap: 6px;
+	}
+	.reasons li :global(svg) {
 		color: var(--accent);
-		font-weight: 900;
 	}
 	.tags {
 		margin: 0;
@@ -481,9 +631,15 @@
 		color: var(--accent-fg);
 		font-weight: 700;
 	}
+	.desc.plain {
+		padding-top: 6px;
+		border-top: none;
+	}
 	.desc {
 		margin: 0;
-		font-size: 0.92rem;
+		padding-top: 10px;
+		border-top: 1px solid var(--border);
+		font-size: 0.86rem;
 		line-height: 1.6;
 	}
 	.facts {
@@ -522,14 +678,70 @@
 		font-size: 0.8rem;
 		margin: 0;
 	}
+	.clef h3 {
+		margin: 0 0 6px;
+		font-size: 0.66rem;
+		font-weight: 800;
+		letter-spacing: 0.06em;
+		text-transform: uppercase;
+		color: var(--fg-muted);
+	}
+	.clef .row {
+		display: grid;
+		grid-template-columns: 5.4em 1fr auto;
+		align-items: center;
+		gap: 6px;
+		font-size: 0.74rem;
+		padding: 2px 0;
+	}
+	.clef .row.two {
+		grid-template-columns: 5.4em auto 1fr auto;
+	}
+	.clef .k {
+		color: var(--fg-muted);
+		font-weight: 700;
+		white-space: nowrap;
+	}
+	.clef .end {
+		color: var(--fg-muted);
+		font-size: 0.66rem;
+		white-space: nowrap;
+	}
+	.clef .v {
+		font-weight: 800;
+		min-width: 2.6em;
+		text-align: right;
+	}
+	.clef .bar {
+		display: block;
+		height: 6px;
+		border-radius: 3px;
+		background: var(--panel-2);
+		overflow: hidden;
+	}
+	.clef .bar i {
+		display: block;
+		height: 100%;
+		border-radius: 3px;
+		background: var(--accent);
+	}
+	.clef .small {
+		margin: 6px 0 0;
+	}
 	.sheet-actions {
 		display: grid;
 		grid-template-columns: 1fr 1fr;
-		gap: 10px;
-		margin-top: 6px;
+		gap: 8px;
+	}
+	.sheet-actions .btn {
+		padding: 9px 14px;
+		font-size: 0.82rem;
 	}
 	.aside {
 		display: none;
+	}
+	.composer-slot {
+		width: 100%;
 	}
 
 	/* デスクトップ: カードの右に詳細を常時表示（Tinder Web）。シートは使わない */
@@ -537,20 +749,19 @@
 		.discover {
 			display: grid;
 			grid-template-columns: 420px minmax(320px, 460px);
+			grid-template-rows: minmax(0, 1fr) auto auto;
 			grid-template-areas:
-				'counter counter'
 				'stack aside'
-				'actions aside'
-				'hint aside';
+				'stack composer'
+				'actions composer';
 			justify-content: center;
 			column-gap: 32px;
 			align-items: start;
-		}
-		.counter {
-			grid-area: counter;
+			align-content: start;
 		}
 		.stack {
 			grid-area: stack;
+			flex: none;
 			height: 640px;
 		}
 		.actions {
@@ -558,8 +769,11 @@
 			justify-content: center;
 		}
 		.hint {
-			grid-area: hint;
-			text-align: center;
+			display: none;
+		}
+		.composer-slot {
+			grid-area: composer;
+			align-self: end;
 		}
 		.round.info {
 			display: none;
@@ -569,11 +783,15 @@
 			display: flex;
 			flex-direction: column;
 			gap: 10px;
-			padding: 20px 22px;
-			position: sticky;
-			top: 28px;
-			max-height: calc(100dvh - 56px);
+			padding: 8px 22px 20px;
+			/* 高さは束と同じ行に合わせ、中身は内側でスクロール（行の高さには寄与しない） */
+			height: 0;
+			min-height: 100%;
+			align-self: stretch;
 			overflow-y: auto;
+		}
+		.aside .banner {
+			margin: -8px -22px 0;
 		}
 		.done {
 			grid-column: 1 / -1;

@@ -111,7 +111,7 @@
 		background: none;
 		border: none;
 		color: var(--fg);
-		padding: 12px 14px 4px;
+		padding: 10px 14px 2px;
 	}
 	textarea:focus {
 		outline: none;
@@ -121,7 +121,7 @@
 		align-items: center;
 		justify-content: space-between;
 		gap: 8px;
-		padding: 4px 8px 8px 12px;
+		padding: 0 6px 6px 14px;
 	}
 	.left {
 		display: flex;
@@ -132,8 +132,8 @@
 		color: var(--fg-muted);
 	}
 	.send {
-		width: 34px;
-		height: 34px;
+		width: 30px;
+		height: 30px;
 		border-radius: 50%;
 		border: none;
 		background: var(--accent);

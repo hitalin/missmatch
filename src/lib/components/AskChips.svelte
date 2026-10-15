@@ -25,11 +25,20 @@
 <style>
 	.ask {
 		display: flex;
-		flex-wrap: wrap;
+		flex-wrap: nowrap;
+		overflow-x: auto;
+		scrollbar-width: none;
+		white-space: nowrap;
 		align-items: center;
 		gap: 6px;
 		margin-bottom: 8px;
 		font-size: 0.82rem;
+	}
+	@media (min-width: 900px) {
+		.ask {
+			flex-wrap: wrap;
+			overflow: visible;
+		}
 	}
 	.prompt {
 		font-weight: 700;

@@ -102,6 +102,7 @@ export interface Match {
 	server: ServerInfo;
 	vibe: VibeProfile | null;
 	score: number; // 0..100
+	affinity?: number; // 検索の言葉との噛み合い確率（言葉があるときだけ）
 	reasons: string[];
 	tags: string[];
 }

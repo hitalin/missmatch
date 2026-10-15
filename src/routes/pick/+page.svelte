@@ -2,6 +2,7 @@
 	import { onDestroy, onMount } from 'svelte';
 	import { page } from '$app/state';
 	
+	import Composer from '$lib/components/Composer.svelte';
 	import Discover from '$lib/components/Discover.svelte';
 	import Icon from '$lib/components/Icon.svelte';
 	import LikesGrid from '$lib/components/LikesGrid.svelte';
@@ -62,6 +63,7 @@
 	let deckGen = $state(0); // 何束目か。同じ条件でも次の束で Discover を作り直すため
 	let deckTotal = $state(0);
 	let celebrate = $state<Match | null>(null);
+	let draft = $state(''); // 言葉を足す箱の入力中テキスト
 
 	// 条件（フィルター・加点・どの検索か・噛み合い済みか）の文字列キー。変わったらデッキを作り直す
 	const prefsKey = $derived(
@@ -239,11 +241,6 @@
 	function restore(host: string) {
 		profile = patchSearch(profile, { passed: search.passed.filter((h) => h !== host) });
 	}
-	// 検索を外す = 「条件だけ」の検索に移る（言葉付きの検索とそのいいねは残る）
-	function clearWish() {
-		const plain = profile.searches.find((s) => s.query === '') ?? newSearch();
-		profile = selectSearch(profile, plain);
-	}
 	// 言葉を足す / 外す。並びが変わったので噛み合いを読み直す
 	function refine(text: string) {
 		profile = selectSearch(profile, refineSearch(search, text));
@@ -324,31 +321,35 @@
 			{/if}
 
 			{#if tab === 'discover'}
-				<SearchBar
-					{search}
-					{reading}
-					applied={wishApplied}
-					{asks}
-					onrefine={refine}
-					ondrop={dropTurn}
-					onclear={clearWish}
-					onask={answerAsk}
-				/>
-				{#if !profiles}
-					<div class="loading"><div class="pulse"><Icon name="heart" size={30} filled /></div><p class="muted">サーバー情報を取得中…</p></div>
-				{:else}
-					{#key deckGen}
-						<Discover
-							matches={deck}
-							total={deckTotal}
-							onlike={(m) => swipe(m, 'like')}
-							onpass={(m) => swipe(m, 'pass')}
-							onundo={undo}
-							onexhausted={rebuildDeck}
-							onsettings={() => go('you')}
-						/>
-					{/key}
-				{/if}
+				<div class="discover-tab">
+					<SearchBar {search} {reading} ondrop={dropTurn} />
+					{#if !profiles}
+						<div class="loading"><div class="pulse"><Icon name="heart" size={30} filled /></div><p class="muted">サーバー情報を取得中…</p></div>
+					{:else}
+						{#key deckGen}
+							<Discover
+								matches={deck}
+								total={deckTotal}
+								onlike={(m) => swipe(m, 'like')}
+								onpass={(m) => swipe(m, 'pass')}
+								onundo={undo}
+								onexhausted={rebuildDeck}
+								onsettings={() => go('you')}
+							>
+								{#snippet composer()}
+									<Composer
+										bind:value={draft}
+										{search}
+										{reading}
+										{asks}
+										onrefine={refine}
+										onask={answerAsk}
+									/>
+								{/snippet}
+							</Discover>
+						{/key}
+					{/if}
+				</div>
 			{:else if tab === 'likes'}
 				<LikesGrid matches={liked} onremove={(m) => unlike(m.server.host)} />
 			{:else if tab === 'passed'}
@@ -366,13 +367,6 @@
 					}}
 				/>
 			{/if}
-			<footer>
-				<p>
-					データ: <a href="https://join.misskey.page/" target="_blank" rel="noopener">joinmisskey</a>
-					· 判定: Cloudflare Workers AI (Clef)
-					· <a href="https://github.com/hitalin/missmatch" target="_blank" rel="noopener">GitHub</a>
-				</p>
-			</footer>
 		</main>
 	</Shell>
 {/if}
@@ -387,6 +381,26 @@
 		margin: 0 auto;
 		padding: 0 16px;
 		min-height: 100dvh;
+	}
+	/* さがす: 見出し → デッキ → 下に貼り付く入力欄 の縦並びで、画面に収める */
+	main {
+		flex: 1;
+		display: flex;
+		flex-direction: column;
+	}
+	.discover-tab {
+		flex: none; /* flex:1 だと中身に合わせて伸びるので、高さを決め打つ */
+		display: flex;
+		flex-direction: column;
+		/* 骨組みの上下の余白を引いた高さに収める（縦スクロールなしで判定ボタンまで見える） */
+		height: calc(100dvh - 10px - var(--nav-h) - env(safe-area-inset-bottom) - 16px);
+	}
+	@media (min-width: 900px) {
+		/* デスクトップはカードを縮めない。収まらない画面では縦に伸びる */
+		.discover-tab {
+			height: auto;
+			min-height: calc(100dvh - 16px - 24px);
+		}
 	}
 	.banner {
 		margin: 0 0 12px;
@@ -423,14 +437,5 @@
 		50% {
 			transform: scale(1.1);
 		}
-	}
-	footer {
-		margin-top: 28px;
-		font-size: 0.72rem;
-		color: var(--fg-muted);
-		text-align: center;
-	}
-	footer a {
-		color: var(--fg-muted);
 	}
 </style>

@@ -120,10 +120,6 @@
 
 		<footer>
 			<p>
-				登録できる日本語 Misskey サーバー約 100 件（招待制・停止中を含めると約 580 件）を、説明文・ルール・最近の投稿から読み取った雰囲気と条件で並べます。
-				プロフィールはこのブラウザにだけ保存。
-			</p>
-			<p>
 				データ: <a href="https://join.misskey.page/" target="_blank" rel="noopener">joinmisskey</a>
 				· 判定: Cloudflare Workers AI (Clef)
 				· <a href="https://github.com/hitalin/missmatch" target="_blank" rel="noopener">GitHub</a>

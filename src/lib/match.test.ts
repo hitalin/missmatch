@@ -134,6 +134,8 @@ describe('scoreProfile', () => {
 		const other = scoreProfile(mk({ host: 'other.tld' }), p, {}, 0, affinity);
 		expect(yami.score).toBeGreaterThan(other.score);
 		expect(yami.reasons[0]).toBe('書いてくれた希望と噛み合う');
+		expect(yami.affinity).toBe(0.95);
+		expect(scoreProfile(mk(), p).affinity).toBeUndefined();
 		// 噛み合い 0.95 が 75% を占めるので、好みが低くても 71 点以上。逆は 33 点以下
 		expect(yami.score).toBeGreaterThanOrEqual(71);
 		expect(other.score).toBeLessThanOrEqual(33);
