@@ -828,12 +828,11 @@
 			grid-area: aside;
 			display: flex;
 			flex-direction: column;
-			gap: 10px;
-			padding: 8px 22px 20px;
-			/* 高さは束と同じ行に合わせ、中身は内側でスクロール（行の高さには寄与しない） */
-			height: 0;
-			min-height: 100%;
-			align-self: stretch;
+			gap: 18px;
+			padding: 22px 24px 24px;
+			/* 高さは中身に合わせる（行の高さには寄与させず、溢れたら内側でスクロール） */
+			max-height: 100%;
+			align-self: start;
 			overflow-y: auto;
 		}
 		.aside .banner {
@@ -841,14 +840,24 @@
 		}
 		/* 右パネルは内側スクロールも要らない高さに収める */
 		.aside .facts {
+			margin: 0;
 			grid-template-columns: repeat(3, 1fr);
-			gap: 6px;
+			gap: 8px;
 		}
 		.aside .facts div {
-			padding: 6px 8px;
+			padding: 8px 10px;
 		}
-		.aside {
-			gap: 8px;
+		.aside .clef .row {
+			min-height: 26px;
+		}
+		.aside .clef h3 {
+			margin-bottom: 10px;
+		}
+		.aside .clef h4 {
+			margin: 12px 0 6px;
+		}
+		.aside .clef .small {
+			margin-top: 10px;
 		}
 		.done {
 			grid-column: 1 / -1;
