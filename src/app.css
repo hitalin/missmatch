@@ -63,6 +63,41 @@ button {
 a {
 	color: var(--accent-fg);
 }
+/* チップ（misspace の filter-chip）: 小さなピル。hover で浮き、押すと縮む。.on で選択中 */
+.chip {
+	display: inline-flex;
+	align-items: center;
+	gap: 5px;
+	padding: 6px 12px;
+	border-radius: 999px;
+	border: 1px solid var(--border);
+	background: var(--panel);
+	color: var(--fg);
+	font-size: 0.78rem;
+	font-weight: 700;
+	cursor: pointer;
+	box-shadow: var(--shadow);
+	transition:
+		transform 0.15s,
+		border-color 0.15s,
+		background 0.15s;
+}
+.chip:hover {
+	transform: translateY(-1px);
+	border-color: var(--accent);
+}
+.chip:active {
+	transform: scale(0.96);
+}
+.chip.on {
+	background: var(--accent-soft);
+	border-color: var(--accent);
+	color: var(--accent-fg);
+}
+.chip.ghost {
+	box-shadow: none;
+	color: var(--fg-muted);
+}
 /* ピルボタン（Misskey） */
 .btn {
 	font-weight: 700;

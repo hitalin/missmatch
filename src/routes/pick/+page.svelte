@@ -3,6 +3,7 @@
 	import { page } from '$app/state';
 	
 	import Discover from '$lib/components/Discover.svelte';
+	import Icon from '$lib/components/Icon.svelte';
 	import LikesGrid from '$lib/components/LikesGrid.svelte';
 	import MatchOverlay from '$lib/components/MatchOverlay.svelte';
 	import Onboarding from '$lib/components/Onboarding.svelte';
@@ -334,7 +335,7 @@
 					onask={answerAsk}
 				/>
 				{#if !profiles}
-					<div class="loading"><div class="pulse">♥</div><p class="muted">サーバー情報を取得中…</p></div>
+					<div class="loading"><div class="pulse"><Icon name="heart" size={30} filled /></div><p class="muted">サーバー情報を取得中…</p></div>
 				{:else}
 					{#key deckGen}
 						<Discover
@@ -416,7 +417,6 @@
 		color: var(--accent);
 		display: grid;
 		place-items: center;
-		font-size: 1.8rem;
 		animation: pulse 1.2s ease-in-out infinite;
 	}
 	@keyframes pulse {

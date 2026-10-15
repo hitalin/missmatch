@@ -109,7 +109,7 @@
 
 			<ul class="examples">
 				{#each EXAMPLES as ex (ex)}
-					<li><button onclick={() => go(ex)}>{ex}</button></li>
+					<li><button class="chip ghost" onclick={() => go(ex)}>{ex}</button></li>
 				{/each}
 			</ul>
 
@@ -181,19 +181,6 @@
 		flex-wrap: wrap;
 		justify-content: center;
 		gap: 8px;
-	}
-	.examples button {
-		font-size: 0.85rem;
-		background: var(--panel);
-		border: 1px solid var(--border);
-		border-radius: 999px;
-		padding: 8px 14px;
-		cursor: pointer;
-		color: var(--fg-muted);
-	}
-	.examples button:hover {
-		border-color: var(--accent);
-		color: var(--fg);
 	}
 	.skip {
 		margin: 6px 0 0;

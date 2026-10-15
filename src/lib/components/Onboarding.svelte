@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { Preferences } from '$lib/prefs';
+	import Icon from './Icon.svelte';
 
 	// 20 秒で終わるオンボーディング: 年齢 → R-18。すぐデッキへ（探したい場所はデッキ上の検索ボックスで）
 	let {
@@ -26,11 +27,11 @@
 	{#if step === 0}
 		<div class="hero">
 			<div class="blob" aria-hidden="true"></div>
-			<p class="brand"><span class="logo">♥</span> みすまっち</p>
+			<p class="brand"><span class="logo"><Icon name="heart" size={22} filled /></span> みすまっち</p>
 			<h1>Swipe.<br />Match.<br />with <span class="accent">Misskey</span>.</h1>
 			<p class="lead">
 				登録できる日本語 Misskey サーバー約 100 件を、マッチングアプリのようにスワイプで選べます。
-				♥ と ✕ から好みを学んで、だんだん合う鯖が上に来ます。
+				いいねとよくないねから好みを学んで、だんだん合う鯖が上に来ます。
 			</p>
 			<button class="btn primary big" onclick={() => (step = 1)}>はじめる</button>
 			<p class="fine">2 問だけ答えれば使えます。プロフィールはこのブラウザにだけ保存。</p>

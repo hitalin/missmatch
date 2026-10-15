@@ -1,4 +1,5 @@
 <script lang="ts">
+	import Icon from '$lib/components/Icon.svelte';
 	import Segmented from '$lib/components/Segmented.svelte';
 	import { applyFilters, type Taste, tasteSummary } from '$lib/match';
 	import {
@@ -65,12 +66,12 @@
 					{#each chips as c (c.feature)}
 						<li>
 							<button class="chip on" onclick={() => onforget(c.feature)} title="この傾向を忘れる">
-								{c.label} <span class="x">✕</span>
+								{c.label} <span class="x"><Icon name="x" size={12} /></span>
 							</button>
 						</li>
 					{/each}
 				</ul>
-				<p class="help">✕ で個別に忘れられます。カードの並びに反映されます。</p>
+				<p class="help">× で個別に忘れられます。カードの並びに反映されます。</p>
 			{/if}
 			<div class="row">
 				<button class="btn ghost sm" onclick={onresettaste}>好みをリセット</button>
@@ -299,7 +300,7 @@
 		color: var(--accent-fg);
 	}
 	.chip .x {
-		font-size: 0.75rem;
+		display: inline-flex;
 		opacity: 0.7;
 	}
 	.switch {

@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { type Match, REGISTRATION_LABELS } from '$lib/types';
+	import Icon from './Icon.svelte';
 	import ServerCard from './ServerCard.svelte';
 
 	// Tinder のデッキ: ドラッグでスワイプ、スタンプ、丸ボタン、戻す、詳細シート
@@ -138,7 +139,7 @@
 	{@const s = m.server}
 	<header class="sheet-head">
 		<h2>{s.name ?? s.host}</h2>
-		<span class="pill">♥ {m.score}%</span>
+		<span class="pill"><Icon name="heart" size={13} filled /> {m.score}%</span>
 	</header>
 	<p class="host muted">{s.host}</p>
 
@@ -169,7 +170,7 @@
 
 	<div class="sheet-actions">
 		<a class="btn secondary" href="https://{s.host}/" target="_blank" rel="noopener">サーバーを見る</a>
-		<button class="btn primary" onclick={() => fly('right')}>♥ いいね</button>
+		<button class="btn primary" onclick={() => fly('right')}><Icon name="heart" size={16} filled /> いいね</button>
 	</div>
 {/snippet}
 
@@ -177,7 +178,7 @@
 	{#if current}
 		<p class="counter">
 		<span>あと {remaining} 件</span>
-		<button class="filter" onclick={onsettings} aria-label="条件を変える">⚙ 条件</button>
+		<button class="filter" onclick={onsettings} aria-label="条件を変える"><Icon name="sliders" size={14} /> 条件</button>
 	</p>
 		<div class="stack">
 			{#each stack.toReversed() as m, rev (m.server.host)}
@@ -208,15 +209,15 @@
 		</div>
 
 		<div class="actions">
-			<button class="round small" onclick={undo} disabled={history.length === 0} aria-label="ひとつ戻す">↶</button>
-			<button class="round nope" onclick={() => fly('left')} aria-label="パス">✕</button>
+			<button class="round small" onclick={undo} disabled={history.length === 0} aria-label="ひとつ戻す"><Icon name="undo" size={18} /></button>
+			<button class="round nope" onclick={() => fly('left')} aria-label="パス"><Icon name="x" size={26} /></button>
 			<button class="round small info" onclick={() => (sheet = true)} aria-label="詳しく見る">i</button>
-			<button class="round like" onclick={() => fly('right')} aria-label="いいね">♥</button>
+			<button class="round like" onclick={() => fly('right')} aria-label="いいね"><Icon name="heart" size={26} filled /></button>
 		</div>
 		<p class="hint">左右にスワイプ · タップで詳細 · ← → キー</p>
 	{:else}
 		<div class="panel done">
-			<p class="big">{total === 0 && matches.length === 0 ? '🔍' : '🎉'}</p>
+			<p class="big"><Icon name={total === 0 && matches.length === 0 ? 'search' : 'sparkle'} size={40} /></p>
 			{#if matches.length === 0}
 				<h2>条件に合うカードがありません</h2>
 				<p class="muted">絶対条件や規模・流速を緩めるか、パスした鯖をもう一度見るとカードが出ます。</p>
@@ -261,6 +262,9 @@
 		color: var(--fg-muted);
 	}
 	.filter {
+		display: inline-flex;
+		align-items: center;
+		gap: 4px;
 		font-size: 0.78rem;
 		font-weight: 700;
 		background: var(--panel);
@@ -379,7 +383,9 @@
 	}
 	.done .big {
 		margin: 0;
-		font-size: 2.4rem;
+		display: flex;
+		justify-content: center;
+		color: var(--accent);
 	}
 	.done h2 {
 		margin: 0;
@@ -441,6 +447,9 @@
 		font-weight: 900;
 	}
 	.pill {
+		display: inline-flex;
+		align-items: center;
+		gap: 3px;
 		background: var(--accent-soft);
 		color: var(--accent-fg);
 		border-radius: 999px;

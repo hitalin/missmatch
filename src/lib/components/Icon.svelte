@@ -13,7 +13,10 @@
 		| 'chevron'
 		| 'sparkle'
 		| 'edit'
-		| 'trash';
+		| 'trash'
+		| 'sliders'
+		| 'undo'
+		| 'check';
 	let { name, size = 20, filled = false }: { name: IconName; size?: number; filled?: boolean } =
 		$props();
 </script>
@@ -60,6 +63,12 @@
 		<path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
 	{:else if name === 'trash'}
 		<path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14" />
+	{:else if name === 'sliders'}
+		<path d="M4 6h10M18 6h2M4 12h2M10 12h10M4 18h12M20 18h0" /><circle cx="16" cy="6" r="2" /><circle cx="8" cy="12" r="2" /><circle cx="18" cy="18" r="2" />
+	{:else if name === 'undo'}
+		<path d="M9 14L4 9l5-5" /><path d="M4 9h10a6 6 0 0 1 0 12h-3" />
+	{:else if name === 'check'}
+		<path d="M5 12l5 5L20 7" />
 	{/if}
 </svg>
 

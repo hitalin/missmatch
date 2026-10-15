@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { Match } from '$lib/types';
+	import Icon from './Icon.svelte';
 	let { match, onclose }: { match: Match; onclose: () => void } = $props();
 	const s = $derived(match.server);
 </script>
@@ -10,7 +11,7 @@
 		<p class="sub">相性 {match.score}%。{s.name ?? s.host} と気が合いそうです。</p>
 		<div class="faces">
 			<div class="face you">あなた</div>
-			<span class="heart">♥</span>
+			<span class="heart"><Icon name="heart" size={36} filled /></span>
 			{#if s.iconUrl}
 				<img src={s.iconUrl} alt="" width="84" height="84" />
 			{:else}
@@ -97,7 +98,7 @@
 	}
 	.heart {
 		color: var(--accent);
-		font-size: 2rem;
+		display: inline-flex;
 		animation: beat 0.9s ease-in-out infinite;
 	}
 	@keyframes beat {

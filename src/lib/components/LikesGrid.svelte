@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { Match } from '$lib/types';
+	import Icon from './Icon.svelte';
 
 	const MISSPACE_URL = 'https://misspace.hital.in';
 
@@ -23,11 +24,11 @@
 	<h1>{mode === 'liked' ? 'いいね' : 'よくないね'} <span class="count">{matches.length}</span></h1>
 	{#if matches.length === 0}
 		<div class="panel empty">
-			<p class="big">{mode === 'liked' ? '♥' : '✕'}</p>
+			<p class="big"><Icon name={mode === 'liked' ? 'heart' : 'x'} size={40} /></p>
 			{#if mode === 'liked'}
-				<p>まだありません。「さがす」で気になるサーバーに ♥ を送ると、ここに残ります。</p>
+				<p>まだありません。「さがす」で気になるサーバーにいいねすると、ここに残ります。</p>
 			{:else}
-				<p>まだありません。✕ を送ったサーバーがここに残り、デッキには出なくなります。</p>
+				<p>まだありません。よくないねしたサーバーがここに残り、デッキには出なくなります。</p>
 			{/if}
 		</div>
 	{:else}
@@ -41,7 +42,7 @@
 						<img class="photo" src={m.server.bannerUrl} alt="" loading="lazy" decoding="async" />
 					{/if}
 					<div class="scrim"></div>
-					<span class="score">♥ {m.score}%</span>
+					<span class="score"><Icon name="heart" size={12} filled /> {m.score}%</span>
 					<div class="label">
 						{#if m.server.iconUrl}
 							<img class="icon" src={m.server.iconUrl} alt="" width="28" height="28" loading="lazy" />
@@ -95,7 +96,8 @@
 	}
 	.empty .big {
 		margin: 0 0 8px;
-		font-size: 2.6rem;
+		display: flex;
+		justify-content: center;
 		color: var(--accent);
 	}
 	.empty p {
@@ -142,6 +144,9 @@
 		position: absolute;
 		top: 8px;
 		right: 8px;
+		display: inline-flex;
+		align-items: center;
+		gap: 3px;
 		background: rgba(0, 0, 0, 0.5);
 		border-radius: 999px;
 		padding: 3px 8px;

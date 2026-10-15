@@ -1,5 +1,7 @@
 <script lang="ts">
+	import { formatCount } from '$lib/format';
 	import { type Match, REGISTRATION_LABELS } from '$lib/types';
+	import Icon from './Icon.svelte';
 
 	// Tinder のカード: 全面画像、下部にグラデーションと名前。詳細はシートで見せる
 	let { match, eager = false }: { match: Match; eager?: boolean } = $props();
@@ -10,8 +12,8 @@
 	);
 	const subtitle = $derived(
 		[
-			s.usersCount !== null ? `${s.usersCount.toLocaleString()}人` : null,
-			s.npd15 !== null ? `${Math.round(s.npd15).toLocaleString()}投稿/日` : null
+			s.usersCount !== null ? `${formatCount(s.usersCount)}人` : null,
+			s.npd15 !== null ? `${formatCount(s.npd15)}投稿/日` : null
 		]
 			.filter(Boolean)
 			.join(' · ')
@@ -32,7 +34,7 @@
 	<div class="scrim"></div>
 
 	<div class="score" aria-label="相性 {match.score}%">
-		<span>♥</span>{match.score}<small>%</small>
+		<span><Icon name="heart" size={14} filled /></span>{match.score}<small>%</small>
 	</div>
 	{#if s.registration !== 'open'}
 		<div class="reg" class:closed={s.registration === 'closed'}>{REGISTRATION_LABELS[s.registration]}</div>
@@ -52,7 +54,7 @@
 		</div>
 		{#if match.tags.length > 0 || match.reasons.length > 0}
 			<ul class="chips">
-				{#each match.reasons.slice(0, 2) as reason (reason)}<li class="reason">✓ {reason}</li>{/each}
+				{#each match.reasons.slice(0, 2) as reason (reason)}<li class="reason"><Icon name="check" size={12} />{reason}</li>{/each}
 				{#each match.tags.slice(0, 3) as tag (tag)}<li>{tag}</li>{/each}
 			</ul>
 		{/if}
@@ -102,7 +104,8 @@
 	}
 	.score span {
 		color: var(--accent);
-		font-size: 0.9rem;
+		display: inline-flex;
+		align-self: center;
 	}
 	.score small {
 		font-size: 0.75rem;
@@ -184,6 +187,9 @@
 		gap: 6px;
 	}
 	.chips li {
+		display: inline-flex;
+		align-items: center;
+		gap: 4px;
 		background: rgba(255, 255, 255, 0.16);
 		border: 1px solid rgba(255, 255, 255, 0.28);
 		border-radius: 999px;
