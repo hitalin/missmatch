@@ -57,7 +57,7 @@ export function searchTitle(s: Search): string {
 	return s.title || s.query || '条件だけ';
 }
 
-// 一覧の見出し用: 最後に使った日で 今日 / 昨日 / 過去 7 日 / それ以前 に分け、各組は新しい順
+// 一覧の見出し用: 言葉のある検索だけを、最後に使った日で 今日 / 昨日 / 過去 7 日 / それ以前 に分け、各組は新しい順
 export interface SearchGroup {
 	label: string;
 	searches: Search[];
@@ -71,7 +71,7 @@ export function groupSearches(searches: Search[], now = Date.now()): SearchGroup
 		{ label: '過去 7 日', searches: [] },
 		{ label: 'それ以前', searches: [] }
 	];
-	for (const s of [...searches].sort((a, b) => b.at - a.at)) {
+	for (const s of searches.filter((x) => x.query).sort((a, b) => b.at - a.at)) {
 		const i =
 			s.at >= startOfToday
 				? 0

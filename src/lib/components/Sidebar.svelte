@@ -60,7 +60,7 @@
 	</nav>
 	<div class="history">
 		<p class="head">さがした言葉</p>
-		{#if searches.length > 0}
+		{#if searches.some((s) => s.query)}
 			<SearchList {searches} {current} {onselect} {onrename} {ondelete} />
 		{:else}
 			<p class="empty">まだありません</p>

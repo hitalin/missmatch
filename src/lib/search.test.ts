@@ -57,7 +57,7 @@ describe('search', () => {
 		expect(searchTitle({ ...newSearch('病み垢'), title: '弱音用' })).toBe('弱音用');
 	});
 
-	it('groupSearches は新しい順に 今日 / 昨日 / 過去 7 日 / それ以前 で分け、空の組は出さない', () => {
+	it('groupSearches は言葉のある検索だけを新しい順に 今日 / 昨日 / 過去 7 日 / それ以前 で分け、空の組は出さない', () => {
 		const now = new Date(2026, 9, 16, 15, 0).getTime(); // 2026-10-16 15:00
 		const day = 24 * 60 * 60 * 1000;
 		const at = (ms: number) => ({ ...newSearch('x'), at: ms });
@@ -66,7 +66,8 @@ describe('search', () => {
 		const yesterday = at(now - day);
 		const fiveDays = at(now - 5 * day);
 		const old = at(now - 30 * day);
-		const groups = groupSearches([old, fiveDays, todayEarly, yesterday, today], now);
+		const plain = { ...newSearch(''), at: now }; // 言葉なし（条件だけ）は一覧に出さない
+		const groups = groupSearches([old, fiveDays, todayEarly, yesterday, today, plain], now);
 		expect(groups.map((g) => g.label)).toEqual(['今日', '昨日', '過去 7 日', 'それ以前']);
 		expect(groups[0].searches.map((s) => s.at)).toEqual([today.at, todayEarly.at]);
 		expect(groups[1].searches).toEqual([yesterday]);
