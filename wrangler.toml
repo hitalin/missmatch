@@ -1,0 +1,22 @@
+name = "missmatch"
+main = ".svelte-kit/cloudflare/_worker.js"
+compatibility_date = "2025-10-01"
+compatibility_flags = ["nodejs_compat"]
+
+[assets]
+binding = "ASSETS"
+directory = ".svelte-kit/cloudflare"
+
+# AI バインディングはローカル開発でもリモートを叩く（課金対象）
+[ai]
+binding = "AI"
+remote = true
+
+# 雰囲気プロファイルとサーバー一覧のキャッシュ
+# `wrangler kv namespace create VIBE_KV` で作成した id に差し替える
+[[kv_namespaces]]
+binding = "VIBE_KV"
+id = "REPLACE_ME"
+
+[observability]
+enabled = true

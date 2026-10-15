@@ -1,0 +1,2 @@
+# /api/warm を叩くための共有シークレット
+WARM_SECRET=change-me
