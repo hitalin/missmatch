@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onDestroy, onMount } from 'svelte';
-	import AppNav, { type Tab } from '$lib/components/AppNav.svelte';
+	import { page } from '$app/state';
+	import AppNav, { type Tab, TABS } from '$lib/components/AppNav.svelte';
 	import AskChips from '$lib/components/AskChips.svelte';
 	import Discover from '$lib/components/Discover.svelte';
 	import LikesGrid from '$lib/components/LikesGrid.svelte';
@@ -91,6 +92,9 @@
 		profile = cur ? saved : selectSearch(saved, newSearch());
 		onboarding = !isComplete(saved.prefs);
 		hydrated = true;
+		// ランディングのナビから来たときは、そのタブを開く（/pick?tab=likes）
+		const wanted = page.url.searchParams.get('tab');
+		if (TABS.includes(wanted as Tab)) tab = wanted as Tab;
 		loadProfiles();
 		if (cur && needsRead(cur)) readSearch();
 	});

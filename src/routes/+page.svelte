@@ -2,10 +2,12 @@
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
+	import AppNav, { type Tab } from '$lib/components/AppNav.svelte';
 	import { MAX_INTENT_LENGTH } from '$lib/intent';
 	import { isComplete } from '$lib/prefs';
 	import {
 		currentSearch,
+		deleteSearch,
 		emptyProfile,
 		loadSavedProfile,
 		persistProfile,
@@ -43,6 +45,22 @@
 		e.preventDefault();
 		if (text.trim().length >= 2) go(text);
 	}
+
+	// ナビ: タブを押したら「さがす」のそのタブへ。一覧から選んだ検索はそのまま開く
+	const search = $derived(currentSearch(profile));
+	function goTab(tab: Tab) {
+		goto(`${resolve('/pick')}?tab=${tab}`);
+	}
+	function openSearch(id: string) {
+		const s = profile.searches.find((x) => x.id === id);
+		if (!s) return;
+		persistProfile(selectSearch(profile, s));
+		goto(resolve('/pick'));
+	}
+	function removeSearch(id: string) {
+		profile = deleteSearch(profile, id);
+		persistProfile(profile);
+	}
 </script>
 
 <svelte:head>
@@ -53,7 +71,7 @@
 	/>
 </svelte:head>
 
-<main class="landing">
+<main class="landing" class:withnav={hasProfile}>
 	<div class="center">
 		<h1 class="brand"><span class="logo">♥</span> みすまっち</h1>
 		<p class="tagline">Misskey のサーバーと、マッチング。</p>
@@ -101,12 +119,36 @@
 	</footer>
 </main>
 
+{#if hasProfile}
+	<AppNav
+		tab={null}
+		likes={search?.liked.length ?? 0}
+		passed={search?.passed.length ?? 0}
+		discoverEnabled
+		searches={profile.searches}
+		current={profile.current}
+		onchange={goTab}
+		onselect={openSearch}
+		ondelete={removeSearch}
+	/>
+{/if}
+
 <style>
 	.landing {
 		min-height: 100dvh;
 		display: flex;
 		flex-direction: column;
 		padding: 0 16px;
+	}
+	/* プロフィールがあればナビが出るので、その分を空ける */
+	.landing.withnav {
+		padding-bottom: calc(var(--nav-h) + env(safe-area-inset-bottom));
+	}
+	@media (min-width: 900px) {
+		.landing.withnav {
+			padding-bottom: 0;
+			padding-left: calc(var(--rail-w) + 16px);
+		}
 	}
 	.center {
 		flex: 1;

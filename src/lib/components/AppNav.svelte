@@ -1,8 +1,12 @@
+<script module lang="ts">
+	export type Tab = 'discover' | 'likes' | 'passed' | 'you';
+	export const TABS: Tab[] = ['discover', 'likes', 'passed', 'you'];
+</script>
+
 <script lang="ts">
 	import type { Search } from '$lib/search';
 	import SearchList from './SearchList.svelte';
 
-	export type Tab = 'discover' | 'likes' | 'passed' | 'you';
 	let {
 		tab,
 		likes,
@@ -14,7 +18,7 @@
 		onselect,
 		ondelete
 	}: {
-		tab: Tab;
+		tab: Tab | null; // null = どのタブでもない画面（探すランディング）
 		likes: number;
 		passed: number;
 		discoverEnabled: boolean;
