@@ -1,3 +1,4 @@
+import { ASK_AXES, type AskAxis } from './intent';
 import type { Taste } from './match';
 import {
 	DEALBREAKER_LABELS,
@@ -70,6 +71,9 @@ function parseSearch(x: unknown): Search | null {
 		turns: strArray(s.turns),
 		affinity: affinityOf(s.affinity),
 		affinityFor: isStr(s.affinityFor) ? s.affinityFor : '',
+		unsure: strArray(s.unsure).filter((a): a is AskAxis =>
+			(ASK_AXES as readonly string[]).includes(a)
+		),
 		liked: strArray(s.liked),
 		passed: strArray(s.passed),
 		at: typeof s.at === 'number' ? s.at : 0

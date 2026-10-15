@@ -3,10 +3,14 @@ import { mk } from './fixtures.test-helper';
 import {
 	AFFINITY_BATCH,
 	applyIntent,
+	askOptions,
 	buildAffinityRequests,
 	buildIntentRequest,
+	chooseAxis,
+	isAxisDefault,
 	MAX_TURNS,
-	parseAffinity
+	parseAffinity,
+	unsureAxes
 } from './intent';
 import { defaultPreferences } from './prefs';
 import type { ClefAnswer } from './vibe';
@@ -61,6 +65,40 @@ describe('applyIntent', () => {
 		expect(next.dealbreakers.emailFree).toBe(true);
 		expect(next.dealbreakers.adsFree).toBe(false);
 		expect(base.topics).toEqual(['game']); // 元は変えない
+	});
+});
+
+describe('読み取れなかった軸を選択肢で聞く', () => {
+	it('unsureAxes は choice の回答が無い・低確率の軸だけ（回答が無い軸は聞かない）', () => {
+		expect(
+			unsureAxes({
+				tone: choice('right', 0.95),
+				community: choice('none', 0.9),
+				rules: choice('left', 0.4),
+				scale: choice('small', 0.9)
+			})
+		).toEqual(['community', 'rules']);
+		expect(unsureAxes({})).toEqual([]);
+	});
+
+	it('askOptions は「言及なし」を除いた選択肢', () => {
+		expect(askOptions('scale').map((o) => o.value)).toEqual(['small', 'large']);
+		expect(askOptions('tone').map((o) => o.label)).toContain('ほのぼの・穏やか');
+	});
+
+	it('chooseAxis はユーザーの選択なので既定値でなくても上書きする', () => {
+		const base = { ...defaultPreferences(), tone: 'left' as const, scales: ['large' as const] };
+		expect(chooseAxis(base, 'tone', 'right').tone).toBe('right');
+		expect(chooseAxis(base, 'scale', 'small').scales).toEqual(['small', 'medium']);
+		expect(chooseAxis(base, 'pace', 'busy').paces).toEqual(['relaxed', 'busy']);
+	});
+
+	it('isAxisDefault は設定がまだ既定値か', () => {
+		const d = defaultPreferences();
+		expect(isAxisDefault(d, 'tone')).toBe(true);
+		expect(isAxisDefault(d, 'scale')).toBe(true);
+		expect(isAxisDefault({ ...d, scales: ['small'] }, 'scale')).toBe(false);
+		expect(isAxisDefault({ ...d, rules: 'right' }, 'rules')).toBe(false);
 	});
 });
 

@@ -83,12 +83,49 @@ function confidentChoice(a: ClefAnswer | undefined): string | null {
 }
 const confidentYes = (a: ClefAnswer | undefined) => a?.type === 'noul' && a.noul >= 0.7;
 
+// 一言から読み取る choice 型の軸。読み取れなかったものは、あとで選択肢にして聞く
+export const ASK_AXES = ['scale', 'pace', 'tone', 'community', 'rules'] as const;
+export type AskAxis = (typeof ASK_AXES)[number];
+export const ASK_PROMPTS: Record<AskAxis, string> = {
+	scale: '規模は',
+	pace: '流速は',
+	tone: '空気感は',
+	community: '関わり方は',
+	rules: 'ルールは'
+};
+export function askOptions(axis: AskAxis): { value: string; label: string }[] {
+	return Object.entries(INTENT_QUESTIONS[axis].criteria ?? {})
+		.filter(([value]) => value !== NONE)
+		.map(([value, label]) => ({ value, label: label ?? value }));
+}
+
+// その軸の設定がまだ既定値（聞く意味がある）か
+export function isAxisDefault(prefs: Preferences, axis: AskAxis): boolean {
+	if (axis === 'scale') return prefs.scales.length === 0;
+	if (axis === 'pace') return prefs.paces.length === 0;
+	return prefs[axis] === 'any';
+}
+
+// 軸の選択を設定に反映する（ユーザーが選んだので既定値でなくても上書き）。
+// 規模・流速は隣の区分も含めて広めに取る
+export function chooseAxis(prefs: Preferences, axis: AskAxis, choice: string): Preferences {
+	const next = { ...prefs };
+	if (axis === 'scale') {
+		if (choice === 'small') next.scales = ['small', 'medium'];
+		if (choice === 'large') next.scales = ['medium', 'large'];
+	} else if (axis === 'pace') {
+		if (choice === 'quiet') next.paces = ['quiet', 'relaxed'];
+		if (choice === 'busy') next.paces = ['relaxed', 'busy'];
+	} else if (choice === 'left' || choice === 'right') {
+		next[axis] = choice;
+	}
+	return next;
+}
+
 // 読み取れた希望で設定を埋める。ユーザーが既に触った項目（既定値でないもの）は上書きしない
 export function applyIntent(prefs: Preferences, answers: Record<string, ClefAnswer>): Preferences {
-	const next: Preferences = {
+	let next: Preferences = {
 		...prefs,
-		scales: [...prefs.scales],
-		paces: [...prefs.paces],
 		topics: [...prefs.topics],
 		dealbreakers: { ...prefs.dealbreakers }
 	};
@@ -96,20 +133,21 @@ export function applyIntent(prefs: Preferences, answers: Record<string, ClefAnsw
 		if (confidentYes(answers[`topic.${t}`]) && !next.topics.includes(t))
 			next.topics.push(t as Topic);
 	}
-	for (const key of ['tone', 'community', 'rules'] as const) {
-		const c = confidentChoice(answers[key]);
-		if (next[key] === 'any' && (c === 'left' || c === 'right')) next[key] = c;
+	for (const axis of ASK_AXES) {
+		const c = confidentChoice(answers[axis]);
+		if (c && isAxisDefault(next, axis)) next = chooseAxis(next, axis, c);
 	}
-	const scale = confidentChoice(answers.scale);
-	if (next.scales.length === 0 && scale === 'small') next.scales = ['small', 'medium'];
-	if (next.scales.length === 0 && scale === 'large') next.scales = ['medium', 'large'];
-	const pace = confidentChoice(answers.pace);
-	if (next.paces.length === 0 && pace === 'quiet') next.paces = ['quiet', 'relaxed'];
-	if (next.paces.length === 0 && pace === 'busy') next.paces = ['relaxed', 'busy'];
 	for (const key of ['emailFree', 'adsFree', 'gtl', 'official'] as const) {
 		if (confidentYes(answers[key])) next.dealbreakers[key] = true;
 	}
 	return next;
+}
+
+// 回答はあったが自信を持って読み取れなかった軸（「言及なし」か低確率）。回答自体が無ければ聞かない
+export function unsureAxes(answers: Record<string, ClefAnswer>): AskAxis[] {
+	return ASK_AXES.filter(
+		(axis) => answers[axis]?.type === 'choice' && confidentChoice(answers[axis]) === null
+	);
 }
 
 // Clef の応答時間は state のトークン数にほぼ比例するので、小さなバッチに分けて並列に投げる

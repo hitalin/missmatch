@@ -38,6 +38,7 @@ describe('parseSavedProfile', () => {
 						turns: ['小さめ', 3],
 						affinity: { 'a.tld': 0.9, 'b.tld': 2 },
 						affinityFor: '病み垢\n小さめ',
+						unsure: ['scale', 'bogus'],
 						liked: ['a.tld', 1],
 						passed: null,
 						at: 100
@@ -67,6 +68,7 @@ describe('parseSavedProfile', () => {
 				turns: ['小さめ'],
 				affinity: { 'a.tld': 0.9 },
 				affinityFor: '病み垢\n小さめ',
+				unsure: ['scale'],
 				liked: ['a.tld'],
 				passed: [],
 				at: 100

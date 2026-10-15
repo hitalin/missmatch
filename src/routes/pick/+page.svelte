@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onDestroy, onMount } from 'svelte';
 	import AppNav, { type Tab } from '$lib/components/AppNav.svelte';
+	import AskChips from '$lib/components/AskChips.svelte';
 	import Discover from '$lib/components/Discover.svelte';
 	import LikesGrid from '$lib/components/LikesGrid.svelte';
 	import MatchOverlay from '$lib/components/MatchOverlay.svelte';
@@ -8,7 +9,7 @@
 	import SearchBar from '$lib/components/SearchBar.svelte';
 	import Settings from '$lib/components/Settings.svelte';
 	import { featuresOf } from '$lib/features';
-	import { applyIntent } from '$lib/intent';
+	import { applyIntent, type AskAxis, chooseAxis, isAxisDefault, unsureAxes } from '$lib/intent';
 	import { applyFilters, buildDeck, learn, scoreProfile, type Taste } from '$lib/match';
 	import { isComplete, needsAllServers } from '$lib/prefs';
 	import {
@@ -162,10 +163,10 @@
 			};
 			// 待っている間に別の検索へ移っていたら捨てる
 			if (profile.current !== target.id) return;
-			const prefs = applyIntent(profile.prefs, data.answers ?? {});
+			const answers = data.answers ?? {};
 			profile = patchSearch(
-				{ ...profile, prefs },
-				{ affinity: data.affinity ?? {}, affinityFor: text }
+				{ ...profile, prefs: applyIntent(profile.prefs, answers) },
+				{ affinity: data.affinity ?? {}, affinityFor: text, unsure: unsureAxes(answers) }
 			);
 			tab = 'discover';
 		} catch (e) {
@@ -245,6 +246,14 @@
 		profile = patchSearch(profile, { turns: search.turns.filter((_, i) => i !== index) });
 		if (needsRead(search)) readSearch();
 	}
+	// 読み取れなかった軸は 2 つずつ選択肢で聞く（設定で既に決めた軸は聞かない）
+	const asks = $derived(
+		search.unsure.filter((a) => isAxisDefault(profile.prefs, a)).slice(0, 2)
+	);
+	function answerAsk(axis: AskAxis, choice: string | null) {
+		const prefs = choice ? chooseAxis(profile.prefs, axis, choice) : profile.prefs;
+		profile = patchSearch({ ...profile, prefs }, { unsure: search.unsure.filter((a) => a !== axis) });
+	}
 
 	function go(next: Tab) {
 		tab = next;
@@ -288,6 +297,9 @@
 					ondrop={dropTurn}
 					onclear={clearWish}
 				/>
+				{#if !reading && asks.length > 0}
+					<AskChips axes={asks} onpick={answerAsk} />
+				{/if}
 				{#if !profiles}
 					<div class="loading"><div class="pulse">♥</div><p class="muted">サーバー情報を取得中…</p></div>
 				{:else}

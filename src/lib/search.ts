@@ -1,3 +1,5 @@
+import type { AskAxis } from './intent';
+
 // 探す言葉ごとのセッション。いいね / よくないねは言葉ごとに分ける
 // （別の目的で外した鯖が、次の目的のときも消えたままにならないように）
 export interface Search {
@@ -6,6 +8,7 @@ export interface Search {
 	turns: string[]; // そのあと足した絞り込みの言葉（順序あり）
 	affinity: Record<string, number>; // 言葉の並びと各サーバーの噛み合い確率（未読み取りなら空）
 	affinityFor: string; // affinity を読み取ったときの言葉の並び（searchTurns を改行で結合）
+	unsure: AskAxis[]; // 言葉から読み取れず、選択肢で聞く軸（答えるか「こだわらない」で消える）
 	liked: string[]; // いいねした host（順序あり）
 	passed: string[]; // よくないねした host（この検索では二度と出さない）
 	at: number; // 最後に使った時刻
@@ -18,6 +21,7 @@ export function newSearch(query = ''): Search {
 		turns: [],
 		affinity: {},
 		affinityFor: '',
+		unsure: [],
 		liked: [],
 		passed: [],
 		at: Date.now()
