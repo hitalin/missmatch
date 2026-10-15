@@ -30,7 +30,7 @@ const server: ServerInfo = {
 	officialMisskey: true,
 	registration: 'open',
 	emailRequired: false,
-	ageRestriction: 'all',
+	minAge: null,
 	ltlAvailable: true,
 	gtlAvailable: true,
 	driveCapacityMb: 1024,

@@ -50,8 +50,8 @@ describe('passesFilters', () => {
 		mk({ host: 'invite.tld', registration: 'invite', dru15: 5 }),
 		mk({ host: 'dead.tld', registration: 'closed', dru15: 0 }),
 		mk({ host: 'approval.tld', registration: 'approval' }),
-		mk({ host: 'adult.tld', ageRestriction: '18+' }),
-		mk({ host: 'teen.tld', ageRestriction: '13+' }),
+		mk({ host: 'adult.tld', minAge: 18 }),
+		mk({ host: 'teen.tld', minAge: 13 }),
 		mk({ host: 'ads.tld', adsEnabled: true }),
 		mk({ host: 'fork.tld', officialMisskey: false, versionMonthsBehind: 5 }),
 		mk({ host: 'small.tld', usersCount: 20, npd15: 5, emailRequired: false })
@@ -67,10 +67,16 @@ describe('passesFilters', () => {
 		expect(hosts(prefs())).toContain('adult.tld');
 		expect(hosts(prefs({ age: 'minor' }))).not.toContain('adult.tld');
 		expect(hosts(prefs({ age: 'minor' }))).toContain('teen.tld');
-		// 12 歳未満には 13 歳以上限定も出さない
+		// 12 歳未満には、下限年齢のあるサーバー（12 歳以上が必要）を出さない
 		expect(hosts(prefs({ age: 'child' }))).not.toContain('adult.tld');
 		expect(hosts(prefs({ age: 'child' }))).not.toContain('teen.tld');
 		expect(hosts(prefs({ age: 'child' }))).toContain('ok.tld');
+		const twelve = [mk({ host: 'twelve.tld', minAge: 12 }), mk({ host: 'twenty.tld', minAge: 20 })];
+		const hs = (a: Preferences['age']) =>
+			applyFilters(twelve, prefs({ age: a })).map((x) => x.server.host);
+		expect(hs('child')).toEqual([]);
+		expect(hs('minor')).toEqual(['twelve.tld']);
+		expect(hs('adult')).toEqual(['twelve.tld', 'twenty.tld']);
 	});
 
 	it('毎日いる人の数（15 日平均の読者数）で絞る', () => {

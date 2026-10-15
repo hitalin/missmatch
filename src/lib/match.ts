@@ -43,9 +43,12 @@ export function isListed(s: ServerInfo): boolean {
 export function passesFilters(p: ServerProfile, prefs: Preferences): boolean {
 	const s = p.server;
 	if (!isListed(s) || !prefs.registrations.includes(s.registration)) return false;
-	// 年齢: 12〜17 歳には 18 歳以上限定を、12 歳未満にはさらに 13 歳以上限定も出さない
-	if (prefs.age !== 'adult' && s.ageRestriction === '18+') return false;
-	if (prefs.age === 'child' && s.ageRestriction === '13+') return false;
+	// 年齢: 18 歳以上はすべて、12〜17 歳は 18 歳以上が必要なサーバーを除き、
+	// 12 歳未満は下限年齢のあるサーバー（12 歳以上が必要）をすべて除く
+	if (s.minAge !== null) {
+		if (prefs.age === 'minor' && s.minAge >= 18) return false;
+		if (prefs.age === 'child' && s.minAge >= 12) return false;
+	}
 	if (!meetsActivity(s, prefs.activity)) return false;
 	if (prefs.scales.length > 0 && !prefs.scales.includes(scaleOf(s))) return false;
 	if (prefs.paces.length > 0 && !prefs.paces.includes(paceOf(s))) return false;

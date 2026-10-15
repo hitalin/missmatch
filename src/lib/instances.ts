@@ -1,4 +1,4 @@
-import type { AgeRestriction, Registration, ServerInfo } from './types';
+import type { Registration, ServerInfo } from './types';
 
 export const JOINMISSKEY_API = 'https://instanceapp.misskey.page/instances.json';
 // joinmisskey が軽量化して配っている画像。各サーバー本体に取りに行かずに済む
@@ -85,23 +85,43 @@ export function stripHtml(text: string): string {
 		.trim();
 }
 
-// 「登録者の年齢を制限する」文言だけを拾う。
-// 「R-18 は投稿禁止」「未成年の自撮り禁止」のような内容ルールは年齢制限ではないので対象外。
-const RESTRICT_SUFFIX =
-	'(の方|の人|のユーザー|の登録|の利用)?(のみ|限定|に限|であること|が対象|を推奨)';
-const FORBID_SUFFIX = '[^。.\\n]{0,12}?(できません|出来ません|禁止|お断り|不可|ご遠慮)';
-const AGE_18 = new RegExp(
-	[
-		`満?18歳以上${RESTRICT_SUFFIX}`,
-		`18歳未満${FORBID_SUFFIX}`,
-		`未成年者?(の|は)(登録|利用|ご利用|参加)${FORBID_SUFFIX}`,
-		`成人(の方)?(のみ|限定)`,
-		'(^|[^r\\-])18\\+'
-	].join('|')
-);
-const AGE_13 = new RegExp(
-	[`満?13歳以上${RESTRICT_SUFFIX}`, `13歳未満${FORBID_SUFFIX}`, '中学生以上'].join('|')
-);
+// 登録できる下限年齢を、説明文とルールの「登録者の年齢を制限する」文言から読む。
+// 「未成年の自撮り禁止」「18歳未満は R18 をミュート」のような投稿内容のルールは年齢制限ではないので、
+// 投稿内容を表す語を含む文は対象外にする。複数あれば一番高い下限を採る
+const CONTENT_WORDS =
+	/自撮り|顔|写真|投稿|ミュート|描写|個人情報|コンテンツ|運営して|r-?18|nsfw|閲覧/;
+const AT_LEAST = /(?:満)?(\d{1,2})歳以上/g;
+const AT_LEAST_CUE =
+	/のみ|限定|に限|であること|である必要|でないと|から登録|が登録|ご利用|利用可能|登録可能|利用でき|登録でき|の方が|且つ|推奨|が対象|です/;
+const UNDER = /(\d{1,2})歳未満/g;
+const FORBID_CUE =
+	/禁止|禁ず|禁じ|できません|出来ません|できない|お断り|不可|ご遠慮|いただけません|だめ|ダメ|非推奨/;
+// 禁止事項の列挙（「18歳未満の者による利用。」）は、文の後ろに禁止の語が無くても制限とみなす
+const UNDER_USE = /(\d{1,2})歳未満(?:の者|の方|の人)?による(?:本?サービスの)?(?:利用|登録)/g;
+const MINOR_FORBID =
+	/未成年(?:者)?(?:ノ|の|は)?[^。\n]{0,8}?(?:登録|利用|入村|参加)[^。\n]{0,10}?(?:禁|できません|出来ません|不可|お断り)/;
+const NOT_ADULT = /成人に満たない|成人(?:の方)?(?:のみ|限定)/;
+const NOT_SCHOOL = /小中学生向けのサーバーではありません/;
+const SCHOOL_UP = /中学生以上/;
+const PLUS_18 = /(?:^|[^r\-\d])18\+/;
+const sane = (n: number) => n >= 10 && n <= 25;
+
+export function inferMinAge(text: string): number | null {
+	const normalized = text.normalize('NFKC').toLowerCase();
+	const ages: number[] = [];
+	for (const m of normalized.matchAll(UNDER_USE)) ages.push(Number(m[1]));
+	for (const clause of normalized.split(/[。．!?！？\n]/)) {
+		if (CONTENT_WORDS.test(clause)) continue;
+		if (AT_LEAST_CUE.test(clause))
+			for (const m of clause.matchAll(AT_LEAST)) ages.push(Number(m[1]));
+		if (FORBID_CUE.test(clause)) for (const m of clause.matchAll(UNDER)) ages.push(Number(m[1]));
+		if (MINOR_FORBID.test(clause) || NOT_ADULT.test(clause) || PLUS_18.test(clause)) ages.push(18);
+		if (NOT_SCHOOL.test(clause)) ages.push(15);
+		if (SCHOOL_UP.test(clause)) ages.push(12);
+	}
+	const valid = ages.filter(sane);
+	return valid.length > 0 ? Math.max(...valid) : null;
+}
 
 function allText(instance: JoinMisskeyInstance): string {
 	return [
@@ -112,15 +132,8 @@ function allText(instance: JoinMisskeyInstance): string {
 	]
 		.filter((t): t is string => Boolean(t))
 		.map(stripHtml)
-		.join(' ')
+		.join('\n') // ルールの区切りを文の区切りとして残す（年齢の判定が文ごとに読む）
 		.toLowerCase();
-}
-
-export function inferAgeRestriction(instance: JoinMisskeyInstance): AgeRestriction {
-	const text = allText(instance);
-	if (AGE_18.test(text)) return '18+';
-	if (AGE_13.test(text)) return '13+';
-	return 'unknown';
 }
 
 // 招待制かどうかは公開情報に直接のフラグが無い。一般ユーザーが招待コードを発行できる設定か、
@@ -185,7 +198,7 @@ export function normalizeInstance(
 		officialMisskey: OFFICIAL_REPO.test(repository),
 		registration: inferRegistration(instance),
 		emailRequired: instance.meta?.emailRequiredForSignup === true,
-		ageRestriction: inferAgeRestriction(instance),
+		minAge: inferMinAge(allText(instance)),
 		ltlAvailable: meta?.policies?.ltlAvailable ?? meta?.features?.localTimeline ?? true,
 		gtlAvailable: meta?.policies?.gtlAvailable ?? meta?.features?.globalTimeline ?? true,
 		driveCapacityMb: meta?.policies?.driveCapacityMb ?? null,

@@ -1,4 +1,3 @@
-export type AgeRestriction = 'all' | '13+' | '18+' | 'unknown';
 // open: 誰でも登録できる / approval: 申請して承認 / invite: 既存ユーザーの招待が要る / closed: 新規登録停止中
 export type Registration = 'open' | 'approval' | 'invite' | 'closed';
 export const REGISTRATION_LABELS: Record<Registration, string> = {
@@ -25,7 +24,7 @@ export interface ServerInfo {
 	officialMisskey: boolean; // 本家 misskey-dev/misskey を動かしているか（false ならフォーク）
 	registration: Registration;
 	emailRequired: boolean;
-	ageRestriction: AgeRestriction; // 登録者の年齢制限（内容の成人向け度は VibeProfile.nsfw）
+	minAge: number | null; // 登録できる下限年齢（説明文・ルールから推定。書いていなければ null。内容の成人向け度は VibeProfile.nsfw）
 	ltlAvailable: boolean; // ローカル TL が有効か（無効なら投稿サンプリングしない）
 	gtlAvailable: boolean; // グローバル TL が有効か
 	driveCapacityMb: number | null; // 一般ユーザーのドライブ容量

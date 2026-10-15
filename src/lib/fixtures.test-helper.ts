@@ -17,7 +17,7 @@ export const mkServer = (over: Partial<ServerInfo> = {}): ServerInfo => ({
 	officialMisskey: true,
 	registration: 'open',
 	emailRequired: true,
-	ageRestriction: 'all',
+	minAge: null,
 	ltlAvailable: true,
 	gtlAvailable: true,
 	driveCapacityMb: 1024,
