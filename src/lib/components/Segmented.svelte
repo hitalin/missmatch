@@ -40,11 +40,15 @@
 		box-shadow: inset 0 0 0 1px var(--border);
 	}
 	button {
+		white-space: nowrap;
+		min-width: 0;
+		overflow: hidden;
+		text-overflow: ellipsis;
 		border: none;
 		background: none;
 		border-radius: 999px;
-		padding: 8px 10px;
-		font-size: 0.84rem;
+		padding: 8px 6px;
+		font-size: 0.82rem;
 		font-weight: 700;
 		color: var(--fg-muted);
 		cursor: pointer;

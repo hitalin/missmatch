@@ -42,6 +42,14 @@
 	function toggleIn<T extends string>(list: T[], v: T): T[] {
 		return list.includes(v) ? list.filter((x) => x !== v) : [...list, v];
 	}
+	// 絶対条件はチップで並べるので短い名前にする
+	const DEALBREAKER_SHORT: Record<keyof Dealbreakers, string> = {
+		emailFree: 'メアドなしで登録',
+		adsFree: '広告なし',
+		gtl: 'グローバル TL あり',
+		official: '本家 Misskey のみ',
+		fresh: '最新版に追従'
+	};
 	function setDealbreaker(key: keyof Dealbreakers, value: boolean) {
 		prefs = { ...prefs, dealbreakers: { ...prefs.dealbreakers, [key]: value } };
 	}
@@ -50,15 +58,15 @@
 <section class="settings">
 	<header class="head">
 		<h1>あなた</h1>
-		<p class="muted">
-			{#if count !== null}いまの条件に合うサーバーは <b>{count} 件</b>。{:else}サーバー情報を取得中…{/if}
-			条件を変えると「さがす」のカードが入れ替わります。
-		</p>
+		<p class="muted">{#if count !== null}いまの条件に合うサーバーは <b>{count} 件</b>{:else}サーバー情報を取得中…{/if}</p>
 	</header>
 
 	{#if swipes > 0}
 		<div class="panel block">
-			<h2>いいねから学んだ好み <span class="muted small">{swipes} スワイプ</span></h2>
+			<h2>
+				いいねから学んだ好み <span class="muted small">{swipes} スワイプ</span>
+				<button class="reset" onclick={onresettaste}>リセット</button>
+			</h2>
 			{#if chips.length === 0}
 				<p class="help">まだはっきりした傾向はありません。スワイプを続けると出てきます。</p>
 			{:else}
@@ -71,11 +79,7 @@
 						</li>
 					{/each}
 				</ul>
-				<p class="help">× で個別に忘れられます。カードの並びに反映されます。</p>
 			{/if}
-			<div class="row">
-				<button class="btn ghost sm" onclick={onresettaste}>好みをリセット</button>
-			</div>
 		</div>
 	{/if}
 
@@ -89,7 +93,7 @@
 			</div>
 		</div>
 		<div class="field">
-			<span class="label">登録のしかた <small class="muted">招待制・停止中を含めると候補が大きく増えます</small></span>
+			<span class="label">登録のしかた</span>
 			<ul class="chips">
 				{#each REGISTRATIONS as r (r)}
 					<li>
@@ -103,7 +107,7 @@
 							}}
 						>
 							{#if prefs.registrations.includes(r)}<Icon name="check" size={13} />{/if}
-							{REGISTRATION_LABELS[r]} <small>{REGISTRATION_HINTS[r]}</small>
+							{REGISTRATION_LABELS[r]}
 						</button>
 					</li>
 				{/each}
@@ -157,14 +161,21 @@
 
 	<div class="panel block">
 		<h2>絶対条件 <span class="muted small">当てはまらない鯖は出さない</span></h2>
-		{#each Object.keys(DEALBREAKER_LABELS) as key (key)}
-			{@const k = key as keyof Dealbreakers}
-			<label class="switch">
-				<span>{DEALBREAKER_LABELS[k]}</span>
-				<input type="checkbox" checked={prefs.dealbreakers[k]} onchange={(e) => setDealbreaker(k, e.currentTarget.checked)} />
-				<i></i>
-			</label>
-		{/each}
+		<ul class="chips">
+			{#each Object.keys(DEALBREAKER_LABELS) as key (key)}
+				{@const k = key as keyof Dealbreakers}
+				<li>
+					<button
+						class="chip"
+						class:on={prefs.dealbreakers[k]}
+						aria-pressed={prefs.dealbreakers[k]}
+						onclick={() => setDealbreaker(k, !prefs.dealbreakers[k])}
+					>
+						{#if prefs.dealbreakers[k]}<Icon name="check" size={13} />{/if}{DEALBREAKER_SHORT[k]}
+					</button>
+				</li>
+			{/each}
+		</ul>
 		{#if count !== null && count < 5}
 			<p class="warn">条件が厳しく、該当が {count} 件です。絶対条件を減らすと増えます。</p>
 		{/if}
@@ -178,20 +189,25 @@
 		flex-direction: column;
 		gap: 14px;
 	}
+	.head {
+		display: flex;
+		align-items: baseline;
+		gap: 12px;
+	}
 	.head h1 {
-		margin: 8px 0 4px;
-		font-size: 1.6rem;
+		margin: 4px 0;
+		font-size: 1.5rem;
 		font-weight: 700;
 	}
 	.head p {
 		margin: 0;
-		font-size: 0.9rem;
+		font-size: 0.86rem;
 	}
 	.block {
-		padding: 18px 20px;
+		padding: 16px 18px;
 		display: flex;
 		flex-direction: column;
-		gap: 14px;
+		gap: 12px;
 		break-inside: avoid;
 	}
 	h2 {
@@ -199,7 +215,7 @@
 		font-size: 1rem;
 		display: flex;
 		align-items: baseline;
-		gap: 8px;
+		gap: 4px 8px;
 		flex-wrap: wrap;
 	}
 	.small {
@@ -218,14 +234,19 @@
 		color: var(--nope);
 		font-weight: 700;
 	}
-	.row {
-		display: flex;
-		gap: 10px;
-		align-items: center;
+	.reset {
+		margin-left: auto;
+		white-space: nowrap;
+		border: none;
+		background: none;
+		padding: 0;
+		font-size: 0.74rem;
+		font-weight: 700;
+		color: var(--fg-muted);
+		cursor: pointer;
 	}
-	.sm {
-		padding: 8px 16px;
-		font-size: 0.85rem;
+	.reset:hover {
+		color: var(--nope);
 	}
 	.field {
 		display: flex;
@@ -236,9 +257,6 @@
 		font-size: 0.74rem;
 		font-weight: 700;
 		color: var(--fg-muted);
-	}
-	.label small {
-		font-weight: 400;
 	}
 	/* 単一選択: ピル型のトラックに、選んだものだけ黄緑のピル（misskey-hub の btn-check） */
 	.seg {
@@ -256,11 +274,15 @@
 		grid-template-columns: 1fr 1fr 1fr;
 	}
 	.seg button {
+		white-space: nowrap;
+		min-width: 0;
+		overflow: hidden;
+		text-overflow: ellipsis;
 		border: none;
 		background: none;
 		border-radius: 999px;
-		padding: 8px 10px;
-		font-size: 0.84rem;
+		padding: 8px 6px;
+		font-size: 0.82rem;
 		font-weight: 700;
 		color: var(--fg-muted);
 		cursor: pointer;
@@ -281,7 +303,7 @@
 		padding: 0;
 		display: flex;
 		flex-wrap: wrap;
-		gap: 8px;
+		gap: 6px;
 	}
 	.chip small {
 		font-weight: 400;
@@ -296,72 +318,20 @@
 		display: inline-flex;
 		opacity: 0.7;
 	}
-	.switch {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		gap: 12px;
-		padding: 10px 0;
-		border-top: 1px solid var(--border);
-		cursor: pointer;
-		font-size: 0.9rem;
-	}
-	.switch:first-of-type {
-		border-top: none;
-		padding-top: 0;
-	}
-	.switch input {
-		position: absolute;
-		opacity: 0;
-		width: 0;
-		height: 0;
-	}
-	.switch i {
-		flex-shrink: 0;
-		width: 44px;
-		height: 26px;
-		border-radius: 999px;
-		background: var(--panel-2);
-		box-shadow: inset 0 0 0 1px var(--border);
-		position: relative;
-		transition: background 0.15s;
-	}
-	.switch i::after {
-		content: '';
-		position: absolute;
-		top: 3px;
-		left: 3px;
-		width: 20px;
-		height: 20px;
-		border-radius: 50%;
-		background: #fff;
-		box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
-		transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
-	}
-	.switch input:checked + i {
-		background: var(--accent-grad);
-		box-shadow: var(--shadow-accent);
-	}
-	.switch input:checked + i::after {
-		transform: translateX(18px);
-	}
-	.switch input:focus-visible + i {
-		outline: 2px solid var(--accent);
-		outline-offset: 2px;
-	}
 	/* デスクトップは段組み（高さの違うパネルを隙間なく詰める） */
+	/* デスクトップは 3 段組みで 1 画面に収める */
 	@media (min-width: 900px) {
 		.settings {
 			display: block;
-			columns: 2;
-			column-gap: 16px;
+			columns: 3 300px;
+			column-gap: 14px;
 		}
 		.head {
 			column-span: all;
-			margin-bottom: 16px;
+			margin-bottom: 12px;
 		}
 		.block {
-			margin-bottom: 16px;
+			margin-bottom: 14px;
 		}
 	}
 </style>
