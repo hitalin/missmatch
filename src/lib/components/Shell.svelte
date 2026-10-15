@@ -21,6 +21,7 @@
 		current,
 		onchange,
 		onselect,
+		onnew,
 		onrename,
 		ondelete,
 		children
@@ -33,6 +34,7 @@
 		current: string;
 		onchange: (t: Tab) => void;
 		onselect: (id: string) => void;
+		onnew: () => void; // 新しくさがす（言葉の無い検索＝ランディングに戻る）
 		onrename: (id: string, title: string) => void;
 		ondelete: (id: string) => void;
 		children: Snippet;
@@ -59,6 +61,7 @@
 			{current}
 			{onchange}
 			{onselect}
+			{onnew}
 			{onrename}
 			{ondelete}
 		/>
@@ -80,6 +83,7 @@
 				{current}
 				onchange={closing(onchange)}
 				onselect={closing(onselect)}
+				onnew={closing(onnew)}
 				{onrename}
 				{ondelete}
 			/>

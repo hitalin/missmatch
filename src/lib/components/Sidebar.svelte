@@ -15,6 +15,7 @@
 		current,
 		onchange,
 		onselect,
+		onnew,
 		onrename,
 		ondelete
 	}: {
@@ -26,6 +27,7 @@
 		current: string;
 		onchange: (t: Tab) => void;
 		onselect: (id: string) => void;
+		onnew: () => void; // 新しくさがす（言葉の無い検索＝ランディングに戻る）
 		onrename: (id: string, title: string) => void;
 		ondelete: (id: string) => void;
 	} = $props();
@@ -40,10 +42,10 @@
 </script>
 
 <div class="sidebar">
-	<a href="/" class="logo" aria-label="みすまっち（ホーム）">
+	<button class="logo" aria-label="みすまっち（新しくさがす）" onclick={onnew}>
 		<img src="/logo.svg" alt="" width="26" height="26" />
 		<span>みすまっち</span>
-	</a>
+	</button>
 	<nav aria-label="画面切り替え">
 		{#each items as it (it.tab)}
 			<button
@@ -66,10 +68,10 @@
 			<p class="empty">まだありません</p>
 		{/if}
 	</div>
-	<a href="/" class="new">
+	<button class="new" onclick={onnew}>
 		<Icon name="plus" size={18} />
 		<span>新しくさがす</span>
-	</a>
+	</button>
 </div>
 
 <style>
@@ -81,6 +83,10 @@
 		background: var(--panel);
 	}
 	.logo {
+		border: none;
+		background: none;
+		cursor: pointer;
+		font-family: inherit;
 		display: flex;
 		align-items: center;
 		gap: 10px;
@@ -162,6 +168,9 @@
 		color: var(--fg-muted);
 	}
 	.new {
+		border: none;
+		cursor: pointer;
+		font-family: inherit;
 		margin-top: 14px;
 		height: 40px;
 		display: flex;
