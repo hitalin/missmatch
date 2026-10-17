@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit';
 import { byActivity } from '$lib/candidates';
-import { isJoinable, isListed } from '$lib/match';
-import { clefRunner, computeVibes, getServers, kvFrom } from '$lib/server/recommend';
+import { isInScope } from '$lib/match';
+import { clefRunner, computeVibes, getServers, kvFrom, parseScope } from '$lib/server/recommend';
 import type { RequestHandler } from './$types';
 
 // 雰囲気プロファイルを事前計算する（外部 cron から叩く想定）。
@@ -16,7 +16,7 @@ export const POST: RequestHandler = async ({ request, url, platform }) => {
 	const offset = Number(url.searchParams.get('offset') ?? 0);
 
 	const servers = (await getServers(kvFrom(env.VIBE_KV)))
-		.filter(url.searchParams.get('scope') === 'all' ? isListed : isJoinable)
+		.filter((s) => isInScope(s, parseScope(url.searchParams.get('scope'))))
 		.sort(byActivity)
 		.slice(offset, offset + limit);
 

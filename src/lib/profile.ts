@@ -28,7 +28,7 @@ export interface SavedProfile {
 export const PROFILE_KEY = 'missmatch:profile:v2';
 // 2: 言葉の読み取り結果を全体の設定に書き込まなくなった。それより前の保存値は、
 // 絞り込みと加点に読み取り結果が混ざっている（自分で選んだものと区別できない）ので初期値に戻す
-export const PREFS_VERSION = 2;
+export const PREFS_VERSION = 3;
 
 export function emptyProfile(): SavedProfile {
 	return { prefsVersion: PREFS_VERSION, prefs: defaultPreferences(), searches: [], current: '' };
@@ -211,7 +211,9 @@ export function parseSavedProfile(raw: string | null): SavedProfile {
 		isStr(d.current) && profile.searches.some((s) => s.id === d.current)
 			? d.current
 			: (profile.searches[0]?.id ?? '');
-	if (d.prefsVersion !== PREFS_VERSION) {
+	const version = typeof d.prefsVersion === 'number' ? d.prefsVersion : 0;
+	// 形式 1 以前: 読み取り結果が全体の設定に混ざっていた頃。絞り込みと加点を初期値に戻す
+	if (version < 2) {
 		const fresh = defaultPreferences();
 		profile.prefs = {
 			...fresh,
@@ -219,6 +221,13 @@ export function parseSavedProfile(raw: string | null): SavedProfile {
 			nsfw: prefs.nsfw,
 			registrations: prefs.registrations
 		};
+	}
+	// 形式 2: 登録のしかたの既定が「受付中・承認制」だった。当時の既定のままなら、招待制を含む今の既定に移す
+	if (version < 3) {
+		const regs = [...profile.prefs.registrations].sort().join(',');
+		if (regs === ['open', 'approval'].sort().join(',')) {
+			profile.prefs = { ...profile.prefs, registrations: defaultPreferences().registrations };
+		}
 	}
 	// 旧形式: 学習した好みは全体で 1 本だった。開いている検索がまだ何も学んでいなければそこへ移す
 	const legacyTaste = tasteOf(d.taste);

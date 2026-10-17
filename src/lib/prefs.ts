@@ -102,7 +102,7 @@ export interface Preferences {
 	age: Age | null; // null = 未設定（オンボーディングで必ず決める）
 	activity: Activity;
 	nsfw: 'avoid' | 'neutral' | 'welcome';
-	registrations: Registration[]; // 出す登録状態。招待制・停止中を含めると候補が約 100 → 約 580 件に広がる
+	registrations: Registration[]; // 出す登録状態。既定は招待制まで（約 185 件）。停止中を含めると約 580 件に広がる
 	scales: Scale[]; // 空 = 指定なし
 	paces: Pace[];
 	dealbreakers: Dealbreakers;
@@ -117,7 +117,7 @@ export function defaultPreferences(): Preferences {
 		age: null,
 		activity: 'any',
 		nsfw: 'neutral',
-		registrations: ['open', 'approval'],
+		registrations: ['open', 'approval', 'invite'],
 		scales: [],
 		paces: [],
 		dealbreakers: {
@@ -150,9 +150,14 @@ export function scaleOf(s: ServerInfo): Scale {
 	return n < 3 ? 'personal' : n < 30 ? 'small' : n < 300 ? 'medium' : 'large';
 }
 
-// 招待制・停止中のサーバーまで含める設定か（属性表を全件取りに行く必要がある）
-export function needsAllServers(prefs: Preferences): boolean {
-	return prefs.registrations.includes('invite') || prefs.registrations.includes('closed');
+// 属性表と噛み合い判定をどこまで取りに行くか。open: 登録受付中（約 95 件）/ invite: 生きている招待制まで（約 185 件）/
+// all: 生きている停止中まで（約 580 件）。広いほど Clef の判定が増えて遅く・高くなるので、設定が要るぶんだけ取る
+export type Scope = 'open' | 'invite' | 'all';
+export const SCOPE_ORDER: Scope[] = ['open', 'invite', 'all'];
+export function scopeFor(prefs: Preferences): Scope {
+	if (prefs.registrations.includes('closed')) return 'all';
+	if (prefs.registrations.includes('invite')) return 'invite';
+	return 'open';
 }
 export function paceOf(s: ServerInfo): Pace {
 	const n = s.npd15 ?? 0;

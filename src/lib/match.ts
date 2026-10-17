@@ -6,7 +6,14 @@ import {
 	featuresOf,
 	GENRE_FEATURES
 } from './features';
-import { BIG_DRIVE_MB, meetsActivity, type Preferences, paceOf, scaleOf } from './prefs';
+import {
+	BIG_DRIVE_MB,
+	meetsActivity,
+	type Preferences,
+	paceOf,
+	type Scope,
+	scaleOf
+} from './prefs';
 import { hasAffinity, type Search, seenHosts } from './search';
 import type { Match, RelativeVibe, ServerInfo, ServerProfile } from './types';
 import { vibeTags } from './vibe';
@@ -37,6 +44,11 @@ export function isJoinable(s: ServerInfo): boolean {
 // 候補になり得るサーバー: 日本語で、登録受付中か、停止中でも生きている（1 日 1 人以上が読んでいる）
 export function isListed(s: ServerInfo): boolean {
 	return s.langs.includes('ja') && (isJoinable(s) || (s.dru15 ?? 0) >= 1);
+}
+export function isInScope(s: ServerInfo, scope: Scope): boolean {
+	if (scope === 'all') return isListed(s);
+	if (scope === 'invite') return isJoinable(s) || (s.registration === 'invite' && isListed(s));
+	return isJoinable(s);
 }
 
 // 発見の設定のうちハードフィルターになるもの

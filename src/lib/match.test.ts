@@ -4,6 +4,7 @@ import { mk } from './fixtures.test-helper';
 import {
 	applyFilters,
 	buildDeck,
+	isInScope,
 	isJoinable,
 	learn,
 	scoreProfile,
@@ -58,11 +59,37 @@ describe('passesFilters', () => {
 	];
 	const hosts = (p: Preferences) => applyFilters(profiles, p).map((x) => x.server.host);
 
-	it('既定は日本語・登録受付中（承認制含む）。年齢に合わない年齢制限のサーバーは出さない', () => {
+	it('scope: open は登録受付中、invite は生きている招待制まで、all は生きている停止中まで', () => {
+		const open = mk({ registration: 'open' }).server;
+		const invite = mk({ registration: 'invite', dru15: 5 }).server;
+		const deadInvite = mk({ registration: 'invite', dru15: 0 }).server;
+		const closed = mk({ registration: 'closed', dru15: 5 }).server;
+		expect([open, invite, deadInvite, closed].map((s) => isInScope(s, 'open'))).toEqual([
+			true,
+			false,
+			false,
+			false
+		]);
+		expect([open, invite, deadInvite, closed].map((s) => isInScope(s, 'invite'))).toEqual([
+			true,
+			true,
+			false,
+			false
+		]);
+		expect([open, invite, deadInvite, closed].map((s) => isInScope(s, 'all'))).toEqual([
+			true,
+			true,
+			false,
+			true
+		]);
+	});
+
+	it('既定は日本語・登録受付中（承認制・生きている招待制含む）。年齢に合わない年齢制限のサーバーは出さない', () => {
 		expect(isJoinable(profiles[1].server)).toBe(false);
 		expect(hosts(prefs())).not.toContain('en.tld');
 		expect(hosts(prefs())).not.toContain('closed.tld');
-		expect(hosts(prefs())).not.toContain('invite.tld');
+		expect(hosts(prefs())).toContain('invite.tld');
+		expect(hosts(prefs({ registrations: ['open', 'approval'] }))).not.toContain('invite.tld');
 		expect(hosts(prefs())).toContain('approval.tld');
 		expect(hosts(prefs())).toContain('adult.tld');
 		expect(hosts(prefs({ age: 'minor' }))).not.toContain('adult.tld');
@@ -161,10 +188,10 @@ describe('passesFilters', () => {
 	});
 
 	it('規模と流速は選んだ区分だけ残し、空なら絞らない', () => {
-		expect(hosts(prefs({ scales: ['small'] }))).toEqual(['small.tld']);
+		expect(hosts(prefs({ scales: ['small'] }))).toEqual(['invite.tld', 'small.tld']); // どちらも毎日 5 人
 		expect(hosts(prefs({ paces: ['quiet'] }))).toEqual(['small.tld']);
 		expect(hosts(prefs({ scales: ['personal'] }))).toEqual([]);
-		expect(hosts(prefs({ scales: [], paces: [] })).length).toBe(7);
+		expect(hosts(prefs({ scales: [], paces: [] })).length).toBe(8);
 	});
 });
 

@@ -1,7 +1,8 @@
 import { byActivity } from '$lib/candidates';
 import { fetchServers } from '$lib/instances';
 import { buildAffinityRequests, buildIntentRequest, parseAffinity, runAffinity } from '$lib/intent';
-import { isJoinable, isListed } from '$lib/match';
+import { isInScope } from '$lib/match';
+import type { Scope } from '$lib/prefs';
 import { fetchSampleNotes } from '$lib/sample';
 import type { ServerInfo, ServerProfile } from '$lib/types';
 import {
@@ -26,8 +27,8 @@ const PROFILES_TTL_SECONDS = 60 * 5;
 const profilesKey = (scope: Scope) => `profiles:v4:${scope}`;
 const CONCURRENCY = 8;
 // 同じ言葉の読み取りは使い回す（トップページの例文など、同じ言葉は何度も来る）。
-// 雰囲気は 7 日おきにしか変わらないので、1 時間古くても順位はほぼ同じ
-const INTENT_TTL_SECONDS = 60 * 60;
+// 雰囲気は 7 日おきにしか変わらないので、6 時間古くても順位はほぼ同じ
+const INTENT_TTL_SECONDS = 60 * 60 * 6;
 // 噛み合い判定に渡す state や基準を変えたら上げる（古い判定を 1 時間引きずらない）
 const intentKeyPrefix = (scope: Scope) => `intent:v5:${scope}:`;
 
@@ -101,7 +102,10 @@ export async function computeVibes(servers: ServerInfo[], deps: Deps): Promise<S
 // 診断に使う属性表: 推薦され得る全サーバー。
 // 雰囲気はキャッシュ済みの分だけ即座に返し、未判定は活発な順に上限まで応答後に計算する（defer があれば）。
 // ユーザーを Clef の計算で待たせない。欠けは次のアクセスか warm で埋まる
-export type Scope = 'open' | 'all';
+export type { Scope };
+export function parseScope(value: unknown): Scope {
+	return value === 'all' || value === 'invite' ? value : 'open';
+}
 
 export async function loadProfiles(
 	deps: Deps,
@@ -114,7 +118,7 @@ export async function loadProfiles(
 		return { ...parsed, pendingCount: 0 };
 	}
 	const servers = await getServers(deps.kv);
-	const joinable = servers.filter(scope === 'all' ? isListed : isJoinable);
+	const joinable = servers.filter((s) => isInScope(s, scope));
 	const raw = await readMany(
 		deps.kv,
 		joinable.map((s) => vibeKey(s.host))
@@ -172,10 +176,10 @@ export async function readIntent(
 	turns: string[],
 	scope: Scope,
 	defer?: (work: Promise<unknown>) => void,
-	options: { fresh?: boolean } = {}
+	options: { fresh?: boolean; flash?: boolean } = {} // flash は評価用（clef-flash の A/B）。キャッシュには置かない
 ): Promise<IntentResult> {
 	const key = await intentKey(scope, turns);
-	const cached = options.fresh ? null : await deps.kv.get(key);
+	const cached = options.fresh || options.flash ? null : await deps.kv.get(key);
 	if (cached) {
 		try {
 			return JSON.parse(cached) as IntentResult;
@@ -186,13 +190,16 @@ export async function readIntent(
 	const { profiles } = await loadProfiles(deps, defer, scope);
 	const [intent, { outputs, failed }] = await Promise.all([
 		deps.runner(buildIntentRequest(turns)),
-		runAffinity(deps.runner, buildAffinityRequests(turns, profiles))
+		runAffinity(
+			deps.runner,
+			buildAffinityRequests(turns, profiles, options.flash ? 'clef-flash' : 'clef')
+		)
 	]);
 	const affinity = parseAffinity(outputs, profiles);
 	// 上位 16 件を 1 本で比べ直す再ランキングは試したが、A/B で recall@5 84 vs 83%、MRR 90 vs 89% と
 	// 誤差の範囲で、応答が 1.6 → 2.8 秒に伸びたので外した（2026-10-17、32 言葉）
 	const result: IntentResult = { answers: intent.answers, affinity };
-	if (failed === 0) {
+	if (failed === 0 && !options.flash) {
 		await deps.kv.put(key, JSON.stringify(result), { expirationTtl: INTENT_TTL_SECONDS });
 	}
 	return result;

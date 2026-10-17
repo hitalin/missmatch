@@ -1,5 +1,5 @@
 import { json } from '@sveltejs/kit';
-import { clefRunner, kvFrom, loadProfiles, memoryKv, type Scope } from '$lib/server/recommend';
+import { clefRunner, kvFrom, loadProfiles, memoryKv, parseScope } from '$lib/server/recommend';
 import type { RequestHandler } from './$types';
 
 // vite dev ではバインディングがないため、プロセス内メモリで代用する
@@ -7,11 +7,11 @@ const devKv = memoryKv();
 
 // 診断に使うサーバー属性表。絞り込みと採点はブラウザ側で行う。
 // 雰囲気の欠けは応答後に計算する（waitUntil）ので、このリクエストは Clef を待たない
-// scope=all で招待制・停止中（生きているもの）まで含める
+// scope=invite で生きている招待制まで、scope=all で停止中（生きているもの）まで含める
 export const GET: RequestHandler = async ({ url, platform, setHeaders }) => {
 	const env = platform?.env;
 	const ctx = platform?.context;
-	const scope: Scope = url.searchParams.get('scope') === 'all' ? 'all' : 'open';
+	const scope = parseScope(url.searchParams.get('scope'));
 	try {
 		const result = await loadProfiles(
 			{

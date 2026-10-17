@@ -153,6 +153,18 @@ describe('parseSavedProfile', () => {
 		expect(now.dealbreakers.emailFree).toBe(true);
 	});
 
+	it('形式 2 の保存値で登録のしかたが当時の既定（受付中・承認制）なら、招待制を含む今の既定に移す。選んで変えていた人はそのまま', () => {
+		const at = (registrations: string[], prefsVersion = 2) =>
+			parseSavedProfile(
+				JSON.stringify({ prefsVersion, prefs: { age: 'adult', topics: ['game'], registrations } })
+			).prefs;
+		const moved = at(['approval', 'open']);
+		expect(moved.registrations).toEqual(['open', 'approval', 'invite']);
+		expect(moved.topics).toEqual(['game']); // 他の設定は戻さない
+		expect(at(['open']).registrations).toEqual(['open']);
+		expect(at(['open', 'approval'], PREFS_VERSION).registrations).toEqual(['open', 'approval']);
+	});
+
 	it('年齢: 旧形式の adult を移し、知らない値は未設定にする', () => {
 		const age = (prefs: unknown) => parseSavedProfile(JSON.stringify({ prefs })).prefs.age;
 		expect(age({ adult: true })).toBe('adult');

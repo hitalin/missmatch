@@ -226,7 +226,11 @@ function serverState(p: ServerProfile, descriptionChars: number, rulesChars: num
 	};
 }
 
-export function buildAffinityRequests(turns: string[], profiles: ServerProfile[]): ClefInput[] {
+export function buildAffinityRequests(
+	turns: string[],
+	profiles: ServerProfile[],
+	model: ClefInput['model'] = 'clef'
+): ClefInput[] {
 	const requests: ClefInput[] = [];
 	for (let i = 0; i < profiles.length; i += AFFINITY_BATCH) {
 		const batch = profiles.slice(i, i + AFFINITY_BATCH);
@@ -242,7 +246,7 @@ export function buildAffinityRequests(turns: string[], profiles: ServerProfile[]
 			};
 		}
 		requests.push({
-			model: 'clef',
+			model,
 			state: {
 				...userState(turns),
 				servers: batch.map((p) => serverState(p, DESCRIPTION_CHARS, RULES_CHARS))

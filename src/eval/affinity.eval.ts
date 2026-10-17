@@ -1,7 +1,7 @@
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { buildDeck, withRelativeVibes } from '$lib/match';
-import { defaultPreferences } from '$lib/prefs';
+import { defaultPreferences, scopeFor } from '$lib/prefs';
 import { effectivePrefs, newSearch, searchText } from '$lib/search';
 import type { ServerProfile } from '$lib/types';
 import type { ClefAnswer } from '$lib/vibe';
@@ -14,6 +14,7 @@ import { CASES, type EvalCase } from './cases';
 //   EVAL_LABEL=<名前>       結果を src/eval/results/<名前>.json に残す（既定は日時）
 //   EVAL_COMPARE=<path>    以前の結果と比べて差を出す
 //   EVAL_CACHE=1           サーバー側の読み取りキャッシュを使う（既定はキャッシュを読まず判定し直す）
+//   EVAL_FLASH=1           噛み合い判定を clef-flash で（A/B 用）
 const BASE = process.env.EVAL_BASE_URL?.replace(/\/$/, '');
 const TOP = 5;
 
@@ -42,8 +43,11 @@ interface Report {
 	};
 }
 
+const PREFS = { ...defaultPreferences(), age: 'adult' as const };
+const SCOPE = scopeFor(PREFS);
+
 async function fetchProfiles(): Promise<ServerProfile[]> {
-	const res = await fetch(`${BASE}/api/servers`);
+	const res = await fetch(`${BASE}/api/servers?scope=${SCOPE}`);
 	if (!res.ok) throw new Error(`GET /api/servers: HTTP ${res.status}`);
 	const data = (await res.json()) as { profiles: ServerProfile[]; pendingCount: number };
 	if (data.pendingCount > 0) {
@@ -57,7 +61,12 @@ async function runCase(c: EvalCase, profiles: ServerProfile[]): Promise<CaseResu
 	const res = await fetch(`${BASE}/api/intent`, {
 		method: 'POST',
 		headers: { 'Content-Type': 'application/json' },
-		body: JSON.stringify({ turns: c.turns, scope: 'open', fresh: process.env.EVAL_CACHE !== '1' })
+		body: JSON.stringify({
+			turns: c.turns,
+			scope: SCOPE,
+			fresh: process.env.EVAL_CACHE !== '1',
+			flash: process.env.EVAL_FLASH === '1'
+		})
 	});
 	if (!res.ok) throw new Error(`POST /api/intent (${c.id}): HTTP ${res.status}`);
 	const data = (await res.json()) as {
@@ -72,7 +81,7 @@ async function runCase(c: EvalCase, profiles: ServerProfile[]): Promise<CaseResu
 		affinity: data.affinity
 	};
 	search.affinityFor = searchText(search);
-	const prefs = effectivePrefs({ ...defaultPreferences(), age: 'adult' }, search);
+	const prefs = effectivePrefs(PREFS, search);
 	const deck = buildDeck(profiles, prefs, {}, 0, search, profiles.length);
 	const rankOf = (host: string) => {
 		const i = deck.findIndex((m) => m.server.host === host);

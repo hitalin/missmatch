@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
 import { MAX_INTENT_LENGTH, MAX_TURNS } from '$lib/intent';
-import { clefRunner, kvFrom, memoryKv, readIntent, type Scope } from '$lib/server/recommend';
+import { clefRunner, kvFrom, memoryKv, parseScope, readIntent } from '$lib/server/recommend';
 import type { RequestHandler } from './$types';
 
 const devKv = memoryKv();
@@ -8,7 +8,7 @@ const devKv = memoryKv();
 // 「どんな場所を探している？」への一言と、そのあとの絞り込みの発言を、
 // (1) 発見の設定への読み取り（Clef の生の回答）と (2) 各サーバーとの噛み合い確率に変換する
 export const POST: RequestHandler = async ({ request, platform }) => {
-	let body: { turns?: unknown; scope?: unknown; fresh?: unknown };
+	let body: { turns?: unknown; scope?: unknown; fresh?: unknown; flash?: unknown };
 	try {
 		body = (await request.json()) as typeof body;
 	} catch {
@@ -19,7 +19,7 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 		.map((t) => t.trim().slice(0, MAX_INTENT_LENGTH))
 		.filter((t) => t.length > 0)
 		.slice(0, MAX_TURNS);
-	const scope: Scope = body.scope === 'all' ? 'all' : 'open';
+	const scope = parseScope(body.scope);
 	if (turns.length === 0) return json({ error: 'turns is required' }, { status: 400 });
 
 	const env = platform?.env;
@@ -31,7 +31,8 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 			turns,
 			scope,
 			ctx ? (work) => ctx.waitUntil(work) : undefined,
-			{ fresh: body.fresh === true } // 評価スクリプト用。キャッシュを読まずに判定し直す
+			// 評価スクリプト用。fresh はキャッシュを読まずに判定し直す、flash は clef-flash で判定する（A/B）
+			{ fresh: body.fresh === true, flash: body.flash === true }
 		);
 		return json(result);
 	} catch (e) {

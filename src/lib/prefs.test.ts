@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { mkServer } from './fixtures.test-helper';
-import { defaultPreferences, isComplete, needsAllServers, scaleOf } from './prefs';
+import { defaultPreferences, isComplete, scaleOf, scopeFor } from './prefs';
 
 describe('scaleOf', () => {
 	it('規模は登録者数でなく 1 日の読者数で決める（毎日 3 人未満は個人、30 人未満は小規模、300 人未満は中規模）', () => {
@@ -27,11 +27,11 @@ describe('年齢', () => {
 	});
 });
 
-describe('needsAllServers', () => {
-	it('招待制か停止中を含めるときだけ全件が要る', () => {
-		expect(needsAllServers(defaultPreferences())).toBe(false);
-		expect(needsAllServers({ ...defaultPreferences(), registrations: ['open', 'invite'] })).toBe(
-			true
-		);
+describe('scopeFor', () => {
+	it('既定は招待制まで含める。停止中を含めるときだけ全件が要り、招待制を外せば登録受付中だけ', () => {
+		expect(defaultPreferences().registrations).toEqual(['open', 'approval', 'invite']);
+		expect(scopeFor(defaultPreferences())).toBe('invite');
+		expect(scopeFor({ ...defaultPreferences(), registrations: ['open', 'approval'] })).toBe('open');
+		expect(scopeFor({ ...defaultPreferences(), registrations: ['closed'] })).toBe('all');
 	});
 });

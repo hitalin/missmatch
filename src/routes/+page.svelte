@@ -22,7 +22,7 @@
 		type Taste,
 		withRelativeVibes
 	} from '$lib/match';
-	import { defaultPreferences, isComplete, needsAllServers } from '$lib/prefs';
+	import { defaultPreferences, isComplete, SCOPE_ORDER, type Scope, scopeFor } from '$lib/prefs';
 	import {
 		currentSearch,
 		deleteSearch,
@@ -61,8 +61,8 @@
 	// 属性表は大きく不変なので深い reactivity を付けない。
 	// 既定は登録受付中の約 100 件。招待制・停止中を含める設定なら全件（約 580 件）を取りに行く
 	let profiles = $state.raw<ServerProfile[] | null>(null);
-	let loadedScope = $state<'open' | 'all' | null>(null);
-	const wantedScope = $derived(needsAllServers(profile.prefs) ? 'all' : 'open');
+	let loadedScope = $state<Scope | null>(null);
+	const wantedScope = $derived(scopeFor(profile.prefs));
 	let loadError = $state('');
 	let reading = $state(false);
 	let readError = $state('');
@@ -137,9 +137,14 @@
 		if (deckKey !== prefsKey) rebuildDeck();
 	});
 
-	// 招待制・停止中を含める設定に変わったら全件を取り直す（逆方向は絞るだけなので取り直さない）
+	// 広い範囲（招待制 → 停止中）を含める設定に変わったら取り直す（狭める方向は絞るだけなので取り直さない）
 	$effect(() => {
-		if (hydrated && wantedScope === 'all' && loadedScope === 'open') loadProfiles();
+		if (
+			hydrated &&
+			loadedScope !== null &&
+			SCOPE_ORDER.indexOf(wantedScope) > SCOPE_ORDER.indexOf(loadedScope)
+		)
+			loadProfiles();
 	});
 
 	let loading = false;
@@ -149,7 +154,7 @@
 		loadError = '';
 		const scope = wantedScope;
 		try {
-			const res = await fetch(scope === 'all' ? '/api/servers?scope=all' : '/api/servers');
+			const res = await fetch(`/api/servers?scope=${scope}`);
 			if (!res.ok) throw new Error(`HTTP ${res.status}`);
 			profiles = withRelativeVibes(((await res.json()) as { profiles: ServerProfile[] }).profiles);
 			loadedScope = scope;
