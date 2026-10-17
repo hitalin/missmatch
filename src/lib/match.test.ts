@@ -176,7 +176,7 @@ describe('scoreProfile', () => {
 			tone: 'right',
 			community: 'right'
 		});
-		const m = scoreProfile(mk(), p);
+		const m = scoreProfile(mk({ dru15: 300 }), p); // 初心者向けの活気の減点が掛からない人数
 		expect(m.score).toBeGreaterThan(80);
 		expect(m.reasons).toContain('イラスト・漫画を描くの話題が多い');
 		expect(m.reasons).toContain('空気が穏やか');
