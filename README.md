@@ -75,6 +75,8 @@ pnpm run deploy   # pnpm deploy は pnpm 本体のコマンドに取られる
 
 # 雰囲気を事前計算
 curl -X POST "https://<host>/api/warm?limit=50" -H "Authorization: Bearer $WARM_SECRET"
+# トップページの例文の判定を温める（6 時間で切れるので cron で 5 時間ごと）
+curl -X POST "https://<host>/api/warm?mode=intents" -H "Authorization: Bearer $WARM_SECRET"
 ```
 
 精度の評価（Clef 実機を叩くので課金対象）:

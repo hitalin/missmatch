@@ -175,7 +175,7 @@ export function unsureAxes(answers: Record<string, ClefAnswer>): AskAxis[] {
 
 // Clef の応答時間は state のトークン数にほぼ比例するので、小さなバッチに分けて並列に投げる。
 // 1 回にまとめる数が多いと、同じバッチ内のサーバー同士で判定が引きずられやすい
-export const AFFINITY_BATCH = 8;
+export const AFFINITY_BATCH = 16;
 const DESCRIPTION_CHARS = 300;
 const RULES_CHARS = 200;
 // 話題は確率付きで渡す（タグに丸めると「どのくらい」が消える）
@@ -226,11 +226,7 @@ function serverState(p: ServerProfile, descriptionChars: number, rulesChars: num
 	};
 }
 
-export function buildAffinityRequests(
-	turns: string[],
-	profiles: ServerProfile[],
-	model: ClefInput['model'] = 'clef'
-): ClefInput[] {
+export function buildAffinityRequests(turns: string[], profiles: ServerProfile[]): ClefInput[] {
 	const requests: ClefInput[] = [];
 	for (let i = 0; i < profiles.length; i += AFFINITY_BATCH) {
 		const batch = profiles.slice(i, i + AFFINITY_BATCH);
@@ -246,7 +242,7 @@ export function buildAffinityRequests(
 			};
 		}
 		requests.push({
-			model,
+			model: 'clef',
 			state: {
 				...userState(turns),
 				servers: batch.map((p) => serverState(p, DESCRIPTION_CHARS, RULES_CHARS))

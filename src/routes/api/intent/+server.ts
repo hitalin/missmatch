@@ -8,7 +8,7 @@ const devKv = memoryKv();
 // 「どんな場所を探している？」への一言と、そのあとの絞り込みの発言を、
 // (1) 発見の設定への読み取り（Clef の生の回答）と (2) 各サーバーとの噛み合い確率に変換する
 export const POST: RequestHandler = async ({ request, platform }) => {
-	let body: { turns?: unknown; scope?: unknown; fresh?: unknown; flash?: unknown };
+	let body: { turns?: unknown; scope?: unknown; fresh?: unknown };
 	try {
 		body = (await request.json()) as typeof body;
 	} catch {
@@ -31,8 +31,7 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 			turns,
 			scope,
 			ctx ? (work) => ctx.waitUntil(work) : undefined,
-			// 評価スクリプト用。fresh はキャッシュを読まずに判定し直す、flash は clef-flash で判定する（A/B）
-			{ fresh: body.fresh === true, flash: body.flash === true }
+			{ fresh: body.fresh === true } // 評価スクリプト用。キャッシュを読まずに判定し直す
 		);
 		return json(result);
 	} catch (e) {

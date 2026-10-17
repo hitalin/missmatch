@@ -176,10 +176,10 @@ export async function readIntent(
 	turns: string[],
 	scope: Scope,
 	defer?: (work: Promise<unknown>) => void,
-	options: { fresh?: boolean; flash?: boolean } = {} // flash は評価用（clef-flash の A/B）。キャッシュには置かない
+	options: { fresh?: boolean } = {}
 ): Promise<IntentResult> {
 	const key = await intentKey(scope, turns);
-	const cached = options.fresh || options.flash ? null : await deps.kv.get(key);
+	const cached = options.fresh ? null : await deps.kv.get(key);
 	if (cached) {
 		try {
 			return JSON.parse(cached) as IntentResult;
@@ -190,16 +190,14 @@ export async function readIntent(
 	const { profiles } = await loadProfiles(deps, defer, scope);
 	const [intent, { outputs, failed }] = await Promise.all([
 		deps.runner(buildIntentRequest(turns)),
-		runAffinity(
-			deps.runner,
-			buildAffinityRequests(turns, profiles, options.flash ? 'clef-flash' : 'clef')
-		)
+		// clef-flash は A/B で recall@5 81 → 48%、しかも遅かった（平均 2.2 → 3.3 秒）ので使わない（2026-10-17）
+		runAffinity(deps.runner, buildAffinityRequests(turns, profiles))
 	]);
 	const affinity = parseAffinity(outputs, profiles);
 	// 上位 16 件を 1 本で比べ直す再ランキングは試したが、A/B で recall@5 84 vs 83%、MRR 90 vs 89% と
 	// 誤差の範囲で、応答が 1.6 → 2.8 秒に伸びたので外した（2026-10-17、32 言葉）
 	const result: IntentResult = { answers: intent.answers, affinity };
-	if (failed === 0 && !options.flash) {
+	if (failed === 0) {
 		await deps.kv.put(key, JSON.stringify(result), { expirationTtl: INTENT_TTL_SECONDS });
 	}
 	return result;
