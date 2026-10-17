@@ -254,6 +254,23 @@ describe('雰囲気の相対化と確信度', () => {
 	});
 });
 
+describe('初心者向けの活気', () => {
+	it('「初心者でも気軽に」のときだけ、毎日読む人が少ない鯖を少し下げる', () => {
+		const lively = mk({ host: 'l.tld', dru15: 300 });
+		const empty = mk({ host: 'e.tld', dru15: 2 });
+		const any = prefs();
+		expect(scoreProfile(lively, any).score).toBe(scoreProfile(empty, any).score);
+		const open = prefs({ community: 'right' });
+		const l = scoreProfile(lively, open).score;
+		const e = scoreProfile(empty, open).score;
+		expect(l).toBeGreaterThan(e);
+		expect(l - e).toBeLessThanOrEqual(10); // 強い減点にはしない
+		// 濃い身内を求めるときは下げない
+		const close = prefs({ community: 'left' });
+		expect(scoreProfile(lively, close).score).toBe(scoreProfile(empty, close).score);
+	});
+});
+
 describe('スワイプからの学習', () => {
 	it('いいねした鯖の特徴に寄り、パスした鯖の特徴から離れる', () => {
 		let taste: Taste = {};

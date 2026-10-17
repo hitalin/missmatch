@@ -100,6 +100,13 @@ export function withRelativeVibes(profiles: ServerProfile[]): ServerProfile[] {
 	return profiles.map((p) => (ranks.has(p) ? { ...p, rel: ranks.get(p) } : p));
 }
 
+// 毎日読む人の数を 0..1 に（対数、300 人で 1）。初心者向けの減点にだけ使う
+const LIVELY_AT = 300;
+const LIVELINESS_PENALTY = 0.1;
+function liveliness(s: ServerInfo): number {
+	return Math.min(1, Math.log10((s.dru15 ?? 0) + 1) / Math.log10(LIVELY_AT + 1));
+}
+
 // 投稿サンプルが少ないほど、投稿から読む軸（空気感・関わり方）を中立に寄せる。
 // 話題は説明文からも読める（「病んでいい場所」で LTL 非公開でも vent 0.95）ので寄せない
 const SAMPLE_FULL_AT = 30;
@@ -211,6 +218,10 @@ export function scoreProfile(
 		fit = AFFINITY_SHARE * a + (1 - AFFINITY_SHARE) * prefFit;
 		if (a >= 0.6) reasons.unshift('書いてくれた希望と噛み合う');
 	}
+	// 初心者でも気軽に入れる場所を求めているときは、毎日読む人がほとんどいない鯖を少し下げる
+	// （会話が成り立たない）。他の希望では下げない: 噛み合い判定の基準に「人がいること」を足したら、
+	// 言葉に関係なく小さな鯖が全部下がった（recall@5 88 → 82%）
+	if (prefs.community === 'right') fit *= 1 - LIVELINESS_PENALTY * (1 - liveliness(p.server));
 	const score = Math.round(fit * 100);
 	return { server: p.server, vibe: v, score, affinity: a, reasons, tags: v ? vibeTags(v) : [] };
 }

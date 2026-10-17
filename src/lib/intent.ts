@@ -215,9 +215,8 @@ export function buildAffinityRequests(turns: string[], profiles: ServerProfile[]
 				type: 'noul',
 				instructions: `servers のうち host が ${p.server.host} のサーバーは、ユーザーが望む使い方・話題・居心地に合う場所か`,
 				criteria: {
-					true: '説明文・ルール・雰囲気・規模・話題・最近の投稿が、ユーザーの望む使い方や話題と噛み合い、その使い方に必要なだけの人がいる',
-					false:
-						'噛み合わない、無関係、ユーザーが避けたいものに当たる、または望む使い方（交流・初心者の会話など）に必要な人の数や活気が無い'
+					true: '説明文・ルール・雰囲気・規模・話題・最近の投稿が、ユーザーの望む使い方や話題と噛み合う',
+					false: '噛み合わない、無関係、またはユーザーが避けたいものに当たる'
 				}
 			};
 		}

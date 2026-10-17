@@ -31,7 +31,8 @@ const CONCURRENCY = 8;
 // 同じ言葉の読み取りは使い回す（トップページの例文など、同じ言葉は何度も来る）。
 // 雰囲気は 7 日おきにしか変わらないので、1 時間古くても順位はほぼ同じ
 const INTENT_TTL_SECONDS = 60 * 60;
-const intentKeyPrefix = (scope: Scope) => `intent:v1:${scope}:`;
+// 噛み合い判定に渡す state や基準を変えたら上げる（古い判定を 1 時間引きずらない）
+const intentKeyPrefix = (scope: Scope) => `intent:v2:${scope}:`;
 
 // `vite dev` などバインディングがない環境向けの代替
 export function memoryKv(): VibeKv {
