@@ -6,13 +6,10 @@ import {
 	askOptions,
 	buildAffinityRequests,
 	buildIntentRequest,
-	buildRerankRequest,
 	chooseAxis,
 	isAxisDefault,
 	MAX_TURNS,
 	parseAffinity,
-	parseRerank,
-	RERANK_TOP,
 	runAffinity,
 	splitRequest,
 	unsureAxes
