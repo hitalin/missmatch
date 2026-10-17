@@ -173,8 +173,10 @@ export function unsureAxes(answers: Record<string, ClefAnswer>): AskAxis[] {
 	);
 }
 
-// Clef の応答時間は state のトークン数にほぼ比例するので、小さなバッチに分けて並列に投げる。
-// 1 回にまとめる数が多いと、同じバッチ内のサーバー同士で判定が引きずられやすい
+// Clef の応答時間は state のトークン数にほぼ比例するので、バッチに分けて並列に投げる。
+// 1 バッチの件数は実測で決めた（2026-10-17、32 言葉、招待制まで 185 件）:
+//   8 件 recall@5 81% / p50 2.1 秒、16 件 86% / 2.2 秒、32 件 81% / 2.6 秒。
+// 同じ state に並ぶ数が多いほど物差しがそろって精度が上がるが、32 件では落ちて遅くなる
 export const AFFINITY_BATCH = 16;
 const DESCRIPTION_CHARS = 300;
 const RULES_CHARS = 200;
