@@ -3,12 +3,15 @@ import { mkServer } from './fixtures.test-helper';
 import { defaultPreferences, isComplete, needsAllServers, scaleOf } from './prefs';
 
 describe('scaleOf', () => {
-	it('10 人未満は個人、100 人未満は小規模', () => {
-		expect(scaleOf(mkServer({ usersCount: 3 }))).toBe('personal');
-		expect(scaleOf(mkServer({ usersCount: 9 }))).toBe('personal');
-		expect(scaleOf(mkServer({ usersCount: 10 }))).toBe('small');
-		expect(scaleOf(mkServer({ usersCount: 500 }))).toBe('medium');
-		expect(scaleOf(mkServer({ usersCount: 5000 }))).toBe('large');
+	it('規模は登録者数でなく 1 日の読者数で決める（毎日 3 人未満は個人、30 人未満は小規模、300 人未満は中規模）', () => {
+		expect(scaleOf(mkServer({ dru15: 0 }))).toBe('personal');
+		expect(scaleOf(mkServer({ dru15: 2.9 }))).toBe('personal');
+		expect(scaleOf(mkServer({ dru15: 3 }))).toBe('small');
+		expect(scaleOf(mkServer({ dru15: 50 }))).toBe('medium');
+		expect(scaleOf(mkServer({ dru15: 300 }))).toBe('large');
+		// 登録 1,142 人でも毎日 8 人しか読まないなら小規模（さいばれすきー）
+		expect(scaleOf(mkServer({ usersCount: 1142, dru15: 8 }))).toBe('small');
+		expect(scaleOf(mkServer({ dru15: null }))).toBe('personal');
 	});
 });
 

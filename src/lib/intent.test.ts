@@ -44,7 +44,7 @@ describe('buildIntentRequest', () => {
 });
 
 describe('applyIntent', () => {
-	it('自信のある読み取りで空いている設定を埋め、ユーザーが決めた項目は上書きしない', () => {
+	it('自信のある読み取りで空いている設定を埋め、ユーザーが決めた項目は上書きしない。規模・流速は絞り込みにしない', () => {
 		const base = { ...defaultPreferences(), tone: 'left' as const, topics: ['game' as const] };
 		const next = applyIntent(base, {
 			'topic.illust': noul(0.9),
@@ -61,7 +61,7 @@ describe('applyIntent', () => {
 		expect(next.tone).toBe('left'); // ユーザーが決めていた
 		expect(next.community).toBe('right');
 		expect(next.rules).toBe('any'); // 低確率
-		expect(next.scales).toEqual(['small', 'medium']);
+		expect(next.scales).toEqual([]); // 読み取りの規模・流速はハードフィルターにせず、噛み合い判定に任せる
 		expect(next.paces).toEqual([]);
 		expect(next.dealbreakers.emailFree).toBe(true);
 		expect(next.dealbreakers.adsFree).toBe(false);
@@ -149,9 +149,9 @@ describe('buildAffinityRequests / parseAffinity', () => {
 			closedCommunity: '30%',
 			nsfw: '10%'
 		});
-		expect(servers[0].scale).toBe('小規模（10〜99人）');
+		expect(servers[0].scale).toBe('小規模（毎日 12 人が読む）');
 		expect(servers[0].pace).toBe('のんびり（〜100投稿/日）');
-		expect(servers[0].activeUsersPerDay).toBe(12);
+		expect(servers[0].registeredUsers).toBe(50);
 		expect(servers[1].atmosphere).toBeUndefined();
 		expect(servers[1].topics).toEqual([]);
 	});

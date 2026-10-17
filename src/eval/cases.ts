@@ -12,8 +12,8 @@ export const CASES: EvalCase[] = [
 	{
 		id: 'vent',
 		turns: ['病み垢として運用したい。弱音や愚痴を吐いても浮かない、静かな場所がいい'],
-		expect: ['yami.ski', 'm.itsukey.jp', 'kasei.ski'],
-		note: '「病んでいい場所」「ごじあいが溢れる」「生きてて偉い」'
+		expect: ['yami.ski', 'drdr.club', 'kasei.ski', 'm.itsukey.jp'],
+		note: '「病んでいい場所」「心の避暑地」（投稿 50 件で愚痴・弱音 0.91）「生きてて偉い」「ごじあいが溢れる」'
 	},
 	{
 		id: 'illust-original',
@@ -102,8 +102,8 @@ export const CASES: EvalCase[] = [
 	{
 		id: 'beginner-chat',
 		turns: ['初めての Misskey。のんびり雑談できるところ'],
-		expect: ['misskey.day', 'misskey-square.net', 'nijimiss.moe'],
-		note: 'やさしい・安心して過ごせる / あたたかく迎え入れる / オープンコミュニティ'
+		expect: ['misskey-square.net', 'misskey.day', 'misskey.takehi.to', 'waff-skey.net'],
+		note: 'マイペースの参加を歓迎・あたたかく迎え入れる / にぎやかだけどやさしい / 深呼吸できる（毎日 15 人） / 日記感覚で気軽に（毎日 34 人）。初めての人には会話が成り立つ人数が要るので、毎日 10 人未満の鯖は期待に入れない'
 	},
 	{
 		id: 'small-quiet',

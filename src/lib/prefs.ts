@@ -12,10 +12,10 @@ export const SCALE_LABELS: Record<Scale, string> = {
 	large: '大手'
 };
 export const SCALE_HINTS: Record<Scale, string> = {
-	personal: '〜9人',
-	small: '10〜99人',
-	medium: '100〜999人',
-	large: '1,000人〜'
+	personal: '毎日 〜2人',
+	small: '毎日 3〜29人',
+	medium: '毎日 30〜299人',
+	large: '毎日 300人〜'
 };
 export const REGISTRATIONS: Registration[] = ['open', 'approval', 'invite', 'closed'];
 export const REGISTRATION_HINTS: Record<Registration, string> = {
@@ -142,10 +142,12 @@ export function defaultPreferences(): Preferences {
 	};
 }
 
-// 10 人未満は管理者と知り合いだけの個人サーバーとみなす（説明文に「個人サーバー」とある鯖はほぼ 5 人以下）
+// 規模は登録者数でなく 1 日に読んでいる人数（dru15）で決める。登録者数は離れた人を含んで膨らみ、
+// 登録 1,142 人で毎日 8 人の鯖が「大手」になっていた。閾値は登録受付中 95 件の分布から
+// （毎日 3 人未満 20 / 30 人未満 36 / 300 人未満 26 / それ以上 13。登録者数だと「個人」は 1 件だけだった）
 export function scaleOf(s: ServerInfo): Scale {
-	const n = s.usersCount ?? 0;
-	return n < 10 ? 'personal' : n < 100 ? 'small' : n < 1000 ? 'medium' : 'large';
+	const n = s.dru15 ?? 0;
+	return n < 3 ? 'personal' : n < 30 ? 'small' : n < 300 ? 'medium' : 'large';
 }
 
 // 招待制・停止中のサーバーまで含める設定か（属性表を全件取りに行く必要がある）

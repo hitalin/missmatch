@@ -4,7 +4,6 @@ import {
 	PACE_LABELS,
 	type Preferences,
 	paceOf,
-	SCALE_HINTS,
 	SCALE_LABELS,
 	scaleOf,
 	TOPIC_LABELS,
@@ -142,7 +141,10 @@ export function chooseAxis(prefs: Preferences, axis: AskAxis, choice: string): P
 	return next;
 }
 
-// 読み取れた希望で設定を埋める。ユーザーが既に触った項目（既定値でないもの）は上書きしない
+// 読み取れた希望で設定を埋める。ユーザーが既に触った項目（既定値でないもの）は上書きしない。
+// 規模・流速は読み取りからはハードフィルターにしない: 「のんびり雑談」で大手が全部消え、
+// 「盛り上がりたい」でアニメ実況の小さな鯖が消えていた。噛み合い判定が規模・流速を見て加減する
+const SOFT_AXES = new Set<AskAxis>(['scale', 'pace']);
 export function applyIntent(prefs: Preferences, answers: Record<string, ClefAnswer>): Preferences {
 	let next: Preferences = {
 		...prefs,
@@ -154,6 +156,7 @@ export function applyIntent(prefs: Preferences, answers: Record<string, ClefAnsw
 			next.topics.push(t as Topic);
 	}
 	for (const axis of ASK_AXES) {
+		if (SOFT_AXES.has(axis)) continue;
 		const c = confidentChoice(answers[axis]);
 		if (c && isAxisDefault(next, axis)) next = chooseAxis(next, axis, c);
 	}
@@ -212,8 +215,9 @@ export function buildAffinityRequests(turns: string[], profiles: ServerProfile[]
 				type: 'noul',
 				instructions: `servers のうち host が ${p.server.host} のサーバーは、ユーザーが望む使い方・話題・居心地に合う場所か`,
 				criteria: {
-					true: '説明文・ルール・話題・最近の投稿が、ユーザーの望む使い方や話題と噛み合う',
-					false: '噛み合わない、無関係、またはユーザーが避けたいものに当たる'
+					true: '説明文・ルール・雰囲気・規模・話題・最近の投稿が、ユーザーの望む使い方や話題と噛み合い、その使い方に必要なだけの人がいる',
+					false:
+						'噛み合わない、無関係、ユーザーが避けたいものに当たる、または望む使い方（交流・初心者の会話など）に必要な人の数や活気が無い'
 				}
 			};
 		}
@@ -226,9 +230,10 @@ export function buildAffinityRequests(turns: string[], profiles: ServerProfile[]
 					name: p.server.name ?? p.server.host,
 					description: (p.server.description ?? '').slice(0, DESCRIPTION_CHARS),
 					rules: p.server.serverRules.join(' / ').slice(0, RULES_CHARS),
-					scale: `${SCALE_LABELS[scaleOf(p.server)]}（${SCALE_HINTS[scaleOf(p.server)]}）`,
+					// 規模は 1 日の読者数で伝える。登録者数だけだと、離れた人で膨らんだ鯖を「大手」と読んでしまう
+					scale: `${SCALE_LABELS[scaleOf(p.server)]}（毎日 ${Math.round(p.server.dru15 ?? 0)} 人が読む）`,
 					pace: `${PACE_LABELS[paceOf(p.server)]}（${PACE_HINTS[paceOf(p.server)]}）`,
-					activeUsersPerDay: p.server.dru15,
+					registeredUsers: p.server.usersCount,
 					atmosphere: p.vibe ? atmosphereOf(p.vibe) : undefined,
 					topics: topicsOf(p),
 					recentNotes: p.excerpts ?? []

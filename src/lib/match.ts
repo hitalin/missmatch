@@ -100,7 +100,8 @@ export function withRelativeVibes(profiles: ServerProfile[]): ServerProfile[] {
 	return profiles.map((p) => (ranks.has(p) ? { ...p, rel: ranks.get(p) } : p));
 }
 
-// 投稿サンプルが少ないほど、投稿から読む軸（話題・空気感・関わり方）を中立に寄せる
+// 投稿サンプルが少ないほど、投稿から読む軸（空気感・関わり方）を中立に寄せる。
+// 話題は説明文からも読める（「病んでいい場所」で LTL 非公開でも vent 0.95）ので寄せない
 const SAMPLE_FULL_AT = 30;
 const MIN_CONFIDENCE = 0.3;
 function sampleConfidence(sampleCount: number): number {
@@ -154,7 +155,7 @@ export function scoreProfile(
 			? prefs.topics.reduce((b, t) => (v.genre[t] > v.genre[b] ? t : b), prefs.topics[0])
 			: null;
 		axes.push({
-			fit: v && best ? shrink(v.genre[best], conf) : UNKNOWN,
+			fit: v && best ? v.genre[best] : UNKNOWN,
 			weight: 3,
 			reason: best ? `${FEATURE_LABELS[`genre.${best}`].up}の話題が多い` : null
 		});

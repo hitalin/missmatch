@@ -54,7 +54,7 @@ describe('passesFilters', () => {
 		mk({ host: 'teen.tld', minAge: 13 }),
 		mk({ host: 'ads.tld', adsEnabled: true }),
 		mk({ host: 'fork.tld', officialMisskey: false, versionMonthsBehind: 5 }),
-		mk({ host: 'small.tld', usersCount: 20, npd15: 5, emailRequired: false })
+		mk({ host: 'small.tld', dru15: 5, npd15: 5, emailRequired: false })
 	];
 	const hosts = (p: Preferences) => applyFilters(profiles, p).map((x) => x.server.host);
 
@@ -235,14 +235,22 @@ describe('雰囲気の相対化と確信度', () => {
 		expect(b - a).toBeGreaterThan(40);
 	});
 
-	it('投稿サンプルが少ない鯖は、投稿から読む軸の点を中立に寄せる', () => {
-		const p = prefs({ topics: ['game'] });
+	it('投稿サンプルが少ない鯖は、投稿から読む空気感の点を中立に寄せる。話題は説明文からも読めるので寄せない', () => {
 		const genre = { ...emptyGenre(), game: 1 };
-		const many = scoreProfile(mk({}, { genre, sampleCount: 50 }), p).score;
-		const few = scoreProfile(mk({}, { genre, sampleCount: 0 }), p).score;
-		expect(many).toBe(100);
-		expect(few).toBeLessThan(85);
-		expect(few).toBeGreaterThan(50);
+		const topics = prefs({ topics: ['game'] });
+		expect(scoreProfile(mk({}, { genre, sampleCount: 0 }), topics).score).toBe(100);
+		const tone = prefs({ tone: 'right' });
+		const many = withRelativeVibes([
+			mk({ host: 'a.tld' }, { tone: 1, sampleCount: 50 }),
+			mk({ host: 'b.tld' }, { tone: 0, sampleCount: 50 })
+		]);
+		const few = withRelativeVibes([
+			mk({ host: 'a.tld' }, { tone: 1, sampleCount: 0 }),
+			mk({ host: 'b.tld' }, { tone: 0, sampleCount: 0 })
+		]);
+		expect(scoreProfile(many[0], tone).score).toBe(100);
+		expect(scoreProfile(few[0], tone).score).toBeLessThan(85);
+		expect(scoreProfile(few[0], tone).score).toBeGreaterThan(50);
 	});
 });
 
@@ -253,7 +261,7 @@ describe('スワイプからの学習', () => {
 			taste,
 			featuresOf(
 				mk(
-					{ usersCount: 3 },
+					{ dru15: 1 },
 					{
 						genre: {
 							general: 0,
@@ -279,7 +287,7 @@ describe('スワイプからの学習', () => {
 		);
 		expect(taste['genre.illust']).toBeGreaterThan(0);
 		expect(taste.scale).toBeLessThan(0);
-		taste = learn(taste, featuresOf(mk({ usersCount: 50000 })), 'pass');
+		taste = learn(taste, featuresOf(mk({ dru15: 5000 })), 'pass');
 		expect(taste.scale).toBeLessThan(-0.3);
 	});
 
@@ -318,7 +326,7 @@ describe('スワイプからの学習', () => {
 	});
 
 	it('パスはいいねより弱く、値は -1..1 に収まる', () => {
-		const f = featuresOf(mk({ usersCount: 50000 }));
+		const f = featuresOf(mk({ dru15: 5000 }));
 		const like = learn({}, f, 'like').scale ?? 0;
 		const pass = learn({}, f, 'pass').scale ?? 0;
 		expect(Math.abs(pass)).toBeLessThan(like);
@@ -329,8 +337,8 @@ describe('スワイプからの学習', () => {
 
 	it('学習した好みに近い鯖の tasteFit が高く、好みが無ければ null', () => {
 		const taste: Taste = { scale: -1, 'genre.illust': 1 };
-		const small = tasteFit(featuresOf(mk({ usersCount: 10 })), taste) ?? 0;
-		const large = tasteFit(featuresOf(mk({ usersCount: 50000 })), taste) ?? 0;
+		const small = tasteFit(featuresOf(mk({ dru15: 5 })), taste) ?? 0;
+		const large = tasteFit(featuresOf(mk({ dru15: 5000 })), taste) ?? 0;
 		expect(small).toBeGreaterThan(large);
 		expect(tasteFit(featuresOf(mk()), {})).toBeNull();
 	});
