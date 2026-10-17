@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { mk, mkVibe } from './fixtures.test-helper';
 import {
 	AFFINITY_BATCH,
@@ -10,10 +10,11 @@ import {
 	isAxisDefault,
 	MAX_TURNS,
 	parseAffinity,
+	runAffinity,
 	unsureAxes
 } from './intent';
 import { defaultPreferences } from './prefs';
-import type { ClefAnswer } from './vibe';
+import type { ClefAnswer, ClefInput, ClefOutput } from './vibe';
 
 const choice = (c: string, p: number): ClefAnswer => ({
 	type: 'choice',
@@ -133,11 +134,79 @@ describe('buildAffinityRequests / parseAffinity', () => {
 		expect(s.topics).not.toContain('イラスト・漫画を描く 10%');
 	});
 
+	it('雰囲気の判定値を言葉にして渡し、規模と流速も添える（未判定なら雰囲気は付けない）', () => {
+		const judged = mk(
+			{ host: 'a.tld', usersCount: 50, npd15: 30, dru15: 12 },
+			{ tone: 1, strictness: 0, newcomerFriendly: 0.72, closedCommunity: 0.3, nsfw: 0.1 }
+		);
+		const unjudged = mk({ host: 'b.tld' }, null);
+		const [req] = buildAffinityRequests(['静かな場所'], [judged, unjudged]);
+		const servers = (req.state as { servers: Record<string, unknown>[] }).servers;
+		expect(servers[0].atmosphere).toEqual({
+			tone: 'ほのぼのしていて互いに優しい',
+			strictness: 'ルールがほとんどなく自由',
+			newcomerFriendly: '72%',
+			closedCommunity: '30%',
+			nsfw: '10%'
+		});
+		expect(servers[0].scale).toBe('小規模（10〜99人）');
+		expect(servers[0].pace).toBe('のんびり（〜100投稿/日）');
+		expect(servers[0].activeUsersPerDay).toBe(12);
+		expect(servers[1].atmosphere).toBeUndefined();
+		expect(servers[1].topics).toEqual([]);
+	});
+
 	it('回答を host → 確率にまとめ、知らない host は捨てる', () => {
 		const affinity = parseAffinity(
 			[{ answers: { 'a.tld': noul(0.9), 'x.tld': noul(1) } }, { answers: { 'b.tld': noul(0.2) } }],
 			[mk({ host: 'a.tld' }), mk({ host: 'b.tld' })]
 		);
 		expect(affinity).toEqual({ 'a.tld': 0.9, 'b.tld': 0.2 });
+	});
+});
+
+describe('runAffinity', () => {
+	const out = (host: string): ClefOutput => ({
+		model: 'clef',
+		answers: { [host]: noul(0.8) },
+		usage: { input_tokens: 1, output_tokens: 0 }
+	});
+	const req = (host: string): ClefInput => ({
+		model: 'clef',
+		state: {},
+		questions: { [host]: { type: 'noul', instructions: '' } }
+	});
+
+	it('失敗したバッチだけもう一度投げ、成功した分は捨てない', async () => {
+		let bFails = 1;
+		const runner = vi.fn(async (input: ClefInput) => {
+			const host = Object.keys(input.questions)[0];
+			if (host === 'b.tld' && bFails-- > 0) throw new Error('429');
+			return out(host);
+		});
+		const { outputs, failed } = await runAffinity(runner, [
+			req('a.tld'),
+			req('b.tld'),
+			req('c.tld')
+		]);
+		expect(failed).toBe(0);
+		expect(outputs.map((o) => Object.keys(o.answers)[0]).sort()).toEqual([
+			'a.tld',
+			'b.tld',
+			'c.tld'
+		]);
+		expect(runner).toHaveBeenCalledTimes(4);
+	});
+
+	it('2 回とも失敗したバッチは諦め、残りの結果と失敗数を返す', async () => {
+		const runner = vi.fn(async (input: ClefInput) => {
+			const host = Object.keys(input.questions)[0];
+			if (host === 'b.tld') throw new Error('down');
+			return out(host);
+		});
+		const { outputs, failed } = await runAffinity(runner, [req('a.tld'), req('b.tld')]);
+		expect(failed).toBe(1);
+		expect(outputs.map((o) => Object.keys(o.answers)[0])).toEqual(['a.tld']);
+		expect(runner).toHaveBeenCalledTimes(3);
 	});
 });

@@ -1,6 +1,26 @@
-import { DEALBREAKER_LABELS, type Preferences, TOPIC_LABELS, TOPICS, type Topic } from './prefs';
-import { GENRE_LABELS, GENRES, type ServerProfile } from './types';
-import type { ClefAnswer, ClefInput, ClefQuestion } from './vibe';
+import {
+	DEALBREAKER_LABELS,
+	PACE_HINTS,
+	PACE_LABELS,
+	type Preferences,
+	paceOf,
+	SCALE_HINTS,
+	SCALE_LABELS,
+	scaleOf,
+	TOPIC_LABELS,
+	TOPICS,
+	type Topic
+} from './prefs';
+import { GENRE_LABELS, GENRES, type ServerProfile, type VibeProfile } from './types';
+import {
+	type ClefAnswer,
+	type ClefInput,
+	type ClefOutput,
+	type ClefQuestion,
+	type ClefRunner,
+	STRICTNESS_LEVELS,
+	TONE_LEVELS
+} from './vibe';
 
 export const MAX_INTENT_LENGTH = 300; // 1 回の発言の長さ
 export const MAX_TURNS = 8; // 最初の言葉 + 絞り込みの数
@@ -165,7 +185,22 @@ function topicsOf(p: ServerProfile): string[] {
 		.map((g) => `${GENRE_LABELS[g]} ${Math.round(v.genre[g] * 100)}%`);
 }
 
-// 「この一言と各サーバーは噛み合うか」を、サーバーの説明・ルール・雰囲気タグを見せて直接判定させる。
+// 雰囲気の判定値を言葉にして渡す。「静か」「身内」「初心者でも」のような希望は
+// 説明文や抜粋 3 件だけでは読めないことが多く、事前計算した判定を見せると噛み合いが安定する
+const pct = (n: number) => `${Math.round(n * 100)}%`;
+const level = (levels: string[], v: number) =>
+	levels[Math.min(levels.length - 1, Math.max(0, Math.round(v * (levels.length - 1))))];
+function atmosphereOf(v: VibeProfile) {
+	return {
+		tone: level(TONE_LEVELS, v.tone),
+		strictness: level(STRICTNESS_LEVELS, v.strictness),
+		newcomerFriendly: pct(v.newcomerFriendly),
+		closedCommunity: pct(v.closedCommunity),
+		nsfw: pct(v.nsfw)
+	};
+}
+
+// 「この一言と各サーバーは噛み合うか」を、サーバーの説明・ルール・雰囲気・規模を見せて直接判定させる。
 // 設定項目に無い切り口（例: 病み垢の居場所）でも説明文に書いてあれば拾える
 export function buildAffinityRequests(turns: string[], profiles: ServerProfile[]): ClefInput[] {
 	const requests: ClefInput[] = [];
@@ -191,6 +226,10 @@ export function buildAffinityRequests(turns: string[], profiles: ServerProfile[]
 					name: p.server.name ?? p.server.host,
 					description: (p.server.description ?? '').slice(0, DESCRIPTION_CHARS),
 					rules: p.server.serverRules.join(' / ').slice(0, RULES_CHARS),
+					scale: `${SCALE_LABELS[scaleOf(p.server)]}（${SCALE_HINTS[scaleOf(p.server)]}）`,
+					pace: `${PACE_LABELS[paceOf(p.server)]}（${PACE_HINTS[paceOf(p.server)]}）`,
+					activeUsersPerDay: p.server.dru15,
+					atmosphere: p.vibe ? atmosphereOf(p.vibe) : undefined,
 					topics: topicsOf(p),
 					recentNotes: p.excerpts ?? []
 				}))
@@ -199,6 +238,29 @@ export function buildAffinityRequests(turns: string[], profiles: ServerProfile[]
 		});
 	}
 	return requests;
+}
+
+// バッチを並列に投げ、失敗した分だけもう一度投げる。1 つの失敗で全部の噛み合いを捨てない
+// （以前は Promise.all だったので、13 本のうち 1 本が 429 などで落ちると全サーバーが 0.5 になっていた）
+export async function runAffinity(
+	runner: ClefRunner,
+	requests: ClefInput[]
+): Promise<{ outputs: ClefOutput[]; failed: number }> {
+	const attempt = async (reqs: ClefInput[]) => {
+		const settled = await Promise.allSettled(reqs.map((r) => runner(r)));
+		const outputs: ClefOutput[] = [];
+		const retry: ClefInput[] = [];
+		settled.forEach((s, i) => {
+			if (s.status === 'fulfilled') outputs.push(s.value);
+			else retry.push(reqs[i]);
+		});
+		return { outputs, retry };
+	};
+	const first = await attempt(requests);
+	if (first.retry.length === 0) return { outputs: first.outputs, failed: 0 };
+	const second = await attempt(first.retry);
+	if (second.retry.length > 0) console.error(`[affinity] ${second.retry.length} batches failed`);
+	return { outputs: [...first.outputs, ...second.outputs], failed: second.retry.length };
 }
 
 export function parseAffinity(

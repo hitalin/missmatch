@@ -1,5 +1,12 @@
 import { json } from '@sveltejs/kit';
-import { clefRunner, forClient, loadProfiles, memoryKv, type Scope } from '$lib/server/recommend';
+import {
+	clefRunner,
+	forClient,
+	kvFrom,
+	loadProfiles,
+	memoryKv,
+	type Scope
+} from '$lib/server/recommend';
 import type { RequestHandler } from './$types';
 
 // vite dev ではバインディングがないため、プロセス内メモリで代用する
@@ -14,7 +21,10 @@ export const GET: RequestHandler = async ({ url, platform, setHeaders }) => {
 	const scope: Scope = url.searchParams.get('scope') === 'all' ? 'all' : 'open';
 	try {
 		const result = await loadProfiles(
-			{ kv: env?.VIBE_KV ?? devKv, runner: env?.AI ? clefRunner(env.AI) : null },
+			{
+				kv: env?.VIBE_KV ? kvFrom(env.VIBE_KV) : devKv,
+				runner: env?.AI ? clefRunner(env.AI) : null
+			},
 			ctx ? (work) => ctx.waitUntil(work) : undefined,
 			scope
 		);

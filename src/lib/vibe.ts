@@ -37,13 +37,13 @@ export interface ClefOutput {
 
 export type ClefRunner = (input: ClefInput) => Promise<ClefOutput>;
 
-const TONE_LEVELS = [
+export const TONE_LEVELS = [
 	'殺伐としていて攻撃的な投稿が目立つ',
 	'ドライで淡々としている',
 	'穏やかで落ち着いている',
 	'ほのぼのしていて互いに優しい'
 ];
-const STRICTNESS_LEVELS = [
+export const STRICTNESS_LEVELS = [
 	'ルールがほとんどなく自由',
 	'一般的なルールがある程度',
 	'ルールが多く細かい、または厳格に運用されている'
@@ -186,6 +186,8 @@ export function vibeTags(vibe: VibeProfile): string[] {
 // KVNamespace のうち使う部分だけ（テストや vite dev で差し替えやすくする）
 export interface VibeKv {
 	get(key: string): Promise<string | null>;
+	// 一括読み（KV は 100 鍵まで 1 操作。無ければ 1 件ずつ読む）
+	getMany?(keys: string[]): Promise<Map<string, string | null>>;
 	put(key: string, value: string, options?: { expirationTtl?: number }): Promise<void>;
 	list(options: {
 		prefix: string;
@@ -224,14 +226,38 @@ export async function saveExcerpts(
 	if (excerpts.length === 0) return;
 	await kv.put(sampleKey(host), JSON.stringify(excerpts), { expirationTtl: KV_TTL_SECONDS });
 }
-export async function readExcerpts(kv: Pick<VibeKv, 'get'>, host: string): Promise<string[]> {
+export function parseExcerpts(raw: string | null): string[] {
 	try {
-		const raw = await kv.get(sampleKey(host));
 		const parsed = raw ? (JSON.parse(raw) as unknown) : [];
 		return Array.isArray(parsed) ? parsed.filter((x): x is string => typeof x === 'string') : [];
 	} catch {
 		return [];
 	}
+}
+export async function readExcerpts(kv: Pick<VibeKv, 'get'>, host: string): Promise<string[]> {
+	return parseExcerpts(await kv.get(sampleKey(host)));
+}
+
+// 多くの鍵をまとめて読む。Workers は 1 リクエストに外部操作 1,000 回までなので、
+// 580 件 × 2 鍵を 1 件ずつ読むと上限に当たる。一括読みは 100 鍵で 1 操作
+export const KV_BULK_LIMIT = 100;
+export async function readMany(
+	kv: Pick<VibeKv, 'get' | 'getMany'>,
+	keys: string[]
+): Promise<Map<string, string | null>> {
+	const out = new Map<string, string | null>();
+	if (kv.getMany) {
+		const chunks: string[][] = [];
+		for (let i = 0; i < keys.length; i += KV_BULK_LIMIT)
+			chunks.push(keys.slice(i, i + KV_BULK_LIMIT));
+		for (const got of await Promise.all(chunks.map((c) => kv.getMany?.(c)))) {
+			for (const [k, v] of got ?? []) out.set(k, v);
+		}
+	} else {
+		const values = await Promise.all(keys.map((k) => kv.get(k)));
+		for (let i = 0; i < keys.length; i++) out.set(keys[i], values[i]);
+	}
+	return out;
 }
 
 export function vibeKey(host: string): string {
@@ -256,8 +282,7 @@ export interface VibeEntry {
 }
 
 // KV の現行スキーマのエントリ。vibe か失敗マーカーのどちらか
-export async function readVibeEntry(kv: Pick<VibeKv, 'get'>, host: string): Promise<VibeEntry> {
-	const cached = await kv.get(vibeKey(host));
+export function parseVibeEntry(cached: string | null): VibeEntry {
 	if (!cached) return { vibe: null, failed: false };
 	try {
 		const parsed = JSON.parse(cached) as Partial<VibeProfile> & { failed?: boolean };
@@ -267,6 +292,9 @@ export async function readVibeEntry(kv: Pick<VibeKv, 'get'>, host: string): Prom
 	} catch {
 		return { vibe: null, failed: false }; // 壊れたキャッシュは作り直す
 	}
+}
+export async function readVibeEntry(kv: Pick<VibeKv, 'get'>, host: string): Promise<VibeEntry> {
+	return parseVibeEntry(await kv.get(vibeKey(host)));
 }
 
 export async function readCachedVibe(

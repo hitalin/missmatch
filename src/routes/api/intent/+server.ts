@@ -1,12 +1,6 @@
 import { json } from '@sveltejs/kit';
-import {
-	buildAffinityRequests,
-	buildIntentRequest,
-	MAX_INTENT_LENGTH,
-	MAX_TURNS,
-	parseAffinity
-} from '$lib/intent';
-import { clefRunner, loadProfiles, memoryKv, type Scope } from '$lib/server/recommend';
+import { MAX_INTENT_LENGTH, MAX_TURNS } from '$lib/intent';
+import { clefRunner, kvFrom, memoryKv, readIntent, type Scope } from '$lib/server/recommend';
 import type { RequestHandler } from './$types';
 
 const devKv = memoryKv();
@@ -29,15 +23,16 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 	if (turns.length === 0) return json({ error: 'turns is required' }, { status: 400 });
 
 	const env = platform?.env;
+	const ctx = platform?.context;
 	if (!env?.AI) return json({ answers: {}, affinity: {} }); // AI が無い環境では読み取りなし
-	const runner = clefRunner(env.AI);
 	try {
-		const { profiles } = await loadProfiles({ kv: env.VIBE_KV ?? devKv, runner }, undefined, scope);
-		const [intent, ...affinities] = await Promise.all([
-			runner(buildIntentRequest(turns)),
-			...buildAffinityRequests(turns, profiles).map((req) => runner(req))
-		]);
-		return json({ answers: intent.answers, affinity: parseAffinity(affinities, profiles) });
+		const result = await readIntent(
+			{ kv: env.VIBE_KV ? kvFrom(env.VIBE_KV) : devKv, runner: clefRunner(env.AI) },
+			turns,
+			scope,
+			ctx ? (work) => ctx.waitUntil(work) : undefined
+		);
+		return json(result);
 	} catch (e) {
 		console.error('[intent]', e);
 		return json({ answers: {}, affinity: {} });

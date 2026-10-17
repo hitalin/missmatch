@@ -1,18 +1,22 @@
 import { byActivity } from '$lib/candidates';
 import { fetchServers } from '$lib/instances';
+import { buildAffinityRequests, buildIntentRequest, parseAffinity, runAffinity } from '$lib/intent';
 import { isJoinable, isListed } from '$lib/match';
 import { fetchSampleNotes } from '$lib/sample';
 import type { ServerInfo, ServerProfile } from '$lib/types';
 import {
+	type ClefAnswer,
 	type ClefInput,
 	type ClefOutput,
 	type ClefRunner,
 	getOrComputeVibe,
-	readExcerpts,
-	readVibeEntry,
+	parseExcerpts,
+	parseVibeEntry,
+	readMany,
 	sampleKey,
 	saveExcerpts,
-	type VibeKv
+	type VibeKv,
+	vibeKey
 } from '$lib/vibe';
 
 // ServerInfo の形を変えたら上げる
@@ -24,6 +28,10 @@ export const CANDIDATE_LIMIT = 40;
 const PROFILES_TTL_SECONDS = 60 * 5;
 const profilesKey = (scope: Scope) => `profiles:v4:${scope}`;
 const CONCURRENCY = 8;
+// 同じ言葉の読み取りは使い回す（トップページの例文など、同じ言葉は何度も来る）。
+// 雰囲気は 7 日おきにしか変わらないので、1 時間古くても順位はほぼ同じ
+const INTENT_TTL_SECONDS = 60 * 60;
+const intentKeyPrefix = (scope: Scope) => `intent:v1:${scope}:`;
 
 // `vite dev` などバインディングがない環境向けの代替
 export function memoryKv(): VibeKv {
@@ -37,6 +45,16 @@ export function memoryKv(): VibeKv {
 			keys: [...store.keys()].filter((k) => k.startsWith(prefix)).map((name) => ({ name })),
 			list_complete: true
 		})
+	};
+}
+
+// KVNamespace を VibeKv に合わせる（一括読みを付ける）
+export function kvFrom(ns: KVNamespace): VibeKv {
+	return {
+		get: (key) => ns.get(key),
+		getMany: (keys) => ns.get(keys),
+		put: (key, value, options) => ns.put(key, value, options),
+		list: (options) => ns.list(options)
 	};
 }
 
@@ -120,13 +138,15 @@ export async function loadProfiles(
 	}
 	const servers = await getServers(deps.kv);
 	const joinable = servers.filter(scope === 'all' ? isListed : isJoinable);
-	const entries = await Promise.all(
-		joinable.map(async (server) => ({
-			server,
-			entry: await readVibeEntry(deps.kv, server.host),
-			excerpts: await readExcerpts(deps.kv, server.host)
-		}))
+	const raw = await readMany(
+		deps.kv,
+		joinable.flatMap((s) => [vibeKey(s.host), sampleKey(s.host)])
 	);
+	const entries = joinable.map((server) => ({
+		server,
+		entry: parseVibeEntry(raw.get(vibeKey(server.host)) ?? null),
+		excerpts: parseExcerpts(raw.get(sampleKey(server.host)) ?? null)
+	}));
 	const profiles: ServerProfile[] = entries.map(({ server, entry, excerpts }) => ({
 		server,
 		vibe: entry.vibe,
@@ -156,4 +176,48 @@ export async function loadProfiles(
 		);
 	}
 	return { profiles, totalCount: servers.length, pendingCount };
+}
+
+export interface IntentResult {
+	answers: Record<string, ClefAnswer>;
+	affinity: Record<string, number>;
+}
+
+async function intentKey(scope: Scope, turns: string[]): Promise<string> {
+	const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(turns.join('\n')));
+	const hex = [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('');
+	return `${intentKeyPrefix(scope)}${hex}`;
+}
+
+// 言葉の並びを (1) 設定の読み取りと (2) 各サーバーとの噛み合いに変換する。
+// 雰囲気の欠けは defer に回して判定を待たせない（以前は欠け 40 件の LTL 取得と Clef を待ってから判定を始めていた）。
+// 噛み合いが全バッチそろったときだけ KV に置き、同じ言葉はキャッシュから返す
+export async function readIntent(
+	deps: Deps & { runner: ClefRunner },
+	turns: string[],
+	scope: Scope,
+	defer?: (work: Promise<unknown>) => void
+): Promise<IntentResult> {
+	const key = await intentKey(scope, turns);
+	const cached = await deps.kv.get(key);
+	if (cached) {
+		try {
+			return JSON.parse(cached) as IntentResult;
+		} catch {
+			// 壊れていれば読み直す
+		}
+	}
+	const { profiles } = await loadProfiles(deps, defer, scope);
+	const [intent, { outputs, failed }] = await Promise.all([
+		deps.runner(buildIntentRequest(turns)),
+		runAffinity(deps.runner, buildAffinityRequests(turns, profiles))
+	]);
+	const result: IntentResult = {
+		answers: intent.answers,
+		affinity: parseAffinity(outputs, profiles)
+	};
+	if (failed === 0) {
+		await deps.kv.put(key, JSON.stringify(result), { expirationTtl: INTENT_TTL_SECONDS });
+	}
+	return result;
 }
