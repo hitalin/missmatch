@@ -5,7 +5,6 @@
 	import Discover from '$lib/components/Discover.svelte';
 	import Icon from '$lib/components/Icon.svelte';
 	import LikesGrid from '$lib/components/LikesGrid.svelte';
-	import MatchOverlay from '$lib/components/MatchOverlay.svelte';
 	import Onboarding from '$lib/components/Onboarding.svelte';
 	import SearchBar from '$lib/components/SearchBar.svelte';
 		import Settings from '$lib/components/Settings.svelte';
@@ -71,7 +70,6 @@
 	let deckKey = $state(''); // どの条件で作ったデッキか。条件が変わったら作り直す
 	let deckGen = $state(0); // 何束目か。同じ条件でも次の束で Discover を作り直すため
 	let deckTotal = $state(0);
-	let celebrate = $state<Match | null>(null);
 	let draft = $state(''); // 言葉を足す箱の入力中テキスト
 
 	// 条件（フィルター・加点・どの検索か・噛み合い済みか）の文字列キー。変わったらデッキを作り直す
@@ -220,7 +218,6 @@
 				liked: action === 'like' && !search.liked.includes(host) ? [...search.liked, host] : search.liked,
 				passed: action === 'pass' && !search.passed.includes(host) ? [...search.passed, host] : search.passed
 			});
-		if (action === 'like' && m.score >= 70) celebrate = m;
 	}
 
 	function undo(m: Match, action: 'like' | 'pass') {
@@ -407,10 +404,6 @@
 			{/if}
 		</main>
 	</Shell>
-
-{#if celebrate}
-	<MatchOverlay match={celebrate} onclose={() => (celebrate = null)} />
-{/if}
 
 <style>
 	.onboarding {
