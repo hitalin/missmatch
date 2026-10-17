@@ -204,7 +204,28 @@ function atmosphereOf(v: VibeProfile) {
 }
 
 // 「この一言と各サーバーは噛み合うか」を、サーバーの説明・ルール・雰囲気・規模を見せて直接判定させる。
-// 設定項目に無い切り口（例: 病み垢の居場所）でも説明文に書いてあれば拾える
+// 設定項目に無い切り口（例: 病み垢の居場所）でも説明文に書いてあれば拾える。
+// 最近の投稿の抜粋は渡さない: 瞬間の LTL は bot・ニュース・告知が多く、誰でもする食べ物や仕事の話が
+// どの鯖にもあるので、説明文で決まるテーマ性を薄めるだけだった（2026-10-17、recall@5 82 → 74%）
+function serverState(p: ServerProfile, descriptionChars: number, rulesChars: number) {
+	return {
+		host: p.server.host,
+		name: p.server.name ?? p.server.host,
+		description: (p.server.description ?? '').slice(0, descriptionChars),
+		rules: p.server.serverRules.join(' / ').slice(0, rulesChars),
+		// 規模は 1 日の読者数で伝える。登録者数だけだと、離れた人で膨らんだ鯖を「大手」と読んでしまう
+		scale: `${SCALE_LABELS[scaleOf(p.server)]}（毎日 ${Math.round(p.server.dru15 ?? 0)} 人が読む）`,
+		pace: `${PACE_LABELS[paceOf(p.server)]}（${PACE_HINTS[paceOf(p.server)]}）`,
+		registeredUsers: p.server.usersCount,
+		// LTL が無い鯖は流速が速くても本人のホームは静か（「干渉が少ない」「隠居」の判定に効く）
+		localTimeline: p.server.ltlAvailable
+			? 'あり'
+			: 'なし（自分のホームタイムラインだけで、他人の投稿が流れてこない）',
+		atmosphere: p.vibe ? atmosphereOf(p.vibe) : undefined,
+		topics: topicsOf(p)
+	};
+}
+
 export function buildAffinityRequests(turns: string[], profiles: ServerProfile[]): ClefInput[] {
 	const requests: ClefInput[] = [];
 	for (let i = 0; i < profiles.length; i += AFFINITY_BATCH) {
@@ -224,23 +245,7 @@ export function buildAffinityRequests(turns: string[], profiles: ServerProfile[]
 			model: 'clef',
 			state: {
 				...userState(turns),
-				servers: batch.map((p) => ({
-					host: p.server.host,
-					name: p.server.name ?? p.server.host,
-					description: (p.server.description ?? '').slice(0, DESCRIPTION_CHARS),
-					rules: p.server.serverRules.join(' / ').slice(0, RULES_CHARS),
-					// 規模は 1 日の読者数で伝える。登録者数だけだと、離れた人で膨らんだ鯖を「大手」と読んでしまう
-					scale: `${SCALE_LABELS[scaleOf(p.server)]}（毎日 ${Math.round(p.server.dru15 ?? 0)} 人が読む）`,
-					pace: `${PACE_LABELS[paceOf(p.server)]}（${PACE_HINTS[paceOf(p.server)]}）`,
-					registeredUsers: p.server.usersCount,
-					// LTL が無い鯖は流速が速くても本人のホームは静か（「干渉が少ない」「隠居」の判定に効く）
-					localTimeline: p.server.ltlAvailable
-						? 'あり'
-						: 'なし（自分のホームタイムラインだけで、他人の投稿が流れてこない）',
-					atmosphere: p.vibe ? atmosphereOf(p.vibe) : undefined,
-					topics: topicsOf(p),
-					recentNotes: p.excerpts ?? []
-				}))
+				servers: batch.map((p) => serverState(p, DESCRIPTION_CHARS, RULES_CHARS))
 			},
 			questions
 		});
@@ -248,8 +253,25 @@ export function buildAffinityRequests(turns: string[], profiles: ServerProfile[]
 	return requests;
 }
 
-// バッチを並列に投げ、失敗した分だけもう一度投げる。1 つの失敗で全部の噛み合いを捨てない
-// （以前は Promise.all だったので、13 本のうち 1 本が 429 などで落ちると全サーバーが 0.5 になっていた）
+// バッチを並列に投げ、失敗した分は半分に割ってもう一度投げる。1 つの失敗で全部の噛み合いを捨てない
+// （以前は Promise.all だったので、13 本のうち 1 本が 429 などで落ちると全サーバーが 0.5 になっていた。
+// 同じ入力をそのまま投げ直しても、Clef が決定を返せない入力なら同じ結果になるので割る）
+export function splitRequest(req: ClefInput): ClefInput[] {
+	const ids = Object.keys(req.questions);
+	if (ids.length < 2) return [req];
+	const state = req.state as { servers?: { host: string }[] };
+	const half = Math.ceil(ids.length / 2);
+	return [ids.slice(0, half), ids.slice(half)].map((part) => {
+		const keep = new Set(part);
+		return {
+			...req,
+			state: state.servers
+				? { ...state, servers: state.servers.filter((s) => keep.has(s.host)) }
+				: req.state,
+			questions: Object.fromEntries(part.map((id) => [id, req.questions[id]]))
+		};
+	});
+}
 export async function runAffinity(
 	runner: ClefRunner,
 	requests: ClefInput[]
@@ -266,9 +288,54 @@ export async function runAffinity(
 	};
 	const first = await attempt(requests);
 	if (first.retry.length === 0) return { outputs: first.outputs, failed: 0 };
-	const second = await attempt(first.retry);
+	const second = await attempt(first.retry.flatMap(splitRequest));
 	if (second.retry.length > 0) console.error(`[affinity] ${second.retry.length} batches failed`);
 	return { outputs: [...first.outputs, ...second.outputs], failed: second.retry.length };
+}
+
+// 第 2 段: 第 1 段の上位を 1 つの state にまとめ、他と比べてどれだけ合うかを 5 段階で問う。
+// 8 件ずつ独立に判定した確率は上位で 0.85〜0.95 に固まり、順位が偶然で決まりやすい。
+// 同じ state に並べると判定の物差しがそろう。説明・ルール・抜粋も第 1 段より長く見せる
+export const RERANK_TOP = 16;
+export const RERANK_SHARE = 0.5; // 最終 = (1 - SHARE) × 第 1 段 + SHARE × 第 2 段
+const RERANK_DESCRIPTION_CHARS = 600;
+const RERANK_RULES_CHARS = 400;
+const RERANK_LEVELS = [
+	'無関係、またはユーザーが避けたいものに当たる',
+	'ほとんど合わない',
+	'一部は合うが、望みの中心からは外れる',
+	'よく合う',
+	'望みの中心にぴったり合う'
+];
+export function buildRerankRequest(turns: string[], profiles: ServerProfile[]): ClefInput {
+	const questions: Record<string, ClefQuestion> = {};
+	for (const p of profiles) {
+		questions[p.server.host] = {
+			type: 'score',
+			instructions: `servers のうち host が ${p.server.host} のサーバーは、ユーザーが望む使い方・話題・居心地にどれだけ合うか。servers に並ぶ他のサーバーと比べて評価せよ`,
+			criteria: RERANK_LEVELS
+		};
+	}
+	return {
+		model: 'clef',
+		state: {
+			...userState(turns),
+			servers: profiles.map((p) => serverState(p, RERANK_DESCRIPTION_CHARS, RERANK_RULES_CHARS))
+		},
+		questions
+	};
+}
+export function parseRerank(
+	output: { answers: Record<string, ClefAnswer> },
+	hosts: string[]
+): Record<string, number> {
+	const out: Record<string, number> = {};
+	const known = new Set(hosts);
+	for (const [host, a] of Object.entries(output.answers)) {
+		if (known.has(host) && a.type === 'score')
+			out[host] = Math.min(1, Math.max(0, a.score / (RERANK_LEVELS.length - 1)));
+	}
+	return out;
 }
 
 export function parseAffinity(

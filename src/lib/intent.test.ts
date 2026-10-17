@@ -6,11 +6,15 @@ import {
 	askOptions,
 	buildAffinityRequests,
 	buildIntentRequest,
+	buildRerankRequest,
 	chooseAxis,
 	isAxisDefault,
 	MAX_TURNS,
 	parseAffinity,
+	parseRerank,
+	RERANK_TOP,
 	runAffinity,
+	splitRequest,
 	unsureAxes
 } from './intent';
 import { defaultPreferences } from './prefs';
@@ -117,19 +121,16 @@ describe('buildAffinityRequests / parseAffinity', () => {
 		expect(state.servers.map((s) => s.host)).toEqual(Object.keys(reqs[1].questions));
 	});
 
-	it('サーバーごとに説明・ルール・話題の確率・投稿の抜粋を渡す', () => {
-		const p = {
-			...mk(
-				{ host: 'a.tld', description: '説明'.repeat(200), serverRules: ['ルール'.repeat(100)] },
-				{ genre: { ...mkVibe().genre, game: 0.9, illust: 0.1 } }
-			),
-			excerpts: ['ゲームの話', '今日のガチャ']
-		};
+	it('サーバーごとに説明・ルール・話題の確率を渡す（投稿の抜粋は渡さない）', () => {
+		const p = mk(
+			{ host: 'a.tld', description: '説明'.repeat(200), serverRules: ['ルール'.repeat(100)] },
+			{ genre: { ...mkVibe().genre, game: 0.9, illust: 0.1 } }
+		);
 		const [req] = buildAffinityRequests(['ゲーム'], [p]);
 		const s = (req.state as { servers: Record<string, unknown>[] }).servers[0];
 		expect((s.description as string).length).toBe(300);
 		expect((s.rules as string).length).toBe(200);
-		expect(s.recentNotes).toEqual(['ゲームの話', '今日のガチャ']);
+		expect(s.recentNotes).toBeUndefined();
 		expect(s.topics).toContain('ゲーム 90%');
 		expect(s.topics).not.toContain('イラスト・漫画を描く 10%');
 	});
@@ -203,6 +204,35 @@ describe('runAffinity', () => {
 		expect(runner).toHaveBeenCalledTimes(4);
 	});
 
+	it('失敗したバッチは半分に割って投げ直し、通った半分の結果を生かす', async () => {
+		const hosts = ['a.tld', 'b.tld', 'c.tld', 'bad.tld'];
+		const req8: ClefInput = {
+			model: 'clef',
+			state: { servers: hosts.map((host) => ({ host })) },
+			questions: Object.fromEntries(hosts.map((h) => [h, { type: 'noul', instructions: '' }]))
+		};
+		const runner = vi.fn(async (input: ClefInput): Promise<ClefOutput> => {
+			if ('bad.tld' in input.questions) throw new Error('3043: no valid decision');
+			return {
+				model: 'clef',
+				answers: Object.fromEntries(Object.keys(input.questions).map((h) => [h, noul(0.5)])),
+				usage: { input_tokens: 1, output_tokens: 0 }
+			};
+		});
+		const { outputs, failed } = await runAffinity(runner, [req8]);
+		expect(failed).toBe(1);
+		expect(Object.keys(outputs[0].answers)).toEqual(['a.tld', 'b.tld']);
+		// 割った半分は state の servers も対応する分だけ
+		const [left, right] = splitRequest(req8);
+		expect((left.state as { servers: { host: string }[] }).servers.map((s) => s.host)).toEqual([
+			'a.tld',
+			'b.tld'
+		]);
+		expect(Object.keys(right.questions)).toEqual(['c.tld', 'bad.tld']);
+		expect(splitRequest(left).length).toBe(2);
+		expect(splitRequest(splitRequest(left)[0])).toHaveLength(1);
+	});
+
 	it('2 回とも失敗したバッチは諦め、残りの結果と失敗数を返す', async () => {
 		const runner = vi.fn(async (input: ClefInput) => {
 			const host = Object.keys(input.questions)[0];
@@ -213,5 +243,39 @@ describe('runAffinity', () => {
 		expect(failed).toBe(1);
 		expect(outputs.map((o) => Object.keys(o.answers)[0])).toEqual(['a.tld']);
 		expect(runner).toHaveBeenCalledTimes(3);
+	});
+});
+
+describe('buildRerankRequest / parseRerank', () => {
+	it('上位の候補を 1 つの state にまとめ、host ごとに 5 段階の score で「他と比べて」問う', () => {
+		const profiles = Array.from({ length: RERANK_TOP + 4 }, (_, i) =>
+			mk({ host: `s${i}.tld`, description: '説明'.repeat(300), serverRules: ['規則'.repeat(300)] })
+		);
+		const req = buildRerankRequest(['静かな場所'], profiles.slice(0, RERANK_TOP));
+		expect(Object.keys(req.questions)).toHaveLength(RERANK_TOP);
+		const q = req.questions['s0.tld'];
+		expect(q.type).toBe('score');
+		expect(q.type === 'score' && q.criteria.length).toBe(5);
+		expect(q.instructions).toContain('比べ');
+		const s = (req.state as { servers: Record<string, unknown>[] }).servers[0];
+		// 第 1 段より長く見せる
+		expect((s.description as string).length).toBeGreaterThan(300);
+		expect((s.rules as string).length).toBeGreaterThan(200);
+	});
+
+	it('parseRerank は score を 0..1 にし、知らない host は捨てる', () => {
+		const score = (n: number): ClefAnswer => ({
+			type: 'score',
+			score: n,
+			legend: {},
+			probabilities: {},
+			confidence: 1
+		});
+		expect(
+			parseRerank({ answers: { 'a.tld': score(4), 'b.tld': score(1), 'x.tld': score(4) } }, [
+				'a.tld',
+				'b.tld'
+			])
+		).toEqual({ 'a.tld': 1, 'b.tld': 0.25 });
 	});
 });

@@ -71,9 +71,9 @@ pnpm test
 ```bash
 wrangler kv namespace create VIBE_KV   # id を wrangler.toml に書く
 wrangler secret put WARM_SECRET
-pnpm deploy
+pnpm run deploy   # pnpm deploy は pnpm 本体のコマンドに取られる
 
-# 雰囲気を事前計算（mode=samples なら Clef を呼ばず投稿の抜粋だけ取る）
+# 雰囲気を事前計算
 curl -X POST "https://<host>/api/warm?limit=50" -H "Authorization: Bearer $WARM_SECRET"
 ```
 

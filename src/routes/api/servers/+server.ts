@@ -1,12 +1,5 @@
 import { json } from '@sveltejs/kit';
-import {
-	clefRunner,
-	forClient,
-	kvFrom,
-	loadProfiles,
-	memoryKv,
-	type Scope
-} from '$lib/server/recommend';
+import { clefRunner, kvFrom, loadProfiles, memoryKv, type Scope } from '$lib/server/recommend';
 import type { RequestHandler } from './$types';
 
 // vite dev ではバインディングがないため、プロセス内メモリで代用する
@@ -29,7 +22,7 @@ export const GET: RequestHandler = async ({ url, platform, setHeaders }) => {
 			scope
 		);
 		setHeaders({ 'cache-control': result.pendingCount > 0 ? 'no-store' : 'public, max-age=300' });
-		return json({ ...result, profiles: forClient(result.profiles) });
+		return json(result);
 	} catch (e) {
 		console.error('[servers]', e);
 		return json({ error: 'failed to load servers' }, { status: 502 });

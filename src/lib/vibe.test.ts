@@ -5,14 +5,9 @@ import {
 	buildVibeRequest,
 	type ClefAnswer,
 	type ClefOutput,
-	EXCERPT_CHARS,
-	EXCERPT_COUNT,
 	getOrComputeVibe,
-	parseExcerpts,
 	parseVibeAnswers,
-	pickExcerpts,
 	readVibeEntry,
-	saveExcerpts,
 	VIBE_VERSION,
 	vibeTags
 } from './vibe';
@@ -147,43 +142,6 @@ describe('parseVibeAnswers', () => {
 	});
 });
 
-describe('pickExcerpts', () => {
-	it('短すぎる投稿を除き、長い投稿から順に数件（長い投稿は切る）', () => {
-		const long = 'あ'.repeat(300);
-		expect(
-			pickExcerpts([
-				'ok',
-				'すこし長めの投稿',
-				long,
-				'もうひとつの投稿です',
-				'4件目の投稿',
-				'い'.repeat(50)
-			])
-		).toEqual([
-			'あ'.repeat(EXCERPT_CHARS),
-			'い'.repeat(50),
-			'もうひとつの投稿です',
-			'すこし長めの投稿',
-			'4件目の投稿'
-		]);
-		expect(pickExcerpts(Array(10).fill('x'.repeat(20))).length).toBe(EXCERPT_COUNT);
-	});
-
-	it('saveExcerpts は空でも印（[]）を短い期限で置き、毎回取りに行かない', async () => {
-		const puts: [string, string, number | undefined][] = [];
-		const kv = {
-			put: async (k: string, v: string, o?: { expirationTtl?: number }) => {
-				puts.push([k, v, o?.expirationTtl]);
-			}
-		};
-		await saveExcerpts(kv, 'a.tld', []);
-		await saveExcerpts(kv, 'b.tld', ['最近の投稿です']);
-		expect(puts[0][1]).toBe('[]');
-		expect(puts[0][2]).toBeLessThan(puts[1][2] ?? 0);
-		expect(parseExcerpts('[]')).toEqual([]);
-	});
-});
-
 describe('vibeTags', () => {
 	it('目立つ軸だけタグにする', () => {
 		const answers: Record<string, ClefAnswer> = {
@@ -272,11 +230,7 @@ describe('getOrComputeVibe', () => {
 		expect(first?.genre.general).toBe(1);
 		expect(runner).toHaveBeenCalledTimes(1);
 		// 雰囲気と、噛み合い判定用の投稿の抜粋の 2 つを保存する
-		expect(kv.put).toHaveBeenCalledTimes(2);
-		expect(JSON.parse(store.get(`sample:${server.host}`) ?? '[]')).toEqual([
-			'こんにちは、はじめまして', // 長い順
-			'ゲームの話をしよう'
-		]);
+		expect(kv.put).toHaveBeenCalledTimes(1);
 
 		const second = await getOrComputeVibe(server, { kv, runner, sampler });
 		expect(second).toEqual(first);

@@ -1,6 +1,15 @@
 import { byActivity } from '$lib/candidates';
 import { fetchServers } from '$lib/instances';
-import { buildAffinityRequests, buildIntentRequest, parseAffinity, runAffinity } from '$lib/intent';
+import {
+	buildAffinityRequests,
+	buildIntentRequest,
+	buildRerankRequest,
+	parseAffinity,
+	parseRerank,
+	RERANK_SHARE,
+	RERANK_TOP,
+	runAffinity
+} from '$lib/intent';
 import { isJoinable, isListed } from '$lib/match';
 import { fetchSampleNotes } from '$lib/sample';
 import type { ServerInfo, ServerProfile } from '$lib/types';
@@ -10,11 +19,8 @@ import {
 	type ClefOutput,
 	type ClefRunner,
 	getOrComputeVibe,
-	parseExcerpts,
 	parseVibeEntry,
 	readMany,
-	sampleKey,
-	saveExcerpts,
 	type VibeKv,
 	vibeKey
 } from '$lib/vibe';
@@ -32,7 +38,7 @@ const CONCURRENCY = 8;
 // 雰囲気は 7 日おきにしか変わらないので、1 時間古くても順位はほぼ同じ
 const INTENT_TTL_SECONDS = 60 * 60;
 // 噛み合い判定に渡す state や基準を変えたら上げる（古い判定を 1 時間引きずらない）
-const intentKeyPrefix = (scope: Scope) => `intent:v3:${scope}:`;
+const intentKeyPrefix = (scope: Scope) => `intent:v4:${scope}:`;
 
 // `vite dev` などバインディングがない環境向けの代替
 export function memoryKv(): VibeKv {
@@ -77,7 +83,6 @@ export interface Deps {
 	runner: ClefRunner | null;
 	sampler?: (host: string, limit?: number) => Promise<string[]>; // 既定は LTL を取りに行く（テストで差し替える）
 }
-const EXCERPT_NOTES = 30; // 抜粋のために取る投稿数（長いものから 5 件残す）
 
 export async function computeVibes(servers: ServerInfo[], deps: Deps): Promise<ServerProfile[]> {
 	if (!deps.runner) return servers.map((server) => ({ server, vibe: null }));
@@ -102,33 +107,6 @@ export async function computeVibes(servers: ServerInfo[], deps: Deps): Promise<S
 	return results;
 }
 
-// 投稿の抜粋が無いサーバーだけ LTL を取りに行って保存する（Clef は使わない）。
-// 抜粋を持つ前に雰囲気を判定したサーバーを、判定し直さずに埋めるため
-export async function fillExcerpts(
-	servers: ServerInfo[],
-	kv: VibeKv,
-	sampler: Deps['sampler'] = fetchSampleNotes
-): Promise<number> {
-	let filled = 0;
-	let next = 0;
-	const worker = async () => {
-		while (next < servers.length) {
-			const s = servers[next++];
-			if (!s.ltlAvailable || (await kv.get(sampleKey(s.host))) !== null) continue;
-			const notes = await sampler(s.host, EXCERPT_NOTES);
-			await saveExcerpts(kv, s.host, notes);
-			if (notes.length > 0) filled++;
-		}
-	};
-	await Promise.all(Array.from({ length: Math.min(CONCURRENCY, servers.length) }, worker));
-	return filled;
-}
-
-// 抜粋はサーバー内（噛み合い判定）だけで使う。ブラウザに送る属性表からは外す
-export function forClient(profiles: ServerProfile[]): ServerProfile[] {
-	return profiles.map(({ excerpts: _excerpts, ...p }) => p);
-}
-
 // 診断に使う属性表: 推薦され得る全サーバー。
 // 雰囲気はキャッシュ済みの分だけ即座に返し、未判定は活発な順に上限まで応答後に計算する（defer があれば）。
 // ユーザーを Clef の計算で待たせない。欠けは次のアクセスか warm で埋まる
@@ -148,17 +126,15 @@ export async function loadProfiles(
 	const joinable = servers.filter(scope === 'all' ? isListed : isJoinable);
 	const raw = await readMany(
 		deps.kv,
-		joinable.flatMap((s) => [vibeKey(s.host), sampleKey(s.host)])
+		joinable.map((s) => vibeKey(s.host))
 	);
 	const entries = joinable.map((server) => ({
 		server,
-		entry: parseVibeEntry(raw.get(vibeKey(server.host)) ?? null),
-		excerpts: parseExcerpts(raw.get(sampleKey(server.host)) ?? null)
+		entry: parseVibeEntry(raw.get(vibeKey(server.host)) ?? null)
 	}));
-	const profiles: ServerProfile[] = entries.map(({ server, entry, excerpts }) => ({
+	const profiles: ServerProfile[] = entries.map(({ server, entry }) => ({
 		server,
-		vibe: entry.vibe,
-		excerpts
+		vibe: entry.vibe
 	}));
 	// 最近失敗したものは欠けに数えない（しばらく再試行しないし、キャッシュを止めもしない）
 	const missing = entries
@@ -175,21 +151,8 @@ export async function loadProfiles(
 			for (const p of profiles) p.vibe = byHost.get(p.server.host) ?? p.vibe;
 		}
 	}
-	// 雰囲気はあるのに抜粋が無いサーバー（抜粋を保存する前に判定したもの）は、応答後に LTL を取って埋める。
-	// warm を待たずに自前で埋まるようにしておく: 本番で抜粋が 585 件中 3 件しか無く、噛み合い判定が
-	// ずっと投稿なしで動いていた
-	const excerptMissing = entries
-		.filter(
-			({ server, entry }) =>
-				entry.vibe && server.ltlAvailable && raw.get(sampleKey(server.host)) === null
-		)
-		.map(({ server }) => server)
-		.sort(byActivity)
-		.slice(0, CANDIDATE_LIMIT);
-	if (excerptMissing.length > 0 && defer)
-		defer(fillExcerpts(excerptMissing, deps.kv, deps.sampler));
-	const pendingCount = defer ? missing.length + excerptMissing.length : 0;
-	if (pendingCount === 0 && missing.length === 0 && excerptMissing.length === 0) {
+	const pendingCount = defer ? missing.length : 0;
+	if (pendingCount === 0 && missing.length === 0) {
 		await deps.kv.put(
 			profilesKey(scope),
 			JSON.stringify({ profiles, totalCount: servers.length }),
@@ -234,10 +197,25 @@ export async function readIntent(
 		deps.runner(buildIntentRequest(turns)),
 		runAffinity(deps.runner, buildAffinityRequests(turns, profiles))
 	]);
-	const result: IntentResult = {
-		answers: intent.answers,
-		affinity: parseAffinity(outputs, profiles)
-	};
+	const affinity = parseAffinity(outputs, profiles);
+	// 第 2 段: 上位を 1 リクエストで比べ直す（失敗したら第 1 段のまま）
+	const top = profiles
+		.filter((p) => affinity[p.server.host] !== undefined)
+		.sort((a, b) => affinity[b.server.host] - affinity[a.server.host])
+		.slice(0, RERANK_TOP);
+	if (top.length > 1) {
+		const { outputs: rerankOut } = await runAffinity(deps.runner, [buildRerankRequest(turns, top)]);
+		if (rerankOut.length > 0) {
+			const rerank = parseRerank(
+				rerankOut[0],
+				top.map((p) => p.server.host)
+			);
+			for (const [host, r] of Object.entries(rerank)) {
+				affinity[host] = (1 - RERANK_SHARE) * affinity[host] + RERANK_SHARE * r;
+			}
+		}
+	}
+	const result: IntentResult = { answers: intent.answers, affinity };
 	if (failed === 0) {
 		await deps.kv.put(key, JSON.stringify(result), { expirationTtl: INTENT_TTL_SECONDS });
 	}

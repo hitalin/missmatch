@@ -26,12 +26,20 @@ interface CaseResult {
 	recallAt10: number | null;
 	best: number | null;
 	must: number | null; // 上位 5 件のうち条件を満たす割合（条件が無ければ null）
+	ms: number; // /api/intent の応答時間
 }
 interface Report {
 	at: string;
 	base: string;
 	cases: CaseResult[];
-	summary: { recallAt5: number; recallAt10: number; mrr: number; must: number; cases: number };
+	summary: {
+		recallAt5: number;
+		recallAt10: number;
+		mrr: number;
+		must: number;
+		cases: number;
+		meanMs: number;
+	};
 }
 
 async function fetchProfiles(): Promise<ServerProfile[]> {
@@ -45,6 +53,7 @@ async function fetchProfiles(): Promise<ServerProfile[]> {
 }
 
 async function runCase(c: EvalCase, profiles: ServerProfile[]): Promise<CaseResult> {
+	const started = Date.now();
 	const res = await fetch(`${BASE}/api/intent`, {
 		method: 'POST',
 		headers: { 'Content-Type': 'application/json' },
@@ -55,6 +64,7 @@ async function runCase(c: EvalCase, profiles: ServerProfile[]): Promise<CaseResu
 		answers: Record<string, ClefAnswer>;
 		affinity: Record<string, number>;
 	};
+	const ms = Date.now() - started;
 	const search = {
 		...newSearch(c.turns[0]),
 		turns: c.turns.slice(1),
@@ -88,7 +98,8 @@ async function runCase(c: EvalCase, profiles: ServerProfile[]): Promise<CaseResu
 		recallAt5: within(5),
 		recallAt10: within(10),
 		best: found.length > 0 ? Math.min(...found) : null,
-		must
+		must,
+		ms
 	};
 }
 
@@ -103,7 +114,8 @@ function summarize(cases: CaseResult[]): Report['summary'] {
 		recallAt5: mean(ranked.map((c) => c.recallAt5)),
 		recallAt10: mean(ranked.map((c) => c.recallAt10)),
 		mrr: mean(ranked.map((c) => (c.best ? 1 / c.best : 0))),
-		must: mean(cases.map((c) => c.must))
+		must: mean(cases.map((c) => c.must)),
+		meanMs: mean(cases.map((c) => c.ms))
 	};
 }
 
@@ -129,9 +141,10 @@ function print(report: Report, compare: Report | null) {
 	const d = compare ? compare.summary : null;
 	const delta = (k: 'recallAt5' | 'recallAt10' | 'mrr' | 'must') =>
 		d && d[k] !== undefined ? `（前回 ${pct(d[k])}）` : '';
+	const msDelta = d?.meanMs !== undefined ? `（前回 ${Math.round(d.meanMs)}ms）` : '';
 	lines.push(
 		'',
-		`cases ${s.cases} / recall@5 ${pct(s.recallAt5)}${delta('recallAt5')} / recall@10 ${pct(s.recallAt10)}${delta('recallAt10')} / MRR ${pct(s.mrr)}${delta('mrr')} / 条件 ${pct(s.must)}${delta('must')}`
+		`cases ${s.cases} / recall@5 ${pct(s.recallAt5)}${delta('recallAt5')} / recall@10 ${pct(s.recallAt10)}${delta('recallAt10')} / MRR ${pct(s.mrr)}${delta('mrr')} / 条件 ${pct(s.must)}${delta('must')} / 平均 ${Math.round(s.meanMs)}ms${msDelta}`
 	);
 	console.log(lines.join('\n'));
 }

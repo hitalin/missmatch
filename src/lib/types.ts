@@ -106,7 +106,6 @@ export interface ServerProfile {
 	server: ServerInfo;
 	vibe: VibeProfile | null;
 	rel?: RelativeVibe; // クライアントで withRelativeVibes が付ける
-	excerpts?: string[]; // 最近の投稿の抜粋（サーバー内で噛み合い判定に使う。クライアントには送らない）
 	affinity?: number; // ユーザーの自由記述とこのサーバーが噛み合う確率（Clef、診断ごとに付く）
 }
 
