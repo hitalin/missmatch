@@ -32,7 +32,7 @@ const CONCURRENCY = 8;
 // 雰囲気は 7 日おきにしか変わらないので、1 時間古くても順位はほぼ同じ
 const INTENT_TTL_SECONDS = 60 * 60;
 // 噛み合い判定に渡す state や基準を変えたら上げる（古い判定を 1 時間引きずらない）
-const intentKeyPrefix = (scope: Scope) => `intent:v2:${scope}:`;
+const intentKeyPrefix = (scope: Scope) => `intent:v3:${scope}:`;
 
 // `vite dev` などバインディングがない環境向けの代替
 export function memoryKv(): VibeKv {
@@ -75,7 +75,9 @@ export async function getServers(kv: VibeKv): Promise<ServerInfo[]> {
 export interface Deps {
 	kv: VibeKv;
 	runner: ClefRunner | null;
+	sampler?: (host: string, limit?: number) => Promise<string[]>; // 既定は LTL を取りに行く（テストで差し替える）
 }
+const EXCERPT_NOTES = 30; // 抜粋のために取る投稿数（長いものから 5 件残す）
 
 export async function computeVibes(servers: ServerInfo[], deps: Deps): Promise<ServerProfile[]> {
 	if (!deps.runner) return servers.map((server) => ({ server, vibe: null }));
@@ -90,7 +92,8 @@ export async function computeVibes(servers: ServerInfo[], deps: Deps): Promise<S
 				kv: deps.kv,
 				runner,
 				// LTL を公開していないサーバーには触らず、説明文とルールだけで判定する
-				sampler: (s) => (s.ltlAvailable ? fetchSampleNotes(s.host) : Promise.resolve([]))
+				sampler: (s) =>
+					s.ltlAvailable ? (deps.sampler ?? fetchSampleNotes)(s.host) : Promise.resolve([])
 			});
 			results[i] = { server, vibe };
 		}
@@ -101,14 +104,18 @@ export async function computeVibes(servers: ServerInfo[], deps: Deps): Promise<S
 
 // 投稿の抜粋が無いサーバーだけ LTL を取りに行って保存する（Clef は使わない）。
 // 抜粋を持つ前に雰囲気を判定したサーバーを、判定し直さずに埋めるため
-export async function fillExcerpts(servers: ServerInfo[], kv: VibeKv): Promise<number> {
+export async function fillExcerpts(
+	servers: ServerInfo[],
+	kv: VibeKv,
+	sampler: Deps['sampler'] = fetchSampleNotes
+): Promise<number> {
 	let filled = 0;
 	let next = 0;
 	const worker = async () => {
 		while (next < servers.length) {
 			const s = servers[next++];
-			if (!s.ltlAvailable || (await kv.get(sampleKey(s.host)))) continue;
-			const notes = await fetchSampleNotes(s.host, 10);
+			if (!s.ltlAvailable || (await kv.get(sampleKey(s.host))) !== null) continue;
+			const notes = await sampler(s.host, EXCERPT_NOTES);
 			await saveExcerpts(kv, s.host, notes);
 			if (notes.length > 0) filled++;
 		}
@@ -168,8 +175,21 @@ export async function loadProfiles(
 			for (const p of profiles) p.vibe = byHost.get(p.server.host) ?? p.vibe;
 		}
 	}
-	const pendingCount = defer ? missing.length : 0;
-	if (pendingCount === 0 && missing.length === 0) {
+	// 雰囲気はあるのに抜粋が無いサーバー（抜粋を保存する前に判定したもの）は、応答後に LTL を取って埋める。
+	// warm を待たずに自前で埋まるようにしておく: 本番で抜粋が 585 件中 3 件しか無く、噛み合い判定が
+	// ずっと投稿なしで動いていた
+	const excerptMissing = entries
+		.filter(
+			({ server, entry }) =>
+				entry.vibe && server.ltlAvailable && raw.get(sampleKey(server.host)) === null
+		)
+		.map(({ server }) => server)
+		.sort(byActivity)
+		.slice(0, CANDIDATE_LIMIT);
+	if (excerptMissing.length > 0 && defer)
+		defer(fillExcerpts(excerptMissing, deps.kv, deps.sampler));
+	const pendingCount = defer ? missing.length + excerptMissing.length : 0;
+	if (pendingCount === 0 && missing.length === 0 && excerptMissing.length === 0) {
 		await deps.kv.put(
 			profilesKey(scope),
 			JSON.stringify({ profiles, totalCount: servers.length }),

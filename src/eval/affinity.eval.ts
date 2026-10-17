@@ -22,15 +22,16 @@ interface CaseResult {
 	turns: string[];
 	ranks: Record<string, number | null>; // 期待した host → 順位（1 始まり、候補に無ければ null）
 	top: { host: string; score: number; affinity: number | undefined }[];
-	recallAt5: number;
-	recallAt10: number;
+	recallAt5: number | null; // 期待 host が無いケースは null
+	recallAt10: number | null;
 	best: number | null;
+	must: number | null; // 上位 5 件のうち条件を満たす割合（条件が無ければ null）
 }
 interface Report {
 	at: string;
 	base: string;
 	cases: CaseResult[];
-	summary: { recallAt5: number; recallAt10: number; mrr: number; cases: number };
+	summary: { recallAt5: number; recallAt10: number; mrr: number; must: number; cases: number };
 }
 
 async function fetchProfiles(): Promise<ServerProfile[]> {
@@ -69,8 +70,14 @@ async function runCase(c: EvalCase, profiles: ServerProfile[]): Promise<CaseResu
 	};
 	const ranks = Object.fromEntries(c.expect.map((h) => [h, rankOf(h)]));
 	const within = (n: number) =>
-		c.expect.filter((h) => (ranks[h] ?? Infinity) <= n).length / c.expect.length;
+		c.expect.length === 0
+			? null
+			: c.expect.filter((h) => (ranks[h] ?? Infinity) <= n).length / c.expect.length;
 	const found = Object.values(ranks).filter((r): r is number => r !== null);
+	const top5 = deck.slice(0, TOP);
+	const must = c.must
+		? top5.filter((m) => c.must?.test(m.server)).length / Math.max(1, top5.length)
+		: null;
 	return {
 		id: c.id,
 		turns: c.turns,
@@ -80,24 +87,30 @@ async function runCase(c: EvalCase, profiles: ServerProfile[]): Promise<CaseResu
 			.map((m) => ({ host: m.server.host, score: m.score, affinity: m.affinity })),
 		recallAt5: within(5),
 		recallAt10: within(10),
-		best: found.length > 0 ? Math.min(...found) : null
+		best: found.length > 0 ? Math.min(...found) : null,
+		must
 	};
 }
 
 function summarize(cases: CaseResult[]): Report['summary'] {
-	const mean = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0);
+	const mean = (xs: (number | null)[]) => {
+		const ns = xs.filter((x): x is number => x !== null);
+		return ns.length ? ns.reduce((a, b) => a + b, 0) / ns.length : 0;
+	};
+	const ranked = cases.filter((c) => c.recallAt5 !== null);
 	return {
 		cases: cases.length,
-		recallAt5: mean(cases.map((c) => c.recallAt5)),
-		recallAt10: mean(cases.map((c) => c.recallAt10)),
-		mrr: mean(cases.map((c) => (c.best ? 1 / c.best : 0)))
+		recallAt5: mean(ranked.map((c) => c.recallAt5)),
+		recallAt10: mean(ranked.map((c) => c.recallAt10)),
+		mrr: mean(ranked.map((c) => (c.best ? 1 / c.best : 0))),
+		must: mean(cases.map((c) => c.must))
 	};
 }
 
 const pct = (n: number) => `${Math.round(n * 100)}%`;
 function print(report: Report, compare: Report | null) {
 	const lines: string[] = [];
-	lines.push(`| case | 期待 host → 順位 | 上位 ${TOP} | R@5 |`, '|---|---|---|---|');
+	lines.push(`| case | 期待 host → 順位 | 上位 ${TOP} | R@5 / 条件 |`, '|---|---|---|---|');
 	for (const c of report.cases) {
 		const before = compare?.cases.find((x) => x.id === c.id);
 		const ranks = Object.entries(c.ranks)
@@ -108,14 +121,17 @@ function print(report: Report, compare: Report | null) {
 			})
 			.join('<br>');
 		const top = c.top.map((t) => `${t.host} ${t.score}`).join('<br>');
-		lines.push(`| ${c.id} | ${ranks} | ${top} | ${pct(c.recallAt5)} |`);
+		const r5 = c.recallAt5 === null ? '-' : pct(c.recallAt5);
+		const mu = c.must === null ? '' : ` / 条件 ${pct(c.must)}`;
+		lines.push(`| ${c.id} | ${ranks || '（条件のみ）'} | ${top} | ${r5}${mu} |`);
 	}
 	const s = report.summary;
 	const d = compare ? compare.summary : null;
-	const delta = (k: 'recallAt5' | 'recallAt10' | 'mrr') => (d ? `（前回 ${pct(d[k])}）` : '');
+	const delta = (k: 'recallAt5' | 'recallAt10' | 'mrr' | 'must') =>
+		d && d[k] !== undefined ? `（前回 ${pct(d[k])}）` : '';
 	lines.push(
 		'',
-		`cases ${s.cases} / recall@5 ${pct(s.recallAt5)}${delta('recallAt5')} / recall@10 ${pct(s.recallAt10)}${delta('recallAt10')} / MRR ${pct(s.mrr)}${delta('mrr')}`
+		`cases ${s.cases} / recall@5 ${pct(s.recallAt5)}${delta('recallAt5')} / recall@10 ${pct(s.recallAt10)}${delta('recallAt10')} / MRR ${pct(s.mrr)}${delta('mrr')} / 条件 ${pct(s.must)}${delta('must')}`
 	);
 	console.log(lines.join('\n'));
 }

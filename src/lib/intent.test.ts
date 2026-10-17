@@ -152,6 +152,11 @@ describe('buildAffinityRequests / parseAffinity', () => {
 		expect(servers[0].scale).toBe('小規模（毎日 12 人が読む）');
 		expect(servers[0].pace).toBe('のんびり（〜100投稿/日）');
 		expect(servers[0].registeredUsers).toBe(50);
+		expect(servers[0].localTimeline).toBe('あり');
+		const [noLtl] = buildAffinityRequests(['静か'], [mk({ host: 'c.tld', ltlAvailable: false })]);
+		expect(
+			(noLtl.state as { servers: Record<string, string>[] }).servers[0].localTimeline
+		).toContain('なし');
 		expect(servers[1].atmosphere).toBeUndefined();
 		expect(servers[1].topics).toEqual([]);
 	});

@@ -204,13 +204,17 @@ export interface VibeDeps {
 const KEY_PREFIX = 'vibe:';
 const SAMPLE_PREFIX = 'sample:';
 
-// 噛み合い判定に渡す投稿の抜粋。雰囲気判定で取った投稿から短く数件だけ残す
-export const EXCERPT_COUNT = 3;
-export const EXCERPT_CHARS = 100;
+// 噛み合い判定に渡す投稿の抜粋。長い投稿から順に数件残す
+// （瞬間の LTL は「おはよう」のような短文が多く、先頭から取ると話題も雰囲気も読めない）
+export const EXCERPT_COUNT = 5;
+export const EXCERPT_CHARS = 120;
 const EXCERPT_MIN_CHARS = 4;
+// 投稿が取れなかった印（[]）は短い期限で置き、毎リクエスト取りに行かないようにする
+const EMPTY_EXCERPT_TTL_SECONDS = 60 * 60 * 24;
 export function pickExcerpts(notes: string[]): string[] {
 	return notes
 		.filter((t) => t.length >= EXCERPT_MIN_CHARS)
+		.sort((a, b) => b.length - a.length)
 		.slice(0, EXCERPT_COUNT)
 		.map((t) => t.slice(0, EXCERPT_CHARS));
 }
@@ -223,8 +227,9 @@ export async function saveExcerpts(
 	notes: string[]
 ): Promise<void> {
 	const excerpts = pickExcerpts(notes);
-	if (excerpts.length === 0) return;
-	await kv.put(sampleKey(host), JSON.stringify(excerpts), { expirationTtl: KV_TTL_SECONDS });
+	await kv.put(sampleKey(host), JSON.stringify(excerpts), {
+		expirationTtl: excerpts.length === 0 ? EMPTY_EXCERPT_TTL_SECONDS : KV_TTL_SECONDS
+	});
 }
 export function parseExcerpts(raw: string | null): string[] {
 	try {

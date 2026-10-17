@@ -233,6 +233,10 @@ export function buildAffinityRequests(turns: string[], profiles: ServerProfile[]
 					scale: `${SCALE_LABELS[scaleOf(p.server)]}（毎日 ${Math.round(p.server.dru15 ?? 0)} 人が読む）`,
 					pace: `${PACE_LABELS[paceOf(p.server)]}（${PACE_HINTS[paceOf(p.server)]}）`,
 					registeredUsers: p.server.usersCount,
+					// LTL が無い鯖は流速が速くても本人のホームは静か（「干渉が少ない」「隠居」の判定に効く）
+					localTimeline: p.server.ltlAvailable
+						? 'あり'
+						: 'なし（自分のホームタイムラインだけで、他人の投稿が流れてこない）',
 					atmosphere: p.vibe ? atmosphereOf(p.vibe) : undefined,
 					topics: topicsOf(p),
 					recentNotes: p.excerpts ?? []

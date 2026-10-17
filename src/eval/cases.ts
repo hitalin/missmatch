@@ -1,10 +1,13 @@
 // 精度の評価セット: 代表的な言葉と「上位に来てほしいサーバー」。
 // host は joinmisskey の登録受付中の日本語サーバー（2026-10-17）に実在し、説明文に根拠があるものだけ。
 // 「上位に来てほしい」は順位の提案であってサーバーの優劣ではない。説明文が変わったら見直す
+import type { ServerInfo } from '$lib/types';
+
 export interface EvalCase {
 	id: string;
 	turns: string[]; // 最初の言葉 + 絞り込み
-	expect: string[]; // 上位 5 件に入ってほしい host
+	expect: string[]; // 上位 5 件に入ってほしい host（空なら must だけ見る）
+	must?: { label: string; test: (s: ServerInfo) => boolean }; // 上位 5 件すべてが満たすべき条件
 	note?: string; // 根拠
 }
 
@@ -128,6 +131,74 @@ export const CASES: EvalCase[] = [
 		turns: ['最新の Misskey を使いたい。機能が多いところ'],
 		expect: ['a2c.misskey.casa', 'prismisskey.space', 'misskey.flowers'],
 		note: '全自動更新 / 最先端・高機能 / 独自機能'
+	},
+	{
+		id: 'lively',
+		turns: ['人が多くてにぎやかなところ'],
+		expect: ['misskey.day', 'nijimiss.moe', 'misskey-square.net', 'takusuki.com'],
+		note: '1 日の読者が 1,200 人を超える 4 件（数字で決まる）'
+	},
+	{
+		id: 'oshi',
+		turns: ['推しの話を気兼ねなくできる場所'],
+		expect: ['nijimiss.moe', 'm.eskey.click', 'live-theater.net'],
+		note: 'あらゆる好きが交差する・好きを語れる / あんスタファン向け / ミリオンライブ P 向け'
+	},
+	{
+		id: 'game-play',
+		turns: ['ゲームの話ができて、一緒に遊ぶ人も見つかる'],
+		expect: ['ikaskey.bktsk.com', 'takusuki.com', 'stormskey.works', 'mk.puzzlesskey.com'],
+		note: 'スプラトゥーン / TRPG 卓募集 / Stormworks / Fediverse のゲーセン'
+	},
+	{
+		id: 'fanart',
+		turns: ['二次創作のイラストを載せたい'],
+		expect: ['mivatter.com', 'oekakiskey.com', 'misskey.design', 'misskey.art'],
+		note: 'オリジナル、二次創作問わず / 一次創作、二次創作 / 二次創作も一定のルールで許可 / 創作活動をする人'
+	},
+	{
+		id: 'ai-art',
+		turns: ['AI で生成したイラストを気兼ねなく投稿したい'],
+		expect: ['sns.ourt-ai.work'],
+		note: '生成 AI コミュニティ'
+	},
+	{
+		id: 'solo-quiet',
+		turns: ['ひとりごと用のサブ垢。干渉が少なくて静かなところ'],
+		expect: ['chiranote.com', 'torikago-suki.net', 'metreee.com'],
+		note: 'ホームタイムラインのみ（LTL なし） / 隠居 / 大きな海の端にある小さな灯台'
+	},
+	{
+		id: 'kemono',
+		turns: ['ケモノやけもみみが好き'],
+		expect: ['virtualkemomimi.net', 'misskey.bakedbanana.net'],
+		note: 'バーチャルとけもみみ / ケモナー'
+	},
+	{
+		id: 'longform',
+		turns: ['長文をゆっくり書きたい。マイペースに参加できるところ'],
+		expect: ['misskey-square.net'],
+		note: '長文の投稿や、マイペースの参加を歓迎する独自機能'
+	},
+	{
+		id: 'english',
+		turns: ['英語でも交流できる、海外の人もいるところ'],
+		expect: ['feels.moe', 'coretalk.space'],
+		note: '英語の説明文で運営は米国 / blockchain enthusiasts（英語）'
+	},
+	{
+		id: 'email-free',
+		turns: ['メアドなしで登録できるところ'],
+		expect: [],
+		must: { label: 'メアド不要', test: (s) => !s.emailRequired },
+		note: '読み取りが絶対条件に入れば上位 5 件すべてメアド不要になる'
+	},
+	{
+		id: 'ads-free-rules',
+		turns: ['広告がなくて、ルールがしっかりしている'],
+		expect: [],
+		must: { label: '広告なし', test: (s) => !s.adsEnabled },
+		note: '読み取りが絶対条件に入れば上位 5 件すべて広告なしになる'
 	},
 	{
 		id: 'niche-houshin',

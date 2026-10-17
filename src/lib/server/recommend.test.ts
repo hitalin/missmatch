@@ -46,6 +46,31 @@ const base = {
 };
 
 describe('loadProfiles', () => {
+	it('雰囲気はあるが抜粋が無い（LTL 公開）サーバーの抜粋を defer で埋め、埋まるまで属性表をキャッシュしない', async () => {
+		const s3 = mkServer({ host: 's3.tld', ltlAvailable: true });
+		const kv = kvWith({
+			...base,
+			'servers:v7': JSON.stringify([...servers, s3]),
+			[vibeKey('s3.tld')]: JSON.stringify(mkVibe({ version: VIBE_VERSION, host: 's3.tld' }))
+		});
+		const sampler = vi.fn(async () => ['最近の投稿をひとつ', 'もうひとつの投稿']);
+		const deferred: Promise<unknown>[] = [];
+		const { pendingCount } = await loadProfiles({ kv, runner: null, sampler }, (w) =>
+			deferred.push(w)
+		);
+		expect(pendingCount).toBe(1);
+		expect(deferred).toHaveLength(1);
+		await Promise.all(deferred);
+		expect(sampler).toHaveBeenCalledTimes(1);
+		expect(await kv.get(sampleKey('s3.tld'))).toContain('最近の投稿をひとつ');
+		expect(await kv.get('profiles:v4:open')).toBeNull();
+		// 埋まった次は抜粋付きで返り、キャッシュも置く
+		const again = await loadProfiles({ kv, runner: null, sampler }, (w) => deferred.push(w));
+		expect(again.pendingCount).toBe(0);
+		expect(again.profiles.find((p) => p.server.host === 's3.tld')?.excerpts).toHaveLength(2);
+		expect(await kv.get('profiles:v4:open')).not.toBeNull();
+	});
+
 	it('KV は一括読みでまとめ、雰囲気と抜粋を付ける', async () => {
 		const kv = kvWith(base);
 		const { profiles } = await loadProfiles({ kv, runner: null });
