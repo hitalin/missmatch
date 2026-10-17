@@ -8,9 +8,9 @@ const devKv = memoryKv();
 // 「どんな場所を探している？」への一言と、そのあとの絞り込みの発言を、
 // (1) 発見の設定への読み取り（Clef の生の回答）と (2) 各サーバーとの噛み合い確率に変換する
 export const POST: RequestHandler = async ({ request, platform }) => {
-	let body: { turns?: unknown; scope?: unknown };
+	let body: { turns?: unknown; scope?: unknown; fresh?: unknown };
 	try {
-		body = (await request.json()) as { turns?: unknown; scope?: unknown };
+		body = (await request.json()) as typeof body;
 	} catch {
 		return json({ error: 'invalid json' }, { status: 400 });
 	}
@@ -30,7 +30,8 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 			{ kv: env.VIBE_KV ? kvFrom(env.VIBE_KV) : devKv, runner: clefRunner(env.AI) },
 			turns,
 			scope,
-			ctx ? (work) => ctx.waitUntil(work) : undefined
+			ctx ? (work) => ctx.waitUntil(work) : undefined,
+			{ fresh: body.fresh === true } // 評価スクリプト用。キャッシュを読まずに判定し直す
 		);
 		return json(result);
 	} catch (e) {

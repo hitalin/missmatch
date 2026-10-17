@@ -77,6 +77,17 @@ pnpm deploy
 curl -X POST "https://<host>/api/warm?limit=50" -H "Authorization: Bearer $WARM_SECRET"
 ```
 
+精度の評価（Clef 実機を叩くので課金対象）:
+
+```bash
+# 代表的な言葉 21 個で /api/intent を叩き、上位 5 件に期待したサーバーが入る割合を出す
+EVAL_BASE_URL=https://<host> EVAL_LABEL=before pnpm eval
+# 変更後に、前回と比べる
+EVAL_BASE_URL=https://<host> EVAL_LABEL=after EVAL_COMPARE=src/eval/results/before.json pnpm eval
+```
+
+評価セットは [src/eval/cases.ts](src/eval/cases.ts)。結果は `src/eval/results/` に残ります（git には入れない）。
+
 設計の根拠は [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md) にあります。
 
 ## ライセンス

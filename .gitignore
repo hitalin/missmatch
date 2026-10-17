@@ -12,3 +12,6 @@ vite.config.ts.timestamp-*
 # wrangler
 .wrangler
 .dev.vars
+
+# 評価の結果（手元で比べる用）
+/src/eval/results

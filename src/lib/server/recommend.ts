@@ -191,15 +191,16 @@ async function intentKey(scope: Scope, turns: string[]): Promise<string> {
 
 // 言葉の並びを (1) 設定の読み取りと (2) 各サーバーとの噛み合いに変換する。
 // 雰囲気の欠けは defer に回して判定を待たせない（以前は欠け 40 件の LTL 取得と Clef を待ってから判定を始めていた）。
-// 噛み合いが全バッチそろったときだけ KV に置き、同じ言葉はキャッシュから返す
+// 噛み合いが全バッチそろったときだけ KV に置き、同じ言葉はキャッシュから返す（fresh なら読まずに判定し直す。評価用）
 export async function readIntent(
 	deps: Deps & { runner: ClefRunner },
 	turns: string[],
 	scope: Scope,
-	defer?: (work: Promise<unknown>) => void
+	defer?: (work: Promise<unknown>) => void,
+	options: { fresh?: boolean } = {}
 ): Promise<IntentResult> {
 	const key = await intentKey(scope, turns);
-	const cached = await deps.kv.get(key);
+	const cached = options.fresh ? null : await deps.kv.get(key);
 	if (cached) {
 		try {
 			return JSON.parse(cached) as IntentResult;

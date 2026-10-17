@@ -1,0 +1,138 @@
+// 精度の評価セット: 代表的な言葉と「上位に来てほしいサーバー」。
+// host は joinmisskey の登録受付中の日本語サーバー（2026-10-17）に実在し、説明文に根拠があるものだけ。
+// 「上位に来てほしい」は順位の提案であってサーバーの優劣ではない。説明文が変わったら見直す
+export interface EvalCase {
+	id: string;
+	turns: string[]; // 最初の言葉 + 絞り込み
+	expect: string[]; // 上位 5 件に入ってほしい host
+	note?: string; // 根拠
+}
+
+export const CASES: EvalCase[] = [
+	{
+		id: 'vent',
+		turns: ['病み垢として運用したい。弱音や愚痴を吐いても浮かない、静かな場所がいい'],
+		expect: ['yami.ski', 'm.itsukey.jp', 'kasei.ski'],
+		note: '「病んでいい場所」「ごじあいが溢れる」「生きてて偉い」'
+	},
+	{
+		id: 'illust-original',
+		turns: ['一次創作のイラストを描いていて、作品を見てもらえる場所'],
+		expect: ['misskey.design', 'oekakiskey.com', 'misskey.art'],
+		note: '一次創作が主役 / イラストを描く・見る人 / 創作活動をする人'
+	},
+	{
+		id: 'novel',
+		turns: ['小説や文章を書いていて、読んでもらいたい'],
+		expect: ['misskey.design', 'inokashiraskey.jp'],
+		note: 'イラスト・漫画・小説 / 言語創作（文芸）の民'
+	},
+	{
+		id: 'vrchat',
+		turns: ['VRChat の人が多いところ'],
+		expect: ['buicha.social', 'misskey.niri.la'],
+		note: 'VRChat をやっている人 / 主に VRSNS ユーザー向け'
+	},
+	{
+		id: 'trpg',
+		turns: ['TRPG の卓募集ができるサーバー'],
+		expect: ['takusuki.com'],
+		note: 'TRPG プレイヤー向け、卓募集'
+	},
+	{
+		id: 'splatoon',
+		turns: ['スプラトゥーンの話ができる'],
+		expect: ['ikaskey.bktsk.com'],
+		note: '主にスプラトゥーンが好きな人向け'
+	},
+	{
+		id: 'tech',
+		turns: ['プログラミングや技術の話がしたい'],
+		expect: ['misskey.systems', 'misskey.kyoupro.com', 'msky.work'],
+		note: 'IT に関わる人 / 競プロ / 社畜さん特に IT 系'
+	},
+	{
+		id: 'tech-vent',
+		turns: ['仕事の愚痴を IT 系の人と言い合いたい'],
+		expect: ['msky.work', 'misskey.systems'],
+		note: '労働者たちの Misskey / みすてむず'
+	},
+	{
+		id: 'vocal-synth',
+		turns: ['ボカロや合成音声の曲を作っている。同じ趣味の人がいるところ'],
+		expect: ['voskey.icalo.net', 'nicomedkey.cc'],
+		note: '合成音声ソフト関連 / ニコメド作者・愛好者'
+	},
+	{
+		id: 'imas',
+		turns: ['アイマスの話を気兼ねなくできる場所'],
+		expect: ['live-theater.net', 'unicuskey.com'],
+		note: 'ミリオンライブ P 向け / UNICUS 担当 P 向け'
+	},
+	{
+		id: 'anime',
+		turns: ['アニメの実況で盛り上がりたい'],
+		expect: ['misskey.seitendan.com', 'misskey.stream', 'misskirara.net'],
+		note: 'アニメ実況向き / アニメから政治まで / きらら作品'
+	},
+	{
+		id: 'animal',
+		turns: ['ペットや動物の写真を見たい'],
+		expect: ['misskey.dog'],
+		note: '犬による犬のための SNS'
+	},
+	{
+		id: 'food',
+		turns: ['ご飯やお酒の話で盛り上がりたい'],
+		expect: ['potato.ski', 'kusso-yotta.com'],
+		note: '飯テロ系 / 健全なよっぱらい向け'
+	},
+	{
+		id: 'making',
+		turns: ['電子工作や 3DCG など、なにか作っている人が集まる場所'],
+		expect: ['crafters.aosankaku.net', 'mi0.robotician.jp', 'www.dazuser.com'],
+		note: 'なんか作ってる人 / ロボット屋さん / フォトリアル系 3DCG'
+	},
+	{
+		id: 'diary-slow',
+		turns: ['日記やひとりごとを気軽に書きたい、流れがゆっくりなところ'],
+		expect: ['waff-skey.net', 'misskey.takehi.to', 'drdr.club', 'metreee.com'],
+		note: '日記感覚で / 深呼吸できる / 何もしていないをしたい / 小さな灯台'
+	},
+	{
+		id: 'beginner-chat',
+		turns: ['初めての Misskey。のんびり雑談できるところ'],
+		expect: ['misskey.day', 'misskey-square.net', 'nijimiss.moe'],
+		note: 'やさしい・安心して過ごせる / あたたかく迎え入れる / オープンコミュニティ'
+	},
+	{
+		id: 'small-quiet',
+		turns: ['小さめで、顔見知りができやすいところ', '大手の喧騒から離れたい'],
+		expect: ['mi.cbrx.io', 'misskey.7ka.org', 'sns.copi.pe'],
+		note: '大きなサーバーの喧騒から離れたい方に / 小規模で長期的 / 小規模な汎用'
+	},
+	{
+		id: 'roleplay',
+		turns: ['なりきりやロールプレイをしたい'],
+		expect: ['n-kaiwai.work', 'ojousama-tea.party'],
+		note: 'なりきり界隈 / お嬢様ロールプレイ'
+	},
+	{
+		id: 'parenting',
+		turns: ['子育て中の人と話したい'],
+		expect: ['mi.hiyoko.club'],
+		note: '子育て中の方・経験のある方'
+	},
+	{
+		id: 'latest-features',
+		turns: ['最新の Misskey を使いたい。機能が多いところ'],
+		expect: ['a2c.misskey.casa', 'prismisskey.space', 'misskey.flowers'],
+		note: '全自動更新 / 最先端・高機能 / 独自機能'
+	},
+	{
+		id: 'niche-houshin',
+		turns: ['封神演義が好き'],
+		expect: ['houshindai.net'],
+		note: '固有名で一意に決まる、拾えて当然のケース'
+	}
+];

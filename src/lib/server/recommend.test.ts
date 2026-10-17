@@ -104,6 +104,17 @@ describe('readIntent', () => {
 		expect(runner.mock.calls.length).toBeGreaterThan(calls);
 	});
 
+	it('fresh ならキャッシュを読まずに判定し直し、結果は置き直す', async () => {
+		const kv = kvWith(base);
+		const runner = vi.fn(async (input: ClefInput) => output(input));
+		await readIntent({ kv, runner }, ['静かな場所'], 'open');
+		const calls = runner.mock.calls.length;
+		await readIntent({ kv, runner }, ['静かな場所'], 'open', undefined, { fresh: true });
+		expect(runner.mock.calls.length).toBe(calls * 2);
+		await readIntent({ kv, runner }, ['静かな場所'], 'open');
+		expect(runner.mock.calls.length).toBe(calls * 2);
+	});
+
 	it('噛み合いのバッチが欠けたときはキャッシュに置かない', async () => {
 		const kv = kvWith(base);
 		const runner = vi.fn(async (input: ClefInput) => {

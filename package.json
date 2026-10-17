@@ -10,6 +10,7 @@
 		"deploy": "pnpm build && wrangler deploy",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
 		"test": "vitest run",
+		"eval": "vitest run --config vitest.eval.config.ts",
 		"lint": "biome check ."
 	},
 	"devDependencies": {
@@ -18,6 +19,7 @@
 		"@sveltejs/adapter-cloudflare": "^6.0.0",
 		"@sveltejs/kit": "^2.21.0",
 		"@sveltejs/vite-plugin-svelte": "^5.0.0",
+		"@types/node": "^26.6.5",
 		"svelte": "^5.0.0",
 		"svelte-check": "^4.0.0",
 		"typescript": "^5.0.0",
