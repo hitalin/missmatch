@@ -245,37 +245,3 @@ describe('runAffinity', () => {
 		expect(runner).toHaveBeenCalledTimes(3);
 	});
 });
-
-describe('buildRerankRequest / parseRerank', () => {
-	it('上位の候補を 1 つの state にまとめ、host ごとに 5 段階の score で「他と比べて」問う', () => {
-		const profiles = Array.from({ length: RERANK_TOP + 4 }, (_, i) =>
-			mk({ host: `s${i}.tld`, description: '説明'.repeat(300), serverRules: ['規則'.repeat(300)] })
-		);
-		const req = buildRerankRequest(['静かな場所'], profiles.slice(0, RERANK_TOP));
-		expect(Object.keys(req.questions)).toHaveLength(RERANK_TOP);
-		const q = req.questions['s0.tld'];
-		expect(q.type).toBe('score');
-		expect(q.type === 'score' && q.criteria.length).toBe(5);
-		expect(q.instructions).toContain('比べ');
-		const s = (req.state as { servers: Record<string, unknown>[] }).servers[0];
-		// 第 1 段より長く見せる
-		expect((s.description as string).length).toBeGreaterThan(300);
-		expect((s.rules as string).length).toBeGreaterThan(200);
-	});
-
-	it('parseRerank は score を 0..1 にし、知らない host は捨てる', () => {
-		const score = (n: number): ClefAnswer => ({
-			type: 'score',
-			score: n,
-			legend: {},
-			probabilities: {},
-			confidence: 1
-		});
-		expect(
-			parseRerank({ answers: { 'a.tld': score(4), 'b.tld': score(1), 'x.tld': score(4) } }, [
-				'a.tld',
-				'b.tld'
-			])
-		).toEqual({ 'a.tld': 1, 'b.tld': 0.25 });
-	});
-});

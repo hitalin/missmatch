@@ -1,15 +1,6 @@
 import { byActivity } from '$lib/candidates';
 import { fetchServers } from '$lib/instances';
-import {
-	buildAffinityRequests,
-	buildIntentRequest,
-	buildRerankRequest,
-	parseAffinity,
-	parseRerank,
-	RERANK_SHARE,
-	RERANK_TOP,
-	runAffinity
-} from '$lib/intent';
+import { buildAffinityRequests, buildIntentRequest, parseAffinity, runAffinity } from '$lib/intent';
 import { isJoinable, isListed } from '$lib/match';
 import { fetchSampleNotes } from '$lib/sample';
 import type { ServerInfo, ServerProfile } from '$lib/types';
@@ -38,7 +29,7 @@ const CONCURRENCY = 8;
 // 雰囲気は 7 日おきにしか変わらないので、1 時間古くても順位はほぼ同じ
 const INTENT_TTL_SECONDS = 60 * 60;
 // 噛み合い判定に渡す state や基準を変えたら上げる（古い判定を 1 時間引きずらない）
-const intentKeyPrefix = (scope: Scope) => `intent:v4:${scope}:`;
+const intentKeyPrefix = (scope: Scope) => `intent:v5:${scope}:`;
 
 // `vite dev` などバインディングがない環境向けの代替
 export function memoryKv(): VibeKv {
@@ -198,23 +189,8 @@ export async function readIntent(
 		runAffinity(deps.runner, buildAffinityRequests(turns, profiles))
 	]);
 	const affinity = parseAffinity(outputs, profiles);
-	// 第 2 段: 上位を 1 リクエストで比べ直す（失敗したら第 1 段のまま）
-	const top = profiles
-		.filter((p) => affinity[p.server.host] !== undefined)
-		.sort((a, b) => affinity[b.server.host] - affinity[a.server.host])
-		.slice(0, RERANK_TOP);
-	if (top.length > 1) {
-		const { outputs: rerankOut } = await runAffinity(deps.runner, [buildRerankRequest(turns, top)]);
-		if (rerankOut.length > 0) {
-			const rerank = parseRerank(
-				rerankOut[0],
-				top.map((p) => p.server.host)
-			);
-			for (const [host, r] of Object.entries(rerank)) {
-				affinity[host] = (1 - RERANK_SHARE) * affinity[host] + RERANK_SHARE * r;
-			}
-		}
-	}
+	// 上位 16 件を 1 本で比べ直す再ランキングは試したが、A/B で recall@5 84 vs 83%、MRR 90 vs 89% と
+	// 誤差の範囲で、応答が 1.6 → 2.8 秒に伸びたので外した（2026-10-17、32 言葉）
 	const result: IntentResult = { answers: intent.answers, affinity };
 	if (failed === 0) {
 		await deps.kv.put(key, JSON.stringify(result), { expirationTtl: INTENT_TTL_SECONDS });

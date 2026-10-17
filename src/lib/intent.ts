@@ -293,51 +293,6 @@ export async function runAffinity(
 	return { outputs: [...first.outputs, ...second.outputs], failed: second.retry.length };
 }
 
-// 第 2 段: 第 1 段の上位を 1 つの state にまとめ、他と比べてどれだけ合うかを 5 段階で問う。
-// 8 件ずつ独立に判定した確率は上位で 0.85〜0.95 に固まり、順位が偶然で決まりやすい。
-// 同じ state に並べると判定の物差しがそろう。説明・ルール・抜粋も第 1 段より長く見せる
-export const RERANK_TOP = 16;
-export const RERANK_SHARE = 0.5; // 最終 = (1 - SHARE) × 第 1 段 + SHARE × 第 2 段
-const RERANK_DESCRIPTION_CHARS = 600;
-const RERANK_RULES_CHARS = 400;
-const RERANK_LEVELS = [
-	'無関係、またはユーザーが避けたいものに当たる',
-	'ほとんど合わない',
-	'一部は合うが、望みの中心からは外れる',
-	'よく合う',
-	'望みの中心にぴったり合う'
-];
-export function buildRerankRequest(turns: string[], profiles: ServerProfile[]): ClefInput {
-	const questions: Record<string, ClefQuestion> = {};
-	for (const p of profiles) {
-		questions[p.server.host] = {
-			type: 'score',
-			instructions: `servers のうち host が ${p.server.host} のサーバーは、ユーザーが望む使い方・話題・居心地にどれだけ合うか。servers に並ぶ他のサーバーと比べて評価せよ`,
-			criteria: RERANK_LEVELS
-		};
-	}
-	return {
-		model: 'clef',
-		state: {
-			...userState(turns),
-			servers: profiles.map((p) => serverState(p, RERANK_DESCRIPTION_CHARS, RERANK_RULES_CHARS))
-		},
-		questions
-	};
-}
-export function parseRerank(
-	output: { answers: Record<string, ClefAnswer> },
-	hosts: string[]
-): Record<string, number> {
-	const out: Record<string, number> = {};
-	const known = new Set(hosts);
-	for (const [host, a] of Object.entries(output.answers)) {
-		if (known.has(host) && a.type === 'score')
-			out[host] = Math.min(1, Math.max(0, a.score / (RERANK_LEVELS.length - 1)));
-	}
-	return out;
-}
-
 export function parseAffinity(
 	outputs: { answers: Record<string, ClefAnswer> }[],
 	profiles: ServerProfile[]
