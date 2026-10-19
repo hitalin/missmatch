@@ -85,7 +85,7 @@
 <section class="settings">
 	<header class="head">
 		<h1>あなた</h1>
-		<p class="muted">{#if count !== null}いまの条件に合うサーバーは <b>{count} 件</b>{:else}サーバー情報を取得中…{/if}</p>
+		<p class="muted">{#if count !== null}いまの条件に合うサーバーは <b>{count} 件</b>{:else}サーバー情報を取得中{/if}</p>
 		<button class="btn secondary reset-all" onclick={onresetprefs}>初期値に戻す</button>
 	</header>
 
@@ -161,7 +161,7 @@
 					<button class="reset" onclick={onresettaste}>リセット</button>
 				</h2>
 				{#if chips.length === 0}
-					<p class="help">まだはっきりした傾向はありません。スワイプを続けると出てきます。</p>
+					<p class="help">まだ傾向はありません。スワイプを続けると出ます。</p>
 				{:else}
 					<ul class="chips">
 						{#each chips as c (c.feature)}
@@ -219,7 +219,7 @@
 				</div>
 			{/each}
 			{#if count !== null && count < 5}
-				<p class="warn">条件が厳しく、該当が {count} 件です。絶対条件を減らすと増えます。</p>
+				<p class="warn">該当 {count} 件。絶対条件を減らすと増えます。</p>
 			{/if}
 		</div>
 	</div>

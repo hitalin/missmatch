@@ -248,7 +248,7 @@
 			{/each}
 			<p class="small muted">投稿 {m.vibe.sampleCount} 件と説明文・ルールから判定</p>
 		{:else}
-			<p class="small muted">雰囲気はまだ判定されていません。</p>
+			<p class="small muted">雰囲気は未判定</p>
 		{/if}
 	</section>
 	{#if full}
@@ -279,8 +279,8 @@
 		<div class="stack">
 			{#if busy}
 				<div class="busy-layer">
-					<Spinner label="読み取っています" />
-					<p>「{busy}」を Clef で読み取っています…</p>
+					<Spinner label="読み取り中" />
+					<p>Clef で読み取り中</p>
 				</div>
 			{/if}
 			{#each stack.toReversed() as m, rev (m.server.host)}
@@ -322,10 +322,10 @@
 			<p class="big"><Icon name={total === 0 && matches.length === 0 ? 'search' : 'sparkle'} size={40} /></p>
 			{#if matches.length === 0}
 				<h2>条件に合うカードがありません</h2>
-				<p class="muted">絶対条件や規模・流速を緩めるか、パスした鯖をもう一度見るとカードが出ます。</p>
+				<p class="muted">絶対条件や規模・流速を緩めると出ます。</p>
 			{:else}
 				<h2>いまの条件のカードは見終わりました</h2>
-				<p class="muted">いいねは「いいね」タブに残っています。条件を変えるか、パスした鯖をもう一度見ると続きが出ます。</p>
+				<p class="muted">条件を変えるか、よくないねから戻すと続きが出ます。</p>
 			{/if}
 			<button class="btn primary" onclick={onsettings}>条件を見直す</button>
 		</div>

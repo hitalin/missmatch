@@ -109,7 +109,7 @@
 	<div class="tools">
 		<div class="left">{#if left}{@render left()}{/if}</div>
 		<button class="send" type="button" disabled={!ready} aria-label="送る" onclick={submit}>
-			{#if disabled}<Spinner size={16} label="読み取っています" />{:else}<Icon name="send" size={16} />{/if}
+			{#if disabled}<Spinner size={16} label="読み取り中" />{:else}<Icon name="send" size={16} />{/if}
 		</button>
 	</div>
 </div>

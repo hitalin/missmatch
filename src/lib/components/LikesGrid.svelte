@@ -26,14 +26,14 @@
 		<div class="empty">
 			<p class="big"><Icon name={mode === 'liked' ? 'heart' : 'x'} size={40} /></p>
 			{#if mode === 'liked'}
-				<p>まだありません。「さがす」で気になるサーバーにいいねすると、ここに残ります。</p>
+				<p>まだありません。いいねしたサーバーがここに残ります。</p>
 			{:else}
-				<p>まだありません。よくないねしたサーバーがここに残り、デッキには出なくなります。</p>
+				<p>まだありません。よくないねしたサーバーがここに残ります。</p>
 			{/if}
 		</div>
 	{:else}
 		<p class="muted">
-			{#if mode === 'liked'}気になったら覗いてみてください。登録するかどうかは、自分の目で確かめて。{:else}気が変わったら「戻す」で、またデッキに出るようになります。{/if}
+			{#if mode === 'liked'}登録するかは自分の目で確かめて。{:else}「戻す」でまたデッキに出ます。{/if}
 		</p>
 		<ul class="grid">
 			{#each matches as m (m.server.host)}

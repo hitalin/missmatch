@@ -376,12 +376,12 @@
 			{:else}
 			{#if loadError}
 				<p class="banner">
-					サーバー情報を取得できませんでした（{loadError}）。
+					サーバー情報を取得できません（{loadError}）。
 					<button class="link" onclick={loadProfiles}>再試行</button>
 				</p>
 			{/if}
 			{#if readError}
-				<p class="banner">ひとことを読み取れませんでした（{readError}）。設定は手で選べます。</p>
+				<p class="banner">言葉を読み取れませんでした（{readError}）。設定は手で選べます。</p>
 			{/if}
 
 			{#if tab === 'discover'}
@@ -391,7 +391,7 @@
 					{:else}
 					<SearchBar {search} {reading} ondrop={dropTurn} />
 					{#if !profiles}
-						<div class="loading"><Spinner label="サーバー情報を取得中" /><p class="muted">サーバー情報を取得中…</p></div>
+						<div class="loading"><Spinner label="サーバー情報を取得中" /><p class="muted">サーバー情報を取得中</p></div>
 					{:else}
 						{#key deckGen}
 							<Discover

@@ -29,11 +29,11 @@
 			<p class="brand"><img class="logo" src="/logo.svg" alt="" width="26" height="26" /> みすまっち</p>
 			<h1>Swipe.<br />Match.<br /><span class="text-grad">with Misskey.</span></h1>
 			<p class="lead">
-				登録できる日本語 Misskey サーバー約 100 件を、マッチングアプリのようにスワイプで選べます。
-				いいねとよくないねから好みを学んで、だんだん合う鯖が上に来ます。
+				日本語の Misskey サーバーを、マッチングアプリのようにスワイプで選べます。
+				いいねから好みを学び、合う鯖が上に来ます。
 			</p>
 			<button class="btn primary big" onclick={() => (step = 1)}>はじめる</button>
-			<p class="fine">2 問だけ答えれば使えます。プロフィールはこのブラウザにだけ保存。</p>
+			<p class="fine">2 問だけ。保存はこのブラウザだけ。</p>
 		</div>
 	{:else}
 		<div class="step">
@@ -43,7 +43,7 @@
 
 			{#if step === 1}
 				<h2>あなたの年齢は？</h2>
-				<p class="help">登録年齢を制限しているサーバーを出さないために使います。</p>
+				<p class="help">年齢制限のあるサーバーを除くために使います。</p>
 				<div class="choices">
 					<button class="choice" onclick={() => pickAge('adult')}>18 歳以上</button>
 					<button class="choice" onclick={() => pickAge('minor')}>12〜17 歳</button>
