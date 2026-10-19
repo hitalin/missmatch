@@ -18,6 +18,8 @@
 			.filter(Boolean)
 			.join(' · ')
 	);
+	// Tinder の「最近アクティブ」の緑ドット。毎日読んでいる人がいる鯖だけ
+	const active = $derived(s.dru15 !== null && s.dru15 >= 1 ? Math.round(s.dru15) : null);
 </script>
 
 <article class="card" style:background={fallback}>
@@ -34,11 +36,16 @@
 	<div class="scrim"></div>
 
 	<div class="score" aria-label="相性 {match.score}%">
-		<span><Icon name="heart" size={14} filled /></span>{match.score}<small>%</small>
+		<span><Icon name="heart" size={14} filled /></span><small>相性</small>{match.score}<small>%</small>
 	</div>
-	{#if s.registration !== 'open'}
-		<div class="reg" class:closed={s.registration === 'closed'}>{REGISTRATION_LABELS[s.registration]}</div>
-	{/if}
+	<div class="badges">
+		{#if active !== null}
+			<div class="active"><i></i>毎日 {formatCount(active)} 人がいる</div>
+		{/if}
+		{#if s.registration !== 'open'}
+			<div class="reg" class:closed={s.registration === 'closed'}>{REGISTRATION_LABELS[s.registration]}</div>
+		{/if}
+	</div>
 
 	<div class="bottom">
 		<div class="who">
@@ -112,16 +119,48 @@
 		font-size: 0.75rem;
 		opacity: 0.8;
 	}
-	.reg {
+	.score small:first-of-type {
+		margin-right: 2px;
+	}
+	.badges {
 		position: absolute;
 		top: 14px;
 		left: 14px;
+		display: flex;
+		flex-direction: column;
+		align-items: flex-start;
+		gap: 6px;
+	}
+	.active,
+	.reg {
 		background: rgba(0, 0, 0, 0.5);
 		border: 1px solid rgba(255, 255, 255, 0.3);
 		border-radius: 999px;
 		padding: 5px 10px;
 		font-size: 0.75rem;
 		font-weight: 700;
+		display: inline-flex;
+		align-items: center;
+		gap: 6px;
+	}
+	/* 緑のドットが呼吸する（Misskey のオンライン表示と同じ黄緑） */
+	.active i {
+		width: 8px;
+		height: 8px;
+		border-radius: 50%;
+		background: var(--accent);
+		box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 60%, transparent);
+		animation: breathe 2s ease-out infinite;
+	}
+	@keyframes breathe {
+		to {
+			box-shadow: 0 0 0 7px transparent;
+		}
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.active i {
+			animation: none;
+		}
 	}
 	.reg.closed {
 		background: rgba(255, 77, 94, 0.75);

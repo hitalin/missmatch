@@ -90,7 +90,7 @@
 		height: 17px;
 		padding: 0 4px;
 		border-radius: 999px;
-		background: var(--nope);
+		background: var(--love);
 		color: #fff;
 		font-style: normal;
 		font-size: 0.64rem;

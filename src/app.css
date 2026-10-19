@@ -20,6 +20,12 @@
 	--nope: #ff4d5e;
 	--nope-soft: #ffe3e6;
 	--info: #2b9df4;
+	/* Misskey のテーマ変数 love（リアクション・お気に入りの桃色）。いいね・マッチの色はこれ。
+	   ブランドの黄緑はそのまま、恋愛マッチング寄りの演出だけ love で足す */
+	--love: #dd2a7b;
+	--love-soft: #fde3ee;
+	--love-grad: linear-gradient(135deg, #ff6b9a, #dd2a7b);
+	--shadow-love: 0 8px 20px -5px rgba(221, 42, 123, 0.45);
 	--radius: 16px;
 	--radius-lg: 24px;
 	--shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
@@ -42,6 +48,7 @@
 		--accent-soft: rgba(134, 179, 0, 0.2);
 		--accent-fg: #c9ec5a;
 		--nope-soft: rgba(255, 77, 94, 0.2);
+		--love-soft: rgba(221, 42, 123, 0.22);
 		--shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
 		--shadow-lg: 0 16px 44px rgba(0, 0, 0, 0.55);
 	}
@@ -167,6 +174,12 @@ a {
 	background: var(--panel);
 	color: var(--fg);
 	border-color: var(--border);
+}
+/* いいね（love）。primary と同じ形で色だけ桃色 */
+.btn.love {
+	background: var(--love-grad);
+	color: #fff;
+	box-shadow: var(--shadow-love);
 }
 .btn.ghost {
 	background: transparent;

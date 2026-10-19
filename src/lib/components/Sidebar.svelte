@@ -134,7 +134,7 @@
 		height: 18px;
 		padding: 0 5px;
 		border-radius: 999px;
-		background: var(--nope);
+		background: var(--love);
 		color: #fff;
 		font-style: normal;
 		font-size: 0.68rem;

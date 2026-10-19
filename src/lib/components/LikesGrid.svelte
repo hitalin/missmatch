@@ -48,7 +48,7 @@
 						<img class="photo" src={m.server.bannerUrl} alt="" loading="lazy" decoding="async" />
 					{/if}
 					<div class="scrim"></div>
-					<span class="score"><Icon name="heart" size={12} filled /> {m.score}%</span>
+					<span class="score" class:dim={mode === 'passed'}><Icon name="heart" size={12} filled /> {m.score}%</span>
 					<button class="open" onclick={() => (detail = m)} aria-label="{m.server.name ?? m.server.host} の詳細">
 						<span class="label">
 							{#if m.server.iconUrl}
@@ -182,12 +182,15 @@
 		display: inline-flex;
 		align-items: center;
 		gap: 3px;
-		background: var(--pill);
-		color: #000;
+		background: var(--love);
+		color: #fff;
 		border-radius: 999px;
 		padding: 3px 8px;
 		font-size: 0.75rem;
 		font-weight: 700;
+	}
+	.score.dim {
+		background: rgba(0, 0, 0, 0.55);
 	}
 	/* タイルの上部はまるごと「詳細を開く」ボタン。名前は下端に寄せる */
 	.open {

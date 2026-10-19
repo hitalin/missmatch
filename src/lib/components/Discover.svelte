@@ -163,7 +163,7 @@
 			<button class="round small" onclick={undo} disabled={history.length === 0} aria-label="ひとつ戻す"><Icon name="undo" size={18} /></button>
 			<button class="round nope" onclick={() => fly('left')} aria-label="パス"><Icon name="x" size={26} /></button>
 			<button class="round small info" onclick={() => (sheet = true)} aria-label="詳しく見る">i</button>
-			<button class="round like" onclick={() => fly('right')} aria-label="いいね"><Icon name="heart" size={26} filled /></button>
+			<button class="round like" class:beat={leaving === 'right'} onclick={() => fly('right')} aria-label="いいね"><Icon name="heart" size={26} filled /></button>
 		</div>
 		<p class="hint">左右にスワイプ · タップで詳細 · ← → キー</p>
 	{:else}
@@ -198,7 +198,7 @@
 				<ServerDetails match={current} full>
 					{#snippet actions()}
 						<a class="btn secondary" href="https://{host}/" target="_blank" rel="noopener">サーバーを見る</a>
-						<button class="btn primary" onclick={() => fly('right')}><Icon name="heart" size={15} filled /> いいね</button>
+						<button class="btn love" onclick={() => fly('right')}><Icon name="heart" size={15} filled /> いいね</button>
 					{/snippet}
 				</ServerDetails>
 			</Sheet>
@@ -294,8 +294,8 @@
 	}
 	.stamp.like {
 		left: 22px;
-		color: #9be000;
-		border-color: #9be000;
+		color: #ff7fae;
+		border-color: #ff7fae;
 		transform: rotate(-16deg);
 	}
 	.stamp.nope {
@@ -310,11 +310,12 @@
 		align-items: center;
 		margin-top: 4px;
 	}
+	/* Tinder の丸ボタン: 白地に色付きのリング、hover で浮いて色が満ちる。いいねだけ最初から満ちている */
 	.round {
 		width: 64px;
 		height: 64px;
 		border-radius: 50%;
-		border: none;
+		border: 2px solid transparent;
 		background: var(--panel);
 		box-shadow: var(--shadow);
 		font-size: 1.7rem;
@@ -322,7 +323,14 @@
 		cursor: pointer;
 		display: grid;
 		place-items: center;
-		transition: transform 0.1s;
+		transition:
+			transform 0.15s,
+			background 0.15s,
+			border-color 0.15s,
+			color 0.15s;
+	}
+	.round:hover:not(:disabled) {
+		transform: translateY(-2px) scale(1.06);
 	}
 	.round:active {
 		transform: scale(0.9);
@@ -342,13 +350,30 @@
 		font-style: italic;
 		color: var(--info);
 	}
+	.round.small:hover:not(:disabled) {
+		border-color: currentColor;
+	}
 	.round.nope {
 		color: var(--nope);
+		border-color: color-mix(in srgb, var(--nope) 45%, transparent);
+	}
+	.round.nope:hover:not(:disabled) {
+		background: var(--nope);
+		border-color: var(--nope);
+		color: #fff;
 	}
 	.round.like {
 		color: #fff;
-		background: var(--accent-grad);
-		box-shadow: var(--shadow-accent);
+		background: var(--love-grad);
+		box-shadow: var(--shadow-love);
+	}
+	.round.like.beat {
+		animation: beat 0.3s ease-out;
+	}
+	@keyframes beat {
+		30% {
+			transform: scale(1.25);
+		}
 	}
 	.hint {
 		margin: 0;
