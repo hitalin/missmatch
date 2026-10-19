@@ -1,6 +1,8 @@
 <script lang="ts">
 	import type { Match } from '$lib/types';
 	import Icon from './Icon.svelte';
+	import ServerDetails from './ServerDetails.svelte';
+	import Sheet from './Sheet.svelte';
 
 	const MISSPACE_URL = 'https://misspace.hital.in';
 
@@ -10,6 +12,10 @@
 		mode = 'liked',
 		onremove
 	}: { matches: Match[]; mode?: 'liked' | 'passed'; onremove: (m: Match) => void } = $props();
+
+	// タイルをタップすると、さがすと同じ詳細シートを開く
+	let detail = $state<Match | null>(null);
+	const removeLabel = $derived(mode === 'liked' ? '外す' : '戻す');
 
 	function misspaceLink(host: string): string {
 		const url = new URL(MISSPACE_URL);
@@ -43,25 +49,47 @@
 					{/if}
 					<div class="scrim"></div>
 					<span class="score"><Icon name="heart" size={12} filled /> {m.score}%</span>
-					<div class="label">
-						{#if m.server.iconUrl}
-							<img class="icon" src={m.server.iconUrl} alt="" width="28" height="28" loading="lazy" />
-						{/if}
-						<div class="names">
-							<b>{m.server.name ?? m.server.host}</b>
-							<small>{m.server.host}</small>
-						</div>
-					</div>
+					<button class="open" onclick={() => (detail = m)} aria-label="{m.server.name ?? m.server.host} の詳細">
+						<span class="label">
+							{#if m.server.iconUrl}
+								<img class="icon" src={m.server.iconUrl} alt="" width="28" height="28" loading="lazy" />
+							{/if}
+							<span class="names">
+								<b>{m.server.name ?? m.server.host}</b>
+								<small>{m.server.host}</small>
+							</span>
+						</span>
+					</button>
 					<div class="actions">
 						<a href="https://{m.server.host}/" target="_blank" rel="noopener">見る</a>
 						<a href={misspaceLink(m.server.host)} target="_blank" rel="noopener">連合</a>
-						<button onclick={() => onremove(m)}>{mode === 'liked' ? '外す' : '戻す'}</button>
+						<button onclick={() => onremove(m)}>{removeLabel}</button>
 					</div>
 				</li>
 			{/each}
 		</ul>
 	{/if}
 </section>
+
+{#if detail}
+	{@const host = detail.server.host}
+	<Sheet label="{detail.server.name ?? host} の詳細" onclose={() => (detail = null)}>
+		<ServerDetails match={detail} full>
+			{#snippet actions()}
+				<a class="btn secondary" href="https://{host}/" target="_blank" rel="noopener">サーバーを見る</a>
+				<button
+					class="btn secondary"
+					onclick={() => {
+						if (detail) onremove(detail);
+						detail = null;
+					}}
+				>
+					{removeLabel}
+				</button>
+			{/snippet}
+		</ServerDetails>
+	</Sheet>
+{/if}
 
 <style>
 	.likes {
@@ -161,13 +189,29 @@
 		font-size: 0.75rem;
 		font-weight: 700;
 	}
-	.label {
+	/* タイルの上部はまるごと「詳細を開く」ボタン。名前は下端に寄せる */
+	.open {
 		position: relative;
+		flex: 1;
+		display: flex;
+		align-items: flex-end;
+		width: 100%;
+		min-width: 0;
+		padding: 0;
+		background: none;
+		border: none;
+		color: inherit;
+		font: inherit;
+		text-align: left;
+		cursor: pointer;
+	}
+	.label {
 		display: flex;
 		align-items: center;
 		gap: 8px;
 		padding: 0 10px 6px;
 		min-width: 0;
+		width: 100%;
 	}
 	.icon {
 		border-radius: 8px;
