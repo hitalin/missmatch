@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { mkServer, mkVibe } from '$lib/fixtures.test-helper';
-import type { ClefInput, ClefOutput, VibeKv } from '$lib/vibe';
+import type { ServerInfo } from '$lib/types';
+import type { ClefAnswer, ClefInput, ClefOutput, VibeKv } from '$lib/vibe';
 import { VIBE_VERSION, vibeKey } from '$lib/vibe';
 import { loadProfiles, readIntent } from './recommend';
 
@@ -32,9 +33,29 @@ const servers = Array.from({ length: 3 }, (_, i) =>
 	mkServer({ host: `s${i}.tld`, ltlAvailable: false })
 );
 const failed = (host: string) => JSON.stringify({ version: VIBE_VERSION, host, failed: true });
+const listed = (list: ServerInfo[], fetchedAt = Date.now()) =>
+	JSON.stringify({ fetchedAt, servers: list });
+const HOUR = 60 * 60 * 1000;
+// どの質問にも中庸な答えを返す Clef（雰囲気も読み取りも噛み合いもこれで通る）
+function answerAll(input: ClefInput): ClefOutput {
+	const answers: Record<string, ClefAnswer> = {};
+	for (const [id, q] of Object.entries(input.questions)) {
+		if (q.type === 'noul') answers[id] = { type: 'noul', noul: 0.8 };
+		else if (q.type === 'score')
+			answers[id] = { type: 'score', score: 1, legend: {}, probabilities: {}, confidence: 1 };
+		else
+			answers[id] = {
+				type: 'choice',
+				choice: Object.keys(q.criteria)[0],
+				probabilities: {},
+				confidence: 1
+			};
+	}
+	return { model: 'clef', answers, usage: { input_tokens: 1, output_tokens: 0 } };
+}
 // s0 は判定済み、s1 と s2 は欠け
 const withMissing = {
-	'servers:v7': JSON.stringify(servers),
+	'servers:v8': listed(servers),
 	[vibeKey('s0.tld')]: JSON.stringify(mkVibe({ version: VIBE_VERSION, host: 's0.tld' }))
 };
 // 欠けなし（s1 と s2 は最近失敗したので再試行しない）
@@ -74,16 +95,59 @@ describe('loadProfiles', () => {
 		expect(pendingCount).toBe(2);
 		expect(deferred).toHaveLength(1);
 	});
+
+	it('欠けがあっても属性表は置き、欠けの計算が終わったら置き直す', async () => {
+		const kv = kvWith(withMissing);
+		const runner = vi.fn(async (input: ClefInput) => answerAll(input));
+		const deferred: Promise<unknown>[] = [];
+		await loadProfiles({ kv, runner }, (w) => deferred.push(w), 'open');
+		const first = JSON.parse((await kv.get('profiles:v5:open')) ?? '{}');
+		expect(first.profiles).toHaveLength(3);
+		expect(first.profiles[1].vibe).toBeNull();
+		await Promise.all(deferred);
+		const second = JSON.parse((await kv.get('profiles:v5:open')) ?? '{}');
+		expect(second.profiles[1].vibe?.host).toBe('s1.tld');
+		expect(second.profiles[2].vibe?.host).toBe('s2.tld');
+	});
+
+	it('属性表が古ければそのまま返し、作り直しは defer に回す', async () => {
+		const old = {
+			builtAt: Date.now() - 10 * 60 * 1000,
+			profiles: [{ server: servers[0], vibe: null }],
+			totalCount: 1
+		};
+		const kv = kvWith({ ...base, 'profiles:v5:open': JSON.stringify(old) });
+		const deferred: Promise<unknown>[] = [];
+		const { profiles } = await loadProfiles({ kv, runner: null }, (w) => deferred.push(w), 'open');
+		expect(profiles).toHaveLength(1); // 古いまま返す
+		expect(deferred).toHaveLength(1);
+		await Promise.all(deferred);
+		const rebuilt = JSON.parse((await kv.get('profiles:v5:open')) ?? '{}');
+		expect(rebuilt.profiles).toHaveLength(3);
+		expect(rebuilt.builtAt).toBeGreaterThan(old.builtAt);
+	});
+
+	it('サーバー一覧が古ければそのまま使い、取り直しは defer に回す', async () => {
+		const kv = kvWith({ ...base, 'servers:v8': listed(servers, Date.now() - 2 * HOUR) });
+		const fetcher = vi.fn(async () => [
+			...servers,
+			mkServer({ host: 's3.tld', ltlAvailable: false })
+		]);
+		const deferred: Promise<unknown>[] = [];
+		const { profiles } = await loadProfiles(
+			{ kv, runner: null, fetcher },
+			(w) => deferred.push(w),
+			'open'
+		);
+		expect(profiles).toHaveLength(3);
+		expect(fetcher).toHaveBeenCalledTimes(1);
+		await Promise.all(deferred);
+		expect(JSON.parse((await kv.get('servers:v8')) ?? '{}').servers).toHaveLength(4);
+	});
 });
 
 describe('readIntent', () => {
-	const output = (input: ClefInput): ClefOutput => ({
-		model: 'clef',
-		answers: Object.fromEntries(
-			Object.keys(input.questions).map((id) => [id, { type: 'noul', noul: 0.8 }])
-		),
-		usage: { input_tokens: 1, output_tokens: 0 }
-	});
+	const output = answerAll;
 
 	it('読み取りと噛み合いを返し、同じ言葉の 2 回目は KV のキャッシュから返す', async () => {
 		const kv = kvWith(base);

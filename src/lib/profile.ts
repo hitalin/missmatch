@@ -11,9 +11,11 @@ import {
 	type Preferences,
 	REGISTRATIONS,
 	SCALES,
+	type Scope,
 	TOPICS
 } from './prefs';
 import { newSearch, type Search } from './search';
+import type { ServerProfile } from './types';
 import type { ClefAnswer } from './vibe';
 
 // ブラウザに保持するもの。マッチングアプリと同じく、作ったプロフィールと履歴は残す。
@@ -252,5 +254,31 @@ export function persistProfile(profile: SavedProfile): void {
 		localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
 	} catch {
 		// 保存できなくても続ける
+	}
+}
+
+// 属性表のローカルコピー。開いた瞬間は前回のもので始め、取り直しが届いたら差し替える。
+// 一覧は 1 時間、雰囲気は 7 日おきに変わるので、1 日以内なら最初の束を作るのに十分
+const PROFILES_MAX_AGE_MS = 24 * 60 * 60 * 1000;
+const profilesKey = (scope: Scope) => `missmatch:profiles:v1:${scope}`;
+export function loadCachedProfiles(scope: Scope): ServerProfile[] | null {
+	try {
+		const raw = localStorage.getItem(profilesKey(scope));
+		if (!raw) return null;
+		const { savedAt, profiles } = JSON.parse(raw) as {
+			savedAt?: number;
+			profiles?: ServerProfile[];
+		};
+		if (typeof savedAt !== 'number' || Date.now() - savedAt > PROFILES_MAX_AGE_MS) return null;
+		return Array.isArray(profiles) && profiles.length > 0 ? profiles : null;
+	} catch {
+		return null;
+	}
+}
+export function cacheProfiles(scope: Scope, profiles: ServerProfile[]): void {
+	try {
+		localStorage.setItem(profilesKey(scope), JSON.stringify({ savedAt: Date.now(), profiles }));
+	} catch {
+		// 容量を超えたり使えなかったりしても続ける（次回は取り直しを待つだけ）
 	}
 }

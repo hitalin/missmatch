@@ -6,7 +6,8 @@ import type { RequestHandler } from './$types';
 const devKv = memoryKv();
 
 // 診断に使うサーバー属性表。絞り込みと採点はブラウザ側で行う。
-// 雰囲気の欠けは応答後に計算する（waitUntil）ので、このリクエストは Clef を待たない
+// 組み立て済みの属性表を KV 1 回の読みで返す。古ければ作り直し、雰囲気の欠けは計算を、
+// どちらも応答後に回す（waitUntil）ので、このリクエストは joinmisskey も Clef も待たない
 // scope=invite で生きている招待制まで、scope=all で停止中（生きているもの）まで含める
 export const GET: RequestHandler = async ({ url, platform, setHeaders }) => {
 	const env = platform?.env;

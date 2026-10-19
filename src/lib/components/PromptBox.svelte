@@ -15,6 +15,7 @@
 		autofocus = false,
 		fill = false,
 		onsubmit,
+		onsettle,
 		top,
 		left
 	}: {
@@ -26,11 +27,13 @@
 		autofocus?: boolean;
 		fill?: boolean; // デスクトップで親の高さいっぱいに広げる（textarea が残りを埋める）
 		onsubmit: (text: string) => void;
+		onsettle?: (text: string) => void; // 打つ手が止まった（変換中でない）ときに、いまの言葉を知らせる
 		top?: Snippet; // 箱の上の行（選択肢など）
 		left?: Snippet; // 下端の左（補助ボタン）
 	} = $props();
 
 	const MAX_HEIGHT = 160;
+	const SETTLE_MS = 600; // この間入力が無ければ「打ち終わった」とみなす
 	const id = $props.id();
 	let el = $state<HTMLTextAreaElement | null>(null);
 	const ready = $derived(value.trim().length >= 2 && !disabled);
@@ -50,7 +53,20 @@
 		autosize();
 	});
 
+	// 手が止まったら知らせる。IME の変換中は確定してから数え直す
+	let settleTimer: ReturnType<typeof setTimeout> | undefined;
+	let composing = false;
+	function scheduleSettle() {
+		clearTimeout(settleTimer);
+		if (!onsettle) return;
+		settleTimer = setTimeout(() => {
+			if (!composing) onsettle?.(value.trim().slice(0, MAX_INTENT_LENGTH));
+		}, SETTLE_MS);
+	}
+	$effect(() => () => clearTimeout(settleTimer));
+
 	function submit() {
+		clearTimeout(settleTimer);
 		const t = value.trim().slice(0, MAX_INTENT_LENGTH);
 		if (t.length < 2 || disabled) return;
 		onsubmit(t);
@@ -80,7 +96,15 @@
 		{autofocus}
 		enterkeyhint="send"
 		onkeydown={onkeydown}
-		oninput={autosize}
+		oninput={() => {
+			autosize();
+			scheduleSettle();
+		}}
+		oncompositionstart={() => (composing = true)}
+		oncompositionend={() => {
+			composing = false;
+			scheduleSettle();
+		}}
 	></textarea>
 	<div class="tools">
 		<div class="left">{#if left}{@render left()}{/if}</div>

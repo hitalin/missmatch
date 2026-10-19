@@ -4,8 +4,12 @@
 	import LandingBackdrop from './LandingBackdrop.svelte';
 	import PromptBox from './PromptBox.svelte';
 
-	// 言葉がまだ無い「さがす」: 検索ボックスだけのランディング。送るとこの検索の言葉になる
-	let { onsubmit }: { onsubmit: (text: string) => void } = $props();
+	// 言葉がまだ無い「さがす」: 検索ボックスだけのランディング。送るとこの検索の言葉になる。
+	// onsettle は打つ手が止まったときの言葉（送られる前に読み取りを始めるため）
+	let {
+		onsubmit,
+		onsettle
+	}: { onsubmit: (text: string) => void; onsettle?: (text: string) => void } = $props();
 
 	const SHOWN = 8; // モバイルは CSS で 5 個まで
 	// SSR では先頭から、表示後に並びをシャッフルする（毎回違う例が目に入るように）
@@ -60,6 +64,7 @@
 				minRows={3}
 				autofocus
 				onsubmit={go}
+				{onsettle}
 			>
 				{#snippet left()}
 					<span>Enter で探す · Shift+Enter で改行</span>

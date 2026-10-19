@@ -12,7 +12,7 @@
 	import Landing from '$lib/components/Landing.svelte';
 	import Shell, { type Tab } from '$lib/components/Shell.svelte';
 	import { featuresOf } from '$lib/features';
-	import { type AskAxis, isAxisDefault, unsureAxes } from '$lib/intent';
+	import { type AskAxis, isAxisDefault, MAX_INTENT_LENGTH, unsureAxes } from '$lib/intent';
 	import {
 		applyFilters,
 		buildDeck,
@@ -23,9 +23,11 @@
 	} from '$lib/match';
 	import { defaultPreferences, isComplete, SCOPE_ORDER, type Scope, scopeFor } from '$lib/prefs';
 	import {
+		cacheProfiles,
 		currentSearch,
 		deleteSearch,
 		emptyProfile,
+		loadCachedProfiles,
 		loadSavedProfile,
 		patchSearch,
 		persistProfile,
@@ -151,17 +153,61 @@
 		loading = true;
 		loadError = '';
 		const scope = wantedScope;
+		// 前回のローカルコピーがあれば、取り直しを待たずにそれで始める
+		if (loadedScope !== scope) {
+			const local = loadCachedProfiles(scope);
+			if (local) {
+				profiles = withRelativeVibes(local);
+				loadedScope = scope;
+				deckKey = '';
+			}
+		}
 		try {
 			const res = await fetch(`/api/servers?scope=${scope}`);
 			if (!res.ok) throw new Error(`HTTP ${res.status}`);
-			profiles = withRelativeVibes(((await res.json()) as { profiles: ServerProfile[] }).profiles);
+			const fresh = ((await res.json()) as { profiles: ServerProfile[] }).profiles;
+			cacheProfiles(scope, fresh);
+			// 範囲が変わったらデッキも作り直す（同じ範囲の取り直しでは、見ているデッキを入れ替えない）
+			if (loadedScope !== scope) deckKey = '';
+			profiles = withRelativeVibes(fresh);
 			loadedScope = scope;
-			deckKey = ''; // 取り直したらデッキも作り直す
 		} catch (e) {
 			loadError = e instanceof Error ? e.message : String(e);
 		} finally {
 			loading = false;
 		}
+	}
+
+	// 言葉の並びの読み取り。同じ並びは 1 回しか取りに行かず、打ち終わった時点で先に始めておける
+	type IntentResponse = {
+		answers?: Record<string, ClefAnswer>;
+		affinity?: Record<string, number>;
+	};
+	const intentRequests = new Map<string, Promise<IntentResponse>>();
+	function fetchIntent(turns: string[], scope: Scope): Promise<IntentResponse> {
+		const key = `${scope}\n${turns.join('\n')}`;
+		let request = intentRequests.get(key);
+		if (!request) {
+			request = fetch('/api/intent', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ turns, scope })
+			}).then(async (res) => {
+				if (!res.ok) throw new Error(`HTTP ${res.status}`);
+				return (await res.json()) as IntentResponse;
+			});
+			request.catch(() => intentRequests.delete(key)); // 失敗は持ち越さない（送ったときに読み直す）
+			intentRequests.set(key, request);
+		}
+		return request;
+	}
+	// 打つ手が止まったら、送られる前に読み取りを始めておく（送った瞬間に結果が出る）。
+	// 止まるたびに Clef を 1 回ぶん（判定 13 本）使うので、短い言葉は見送る
+	const PREFETCH_MIN_CHARS = 4;
+	function prefetch(turns: string[]) {
+		const last = turns.at(-1) ?? '';
+		if (last.length < PREFETCH_MIN_CHARS || last.length > MAX_INTENT_LENGTH) return;
+		fetchIntent(turns, wantedScope).catch(() => {});
 	}
 
 	// いまの検索の言葉の並びを Clef に読み取らせ、空いている設定を埋め、各サーバーとの噛み合いを付ける
@@ -171,16 +217,7 @@
 		reading = true;
 		readError = '';
 		try {
-			const res = await fetch('/api/intent', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ turns: searchTurns(target), scope: wantedScope })
-			});
-			if (!res.ok) throw new Error(`HTTP ${res.status}`);
-			const data = (await res.json()) as {
-				answers?: Record<string, ClefAnswer>;
-				affinity?: Record<string, number>;
-			};
+			const data = await fetchIntent(searchTurns(target), wantedScope);
 			// 待っている間に別の検索へ移っていたら捨てる
 			if (profile.current !== target.id) return;
 			const answers = data.answers ?? {};
@@ -350,7 +387,7 @@
 			{#if tab === 'discover'}
 				<div class="discover-tab">
 					{#if !search.query}
-						<Landing onsubmit={start} />
+						<Landing onsubmit={start} onsettle={(t) => prefetch([t])} />
 					{:else}
 					<SearchBar {search} {reading} ondrop={dropTurn} />
 					{#if !profiles}
@@ -375,6 +412,7 @@
 										{asks}
 										onrefine={refine}
 										onask={answerAsk}
+										onsettle={(t) => prefetch([...searchTurns(search), t])}
 									/>
 								{/snippet}
 							</Discover>

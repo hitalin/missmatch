@@ -12,7 +12,8 @@
 		reading,
 		asks,
 		onrefine,
-		onask
+		onask,
+		onsettle
 	}: {
 		value?: string; // 入力中の言葉（デッキが作り直されても消えないよう親が持つ）
 		search: Search;
@@ -20,6 +21,7 @@
 		asks: AskAxis[];
 		onrefine: (text: string) => void;
 		onask: (axis: AskAxis, choice: string | null) => void;
+		onsettle?: (text: string) => void; // 打つ手が止まったときの言葉（送られる前に読み取りを始めるため）
 	} = $props();
 
 	function submit(t: string) {
@@ -36,6 +38,7 @@
 		disabled={reading}
 		fill
 		onsubmit={submit}
+		{onsettle}
 	>
 		{#snippet top()}
 			{#if !reading && asks.length > 0}

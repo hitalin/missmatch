@@ -1,9 +1,12 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+import { mk } from './fixtures.test-helper';
 import { defaultPreferences } from './prefs';
 import {
+	cacheProfiles,
 	currentSearch,
 	deleteSearch,
 	emptyProfile,
+	loadCachedProfiles,
 	PREFS_VERSION,
 	parseSavedProfile,
 	patchSearch,
@@ -280,5 +283,39 @@ describe('検索の切り替え', () => {
 
 	it('currentSearch は検索が無ければ null', () => {
 		expect(currentSearch(emptyProfile())).toBeNull();
+	});
+});
+
+describe('属性表のローカルコピー', () => {
+	const store = new Map<string, string>();
+	const fakeStorage = {
+		getItem: (k: string) => store.get(k) ?? null,
+		setItem: (k: string, v: string) => {
+			store.set(k, v);
+		}
+	};
+
+	it('置いた属性表を範囲ごとに読み戻し、1 日より古いものは使わない', () => {
+		vi.stubGlobal('localStorage', fakeStorage);
+		store.clear();
+		const profiles = [mk({ host: 'a.tld' })];
+		expect(loadCachedProfiles('open')).toBeNull();
+		cacheProfiles('open', profiles);
+		expect(loadCachedProfiles('open')).toEqual(profiles);
+		expect(loadCachedProfiles('invite')).toBeNull();
+		vi.useFakeTimers();
+		vi.setSystemTime(Date.now() + 25 * 60 * 60 * 1000);
+		expect(loadCachedProfiles('open')).toBeNull();
+		vi.useRealTimers();
+		vi.unstubAllGlobals();
+	});
+
+	it('壊れた値や localStorage の無い環境では null を返し、書けなくても落ちない', () => {
+		vi.stubGlobal('localStorage', fakeStorage);
+		store.set('missmatch:profiles:v1:open', '{');
+		expect(loadCachedProfiles('open')).toBeNull();
+		vi.unstubAllGlobals();
+		expect(loadCachedProfiles('open')).toBeNull();
+		expect(() => cacheProfiles('open', [])).not.toThrow();
 	});
 });
