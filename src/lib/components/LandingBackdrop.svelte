@@ -1,70 +1,88 @@
 <script lang="ts">
-	// ランディングの背景: サーバー（＝それぞれの星）が周りに浮かぶ宇宙。
-	// 中央の検索ボックスの周りは空け、本文の読みやすさを優先する。装飾なので支援技術からは隠す
-	const PLANETS = [
-		{ e: '🪐', x: '6%', y: '10%', s: 84, d: 0, corner: true },
-		{ e: '🌏', x: '12%', y: '50%', s: 60, d: 1.2, corner: false },
-		{ e: '🌕', x: '4%', y: '80%', s: 52, d: 2.1, corner: true },
-		{ e: '🌍', x: '84%', y: '9%', s: 66, d: 0.6, corner: true },
-		{ e: '🪐', x: '88%', y: '46%', s: 56, d: 1.8, corner: false },
-		{ e: '🌑', x: '82%', y: '80%', s: 72, d: 2.6, corner: true }
+	import type { ServerInfo } from '$lib/types';
+
+	// ランディングの背景（マッチングアプリの文法）: 明るい地に、実際のサーバーのカードが周縁に浮かび、
+	// 小さなハートが瞬く。中央の検索ボックスの周りは空け、本文の読みやすさを優先する。装飾なので支援技術からは隠す
+	let { servers = [] }: { servers?: ServerInfo[] } = $props();
+
+	// カードの置き場（6 枚）。上段は上から、下段は下からの距離で置き、画面の外に落とさない。
+	// corner は四隅で、モバイルではそこだけ出す
+	const SLOTS = [
+		{ x: '4%', top: '4%', r: -8, d: 0, corner: true },
+		{ x: '3%', top: '40%', r: 6, d: 1.2, corner: false },
+		{ x: '5%', bottom: '4%', r: -5, d: 2.1, corner: true },
+		{ x: '84%', top: '4%', r: 7, d: 0.6, corner: true },
+		{ x: '87%', top: '40%', r: -6, d: 1.8, corner: false },
+		{ x: '83%', bottom: '4%', r: 5, d: 2.6, corner: true }
 	];
-	const SPARKS = [
-		{ e: '✨', x: '24%', y: '20%', s: 22, d: 0.3 },
-		{ e: '⭐', x: '70%', y: '26%', s: 16, d: 1.5 },
-		{ e: '💫', x: '28%', y: '82%', s: 22, d: 2.2 },
-		{ e: '✨', x: '66%', y: '88%', s: 18, d: 0.9 },
-		{ e: '⭐', x: '93%', y: '28%', s: 14, d: 2.8 },
-		{ e: '☄️', x: '40%', y: '6%', s: 26, d: 1.1 }
-	];
-	// 瞬く星（misspace の連合グラフと同じ）。SSR とずれないよう、乱数は固定の種から作る
+	const FALLBACK = '#86b300';
+	const gradient = (color: string | null) =>
+		`linear-gradient(160deg, ${color ?? FALLBACK}, color-mix(in srgb, ${color ?? FALLBACK} 55%, #000))`;
+
+	// 瞬くハート。SSR とずれないよう、乱数は固定の種から作る
 	let seed = 7;
 	const rand = () => {
 		seed = (seed * 16807) % 2147483647;
 		return seed / 2147483647;
 	};
-	const STARS = Array.from({ length: 40 }, (_, i) => ({
-		kind: (['accent', 'purple', 'bright', '', ''] as const)[i % 5],
+	const HEARTS = Array.from({ length: 22 }, (_, i) => ({
+		love: i % 3 !== 0, // 2/3 は桃色、残りは黄緑
 		x: rand() * 100,
 		y: rand() * 100,
-		size: 0.5 + rand() * 2.5,
+		size: 8 + rand() * 12,
 		delay: rand() * 4,
-		duration: 2 + rand() * 4
+		duration: 3 + rand() * 4
 	}));
 </script>
 
 <div class="backdrop" aria-hidden="true">
-	{#each STARS as st, i (i)}
-		<i
-			class="star {st.kind}"
-			style:left="{st.x}%"
-			style:top="{st.y}%"
-			style:--size="{st.size}px"
-			style:--delay="{st.delay}s"
-			style:--duration="{st.duration}s"
-		></i>
+	{#each HEARTS as h, i (i)}
+		<svg
+			class="heart"
+			class:love={h.love}
+			viewBox="0 0 24 24"
+			style:left="{h.x}%"
+			style:top="{h.y}%"
+			style:width="{h.size}px"
+			style:--delay="{h.delay}s"
+			style:--duration="{h.duration}s"
+		>
+			<path
+				d="M12 21s-7.5-4.6-9.6-9.2C.9 8.4 2.6 5 6 5c2 0 3.3 1.1 4 2.2.7-1.1 2-2.2 4-2.2 3.4 0 5.1 3.4 3.6 6.8C19.5 16.4 12 21 12 21z"
+				fill="currentColor"
+			/>
+		</svg>
 	{/each}
 	<div class="field">
-	{#each PLANETS as p, i (i)}
-		<span
-			class="planet"
-			class:corner={p.corner}
-			style:left={p.x}
-			style:top={p.y}
-			style:font-size="{p.s}px"
-			style:--d="{p.d}s">{p.e}</span
-		>
-	{/each}
-	{#each SPARKS as p, i (i)}
-		<span class="spark" style:left={p.x} style:top={p.y} style:font-size="{p.s}px" style:--d="{p.d}s"
-			>{p.e}</span
-		>
-	{/each}
+		{#each SLOTS as slot, i (i)}
+			{@const s = servers[i]}
+			<div
+				class="card"
+				class:corner={slot.corner}
+				class:empty={!s}
+				style:left={slot.x}
+				style:top={slot.top}
+				style:bottom={slot.bottom}
+				style:--r="{slot.r}deg"
+				style:--d="{slot.d}s"
+				style:background={gradient(s?.themeColor ?? null)}
+			>
+				{#if s}
+					{#if s.bannerUrl}<img class="photo" src={s.bannerUrl} alt="" loading="lazy" decoding="async" />{/if}
+					<div class="scrim"></div>
+					<div class="who">
+						{#if s.iconUrl}<img class="icon" src={s.iconUrl} alt="" width="22" height="22" loading="lazy" />{/if}
+						<b>{s.name ?? s.host}</b>
+					</div>
+				{/if}
+			</div>
+		{/each}
 	</div>
 </div>
 
 <style>
-	/* 本文の余白で切れないよう、サイドバーを除いた画面全体に敷く */
+	/* 本文の余白で切れないよう、サイドバーを除いた画面全体に敷く。
+	   白地に黄緑（accent）と桃色（love）の淡い光。ダークは中性の暗色に同じ 2 色 */
 	.backdrop {
 		position: fixed;
 		inset: 0;
@@ -72,76 +90,90 @@
 		overflow: hidden;
 		pointer-events: none;
 		user-select: none;
-		/* misspace の連合グラフと同じ宇宙（ライト・ダークどちらでも暗い） */
 		background:
-			radial-gradient(ellipse 80% 50% at 20% 30%, rgba(134, 179, 0, 0.08) 0%, transparent 50%),
-			radial-gradient(ellipse 60% 40% at 75% 70%, rgba(163, 116, 255, 0.1) 0%, transparent 45%),
-			radial-gradient(ellipse 70% 60% at 50% 50%, rgba(214, 85, 214, 0.06) 0%, transparent 50%),
-			linear-gradient(180deg, #0c0818 0%, #130e26 50%, #0f0a1e 100%);
+			radial-gradient(ellipse 70% 55% at 15% 20%, color-mix(in srgb, var(--accent) 22%, transparent) 0%, transparent 60%),
+			radial-gradient(ellipse 60% 50% at 85% 80%, color-mix(in srgb, var(--love) 18%, transparent) 0%, transparent 60%),
+			radial-gradient(ellipse 50% 40% at 80% 15%, color-mix(in srgb, var(--love) 10%, transparent) 0%, transparent 55%),
+			var(--bg);
 	}
-	/* 惑星は中央（検索ボックスのあたり）を抜く */
+	/* カードは中央（検索ボックスのあたり）を抜く */
 	.field {
 		position: absolute;
 		inset: 0;
-		mask-image: radial-gradient(ellipse 38% 42% at 50% 46%, transparent 55%, #000 100%);
+		mask-image: radial-gradient(ellipse 40% 44% at 50% 46%, transparent 55%, #000 100%);
 	}
-	.star {
+	.heart {
 		position: absolute;
-		width: var(--size);
-		height: var(--size);
-		border-radius: 50%;
-		background: #fff;
-		opacity: 0.5;
-		box-shadow: 0 0 calc(var(--size) * 2) rgba(255, 255, 255, 0.3);
-		animation: shine var(--duration) ease-in-out var(--delay) infinite;
+		height: auto;
+		color: var(--accent);
+		opacity: 0.35;
+		animation: twinkle var(--duration) ease-in-out var(--delay) infinite;
 	}
-	.star.accent {
-		background: #86b300;
-		box-shadow: 0 0 calc(var(--size) * 3) rgba(134, 179, 0, 0.5);
-	}
-	.star.purple {
-		background: #a374ff;
-		box-shadow: 0 0 calc(var(--size) * 3) rgba(163, 116, 255, 0.5);
-	}
-	.star.bright {
-		box-shadow: 0 0 calc(var(--size) * 4) rgba(255, 255, 255, 0.6);
-	}
-	@keyframes shine {
-		50% {
-			opacity: 0.9;
-			scale: 1.2;
-		}
-	}
-	.planet,
-	.spark {
-		position: absolute;
-		line-height: 1;
-	}
-	/* 惑星はゆっくり漂いながら少し傾く、星はまたたく */
-	.planet {
-		filter: drop-shadow(0 0 18px rgba(163, 116, 255, 0.25));
-		animation: drift 9s ease-in-out var(--d) infinite;
-	}
-	.spark {
-		opacity: 0.8;
-		animation: twinkle 3.5s ease-in-out var(--d) infinite;
-	}
-	@keyframes drift {
-		50% {
-			translate: 0 -14px;
-			rotate: 8deg;
-		}
+	.heart.love {
+		color: var(--love);
 	}
 	@keyframes twinkle {
 		50% {
-			opacity: 0.3;
-			scale: 0.8;
+			opacity: 0.85;
+			scale: 1.25;
+		}
+	}
+	/* 浮かぶサーバーのカード（Tinder のトップで背景に散らばるプロフィール写真）。少し傾いてゆっくり漂う */
+	.card {
+		position: absolute;
+		width: 150px;
+		aspect-ratio: 3 / 4;
+		border-radius: var(--radius);
+		overflow: hidden;
+		box-shadow: var(--shadow-lg);
+		color: #fff;
+		rotate: var(--r);
+		animation: drift 9s ease-in-out var(--d) infinite;
+	}
+	.card.empty {
+		opacity: 0.45;
+	}
+	.photo {
+		position: absolute;
+		inset: 0;
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+	}
+	.scrim {
+		position: absolute;
+		inset: 0;
+		background: linear-gradient(to top, rgba(0, 0, 0, 0.75) 0%, rgba(0, 0, 0, 0.1) 50%, transparent 75%);
+	}
+	.who {
+		position: absolute;
+		left: 10px;
+		right: 10px;
+		bottom: 10px;
+		display: flex;
+		align-items: center;
+		gap: 6px;
+		font-size: 0.7rem;
+		min-width: 0;
+	}
+	.who b {
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+	.icon {
+		border-radius: 6px;
+		flex-shrink: 0;
+	}
+	@keyframes drift {
+		50% {
+			translate: 0 -12px;
+			rotate: calc(var(--r) + 3deg);
 		}
 	}
 	@media (prefers-reduced-motion: reduce) {
-		.planet,
-		.spark,
-		.star {
+		.card,
+		.heart {
 			animation: none;
 		}
 	}
@@ -150,16 +182,17 @@
 			left: var(--rail-w);
 		}
 	}
-	/* モバイルは四隅の惑星だけ、小さく薄く */
+	/* モバイルは四隅のカードだけ、小さく薄く。下段は下のバーとフッターの上に置く */
 	@media (max-width: 899px) {
 		.field {
-			mask-image: linear-gradient(to bottom, #000 0, transparent 22%, transparent 78%, #000 100%);
+			bottom: calc(var(--nav-h) + env(safe-area-inset-bottom) + 40px);
+			mask-image: linear-gradient(to bottom, #000 0, transparent 20%, transparent 80%, #000 100%);
 		}
-		.planet {
-			scale: 0.6;
-			opacity: 0.7;
+		.card {
+			width: 80px;
+			opacity: 0.6;
 		}
-		.planet:not(.corner) {
+		.card:not(.corner) {
 			display: none;
 		}
 	}

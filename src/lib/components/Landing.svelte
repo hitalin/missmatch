@@ -1,15 +1,34 @@
 <script lang="ts">
+	import { byActivity } from '$lib/candidates';
 	import { EXAMPLES } from '$lib/examples';
 	import { MAX_INTENT_LENGTH } from '$lib/intent';
+	import type { ServerProfile } from '$lib/types';
 	import LandingBackdrop from './LandingBackdrop.svelte';
 	import PromptBox from './PromptBox.svelte';
 
 	// 言葉がまだ無い「さがす」: 検索ボックスだけのランディング。送るとこの検索の言葉になる。
-	// onsettle は打つ手が止まったときの言葉（送られる前に読み取りを始めるため）
+	// onsettle は打つ手が止まったときの言葉（送られる前に読み取りを始めるため）。
+	// profiles は背景に浮かべるサーバーのカードに使う（まだ無ければ色だけのカード）
 	let {
 		onsubmit,
-		onsettle
-	}: { onsubmit: (text: string) => void; onsettle?: (text: string) => void } = $props();
+		onsettle,
+		profiles = null
+	}: {
+		onsubmit: (text: string) => void;
+		onsettle?: (text: string) => void;
+		profiles?: ServerProfile[] | null;
+	} = $props();
+
+	// 背景のカード: バナーのある活発な鯖の上位から、偏らないよう 3 つおきに 6 枚
+	const BACKDROP_CARDS = 6;
+	const backdropServers = $derived(
+		(profiles ?? [])
+			.map((p) => p.server)
+			.filter((s) => s.bannerUrl)
+			.sort(byActivity)
+			.filter((_, i) => i % 3 === 0)
+			.slice(0, BACKDROP_CARDS)
+	);
 
 	const SHOWN = 8; // モバイルは CSS で 5 個まで
 	// SSR では先頭から、表示後に並びをシャッフルする（毎回違う例が目に入るように）
@@ -50,7 +69,7 @@
 </a>
 
 <div class="landing">
-	<LandingBackdrop />
+	<LandingBackdrop servers={backdropServers} />
 	<div class="center">
 		<h1 class="brand"><img class="logo" src="/logo.svg" alt="" width="48" height="48" /> <span class="text-grad">みすまっち</span></h1>
 		<p class="tagline">Misskey のサーバーと、マッチング。</p>
@@ -89,26 +108,7 @@
 </div>
 
 <style>
-	/* 宇宙の上ではカーソルを 🚀 に（misspace と同じ）。本文の余白も含めるため、本文の枠ごと指定する。
-	   入力欄やボタンは自分のカーソル（文字・指）のまま */
-	:global(.content:has(.landing)) {
-		cursor:
-			url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'><text y='24' font-size='24'>🚀</text></svg>")
-				4 4,
-			auto;
-	}
-	/* 宇宙の背景の上に載るので、ライト / ダークに関わらず暗い配色にする */
 	.landing {
-		--fg: #f0f2f5;
-		--fg-muted: rgba(240, 242, 245, 0.62);
-		--panel: rgba(30, 32, 40, 0.78);
-		--panel-2: rgba(255, 255, 255, 0.06);
-		--border: rgba(255, 255, 255, 0.14);
-		--bg: #130e26;
-		--accent-soft: rgba(134, 179, 0, 0.2);
-		--accent-fg: #c9ec5a;
-		--shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
-		color: var(--fg);
 		flex: 1;
 		display: flex;
 		flex-direction: column;
@@ -192,7 +192,7 @@
 	}
 	.github-corner svg {
 		fill: var(--accent);
-		color: #130e26;
+		color: var(--bg);
 	}
 	.github-corner .octo-arm {
 		transform-origin: 130px 106px;

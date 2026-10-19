@@ -387,7 +387,7 @@
 			{#if tab === 'discover'}
 				<div class="discover-tab">
 					{#if !search.query}
-						<Landing onsubmit={start} onsettle={(t) => prefetch([t])} />
+						<Landing onsubmit={start} onsettle={(t) => prefetch([t])} {profiles} />
 					{:else}
 					<SearchBar {search} {reading} ondrop={dropTurn} />
 					{#if !profiles}
