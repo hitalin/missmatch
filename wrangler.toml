@@ -20,9 +20,10 @@ remote = true
 binding = "VIBE_KV"
 id = "be9cfe4fae00490ca3fc2bb6a38e2a2b"
 
-# トップページの例文の判定を温め直す（6 時間で切れるので 5 時間ごと）
+# トップページの例文の判定を温め直す。1 日 1 回（12:00 JST）、判定キャッシュは 25 時間で切れる。
+# 1 回で Clef を 16 言葉 × 13 本使うので、5 時間ごと（1 日約 $1）から 1/5 に抑えた
 [triggers]
-crons = ["0 */5 * * *"]
+crons = ["0 3 * * *"]
 
 [observability]
 enabled = true

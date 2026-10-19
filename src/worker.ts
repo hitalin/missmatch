@@ -10,7 +10,7 @@ type Env = App.Platform['env'];
 
 export default {
 	fetch: kit.fetch,
-	// 例文の読み取りは 6 時間で切れるので、5 時間ごとに温め直す（例文クリックを待たせない）
+	// 例文の読み取りは 25 時間で切れるので、1 日 1 回温め直す（例文クリックを待たせない）
 	async scheduled(_controller, env, ctx) {
 		ctx.waitUntil(
 			warmIntents({ kv: kvFrom(env.VIBE_KV), runner: clefRunner(env.AI) })

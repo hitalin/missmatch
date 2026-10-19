@@ -32,8 +32,9 @@ const PROFILES_KEEP_SECONDS = 60 * 60 * 24;
 const profilesKey = (scope: Scope) => `profiles:v5:${scope}`;
 const CONCURRENCY = 8;
 // 同じ言葉の読み取りは使い回す（トップページの例文など、同じ言葉は何度も来る）。
-// 雰囲気は 7 日おきにしか変わらないので、6 時間古くても順位はほぼ同じ
-const INTENT_TTL_SECONDS = 60 * 60 * 6;
+// 雰囲気は 7 日おきにしか変わらないので、1 日古くても順位はほぼ同じ。
+// 例文は cron が 1 日 1 回温め直す（wrangler.toml の crons）ので、その間隔より少し長く持つ
+const INTENT_TTL_SECONDS = 60 * 60 * 25;
 // 噛み合い判定に渡す state や基準を変えたら上げる（古い判定を 1 時間引きずらない）
 const intentKeyPrefix = (scope: Scope) => `intent:v5:${scope}:`;
 

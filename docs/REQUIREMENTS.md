@@ -292,9 +292,9 @@ UI 言語は misskey-hub（Misskey 公式サイト）に倣い、骨組みは ya
 
 ### F9. 事前計算（warm）
 
-- `POST /api/warm?limit=&offset=` を Bearer トークン付きで外部 cron から叩く。既定は推薦され得るサーバー（日本語・登録受付中）、`scope=all` で招待制・停止中も
+- `POST /api/warm?limit=&offset=` を Bearer トークン付きで手で叩く。既定は推薦され得るサーバー（日本語・登録受付中）、`scope=all` で招待制・停止中も
 - 活発な順に処理する
-- `mode=intents` はトップページの例文 16 個の言葉の読み取りを既定の範囲で温め直す（6 時間のキャッシュを置き直す）。cron で 5 時間ごとに叩けば、例文は常に即答になる
+- `mode=intents` はトップページの例文 16 個の言葉の読み取りを既定の範囲で温め直す（25 時間のキャッシュを置き直す）。普段は Cloudflare の Cron Triggers（`wrangler.toml` の `crons`、1 日 1 回）が `src/worker.ts` の `scheduled` から同じ処理を回すので、例文は常に即答になる
 
 ## 5. 非機能要件
 
@@ -340,5 +340,5 @@ localStorage ⇄ SavedProfile{prefsVersion, prefs, searches[], current}         
 - **学習率と重みの校正**: `LEARN_LIKE` 0.3 / `LEARN_PASS` 0.15 / 8 スワイプで最大重み 3、相対値と確信度の係数は初期値
 - **連合の情報**: 「友達のいる鯖と繋がれるか」は実際のニーズなので、misspace 側でキャッシュ API ができたら条件に加える
 - **結果の多様性**: 大手が上位を独占する場合、規模をばらけさせる再ランキングを検討
-- **cron の内製化**: Cloudflare Cron Triggers で warm を回せれば外部 cron が不要になる
+- ~~**cron の内製化**~~: 2026-10-19 に Cron Triggers へ移した（例文の温めのみ。雰囲気の欠けはアクセスのたびに応答後に埋まる）
 - **サーバー運営者向けの異議申立て**: 雰囲気判定に納得できない運営者が再判定を依頼できる導線

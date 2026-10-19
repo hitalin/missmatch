@@ -75,7 +75,7 @@ pnpm run deploy   # pnpm deploy は pnpm 本体のコマンドに取られる
 
 # 雰囲気を事前計算（普段はアクセスのたびに応答後に埋まるので、急ぐときだけ）
 curl -X POST "https://<host>/api/warm?limit=50" -H "Authorization: Bearer $WARM_SECRET"
-# トップページの例文の判定を今すぐ温める（普段は Cron Triggers が 5 時間ごとに回す。wrangler.toml の crons）
+# トップページの例文の判定を今すぐ温める（普段は Cron Triggers が 1 日 1 回回す。wrangler.toml の crons）
 curl -X POST "https://<host>/api/warm?mode=intents" -H "Authorization: Bearer $WARM_SECRET"
 ```
 
