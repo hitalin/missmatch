@@ -1,5 +1,7 @@
 name = "missmatch"
-main = ".svelte-kit/cloudflare/_worker.js"
+# SvelteKit の Worker を包んで scheduled を足した入口（src/worker.ts を見よ）
+main = "src/worker.ts"
+alias = { "kit-worker" = "./.svelte-kit/cloudflare/_worker.js" }
 compatibility_date = "2025-10-01"
 compatibility_flags = ["nodejs_compat"]
 
@@ -17,6 +19,10 @@ remote = true
 [[kv_namespaces]]
 binding = "VIBE_KV"
 id = "be9cfe4fae00490ca3fc2bb6a38e2a2b"
+
+# トップページの例文の判定を温め直す（6 時間で切れるので 5 時間ごと）
+[triggers]
+crons = ["0 */5 * * *"]
 
 [observability]
 enabled = true

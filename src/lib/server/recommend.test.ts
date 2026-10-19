@@ -1,9 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
+import { EXAMPLES } from '$lib/examples';
 import { mkServer, mkVibe } from '$lib/fixtures.test-helper';
 import type { ServerInfo } from '$lib/types';
 import type { ClefAnswer, ClefInput, ClefOutput, VibeKv } from '$lib/vibe';
 import { VIBE_VERSION, vibeKey } from '$lib/vibe';
-import { loadProfiles, readIntent } from './recommend';
+import { loadProfiles, readIntent, warmIntents } from './recommend';
 
 // joinmisskey へ取りに行かないよう、サーバー一覧はキャッシュ済みにしておく
 function kvWith(entries: Record<string, string>, bulk = true): VibeKv & { reads: number } {
@@ -188,6 +189,17 @@ describe('readIntent', () => {
 		const calls = runner.mock.calls.length;
 		await readIntent({ kv, runner }, ['静かな場所'], 'open');
 		expect(runner.mock.calls.length).toBeGreaterThan(calls);
+	});
+
+	it('warmIntents は例文を全部、キャッシュがあっても判定し直して置く', async () => {
+		const kv = kvWith(base);
+		const runner = vi.fn(async (input: ClefInput) => output(input));
+		await readIntent({ kv, runner }, [EXAMPLES[0]], 'invite');
+		const before = runner.mock.calls.length;
+		const { warmed } = await warmIntents({ kv, runner });
+		expect(warmed).toBe(EXAMPLES.length);
+		// 例文 1 つにつき読み取り 1 本 + 噛み合い 1 バッチ（3 件）。キャッシュ済みの例文も読み直す
+		expect(runner.mock.calls.length - before).toBe(EXAMPLES.length * 2);
 	});
 
 	it('雰囲気の欠けは defer に回し、判定を待たせない', async () => {

@@ -1,19 +1,17 @@
 import { json } from '@sveltejs/kit';
 import { byActivity } from '$lib/candidates';
-import { EXAMPLES } from '$lib/examples';
 import { isInScope } from '$lib/match';
-import { defaultPreferences, scopeFor } from '$lib/prefs';
 import {
 	clefRunner,
 	computeVibes,
 	getServers,
 	kvFrom,
 	parseScope,
-	readIntent
+	warmIntents
 } from '$lib/server/recommend';
 import type { RequestHandler } from './$types';
 
-// 雰囲気プロファイルを事前計算する（外部 cron から叩く想定）。
+// 雰囲気プロファイルを事前計算する（手で叩く用。例文の温めは Cron Triggers が src/worker.ts から回す）。
 // 既定は登録受付中のサーバー。scope=all で招待制・停止中（生きているもの）も対象にする
 export const POST: RequestHandler = async ({ request, url, platform }) => {
 	const env = platform?.env;
@@ -21,16 +19,9 @@ export const POST: RequestHandler = async ({ request, url, platform }) => {
 		return json({ error: 'unauthorized' }, { status: 401 });
 	}
 
-	// mode=intents: トップページの例文の読み取りを既定の範囲で温め直す（キャッシュの期限内でも置き直す）
+	// mode=intents: トップページの例文の読み取りを温め直す（cron を待たずに手で温めたいとき）
 	if (url.searchParams.get('mode') === 'intents') {
-		const deps = { kv: kvFrom(env.VIBE_KV), runner: clefRunner(env.AI) };
-		const scope = scopeFor(defaultPreferences());
-		let warmed = 0;
-		for (const text of EXAMPLES) {
-			await readIntent(deps, [text], scope, undefined, { fresh: true });
-			warmed++;
-		}
-		return json({ warmed, scope });
+		return json(await warmIntents({ kv: kvFrom(env.VIBE_KV), runner: clefRunner(env.AI) }));
 	}
 
 	const limit = Math.min(Number(url.searchParams.get('limit') ?? 50), 200);

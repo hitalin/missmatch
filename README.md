@@ -73,9 +73,9 @@ wrangler kv namespace create VIBE_KV   # id を wrangler.toml に書く
 wrangler secret put WARM_SECRET
 pnpm run deploy   # pnpm deploy は pnpm 本体のコマンドに取られる
 
-# 雰囲気を事前計算
+# 雰囲気を事前計算（普段はアクセスのたびに応答後に埋まるので、急ぐときだけ）
 curl -X POST "https://<host>/api/warm?limit=50" -H "Authorization: Bearer $WARM_SECRET"
-# トップページの例文の判定を温める（6 時間で切れるので cron で 5 時間ごと）
+# トップページの例文の判定を今すぐ温める（普段は Cron Triggers が 5 時間ごとに回す。wrangler.toml の crons）
 curl -X POST "https://<host>/api/warm?mode=intents" -H "Authorization: Bearer $WARM_SECRET"
 ```
 

@@ -1,8 +1,9 @@
 import { byActivity } from '$lib/candidates';
+import { EXAMPLES } from '$lib/examples';
 import { fetchServers } from '$lib/instances';
 import { buildAffinityRequests, buildIntentRequest, parseAffinity, runAffinity } from '$lib/intent';
 import { isInScope } from '$lib/match';
-import type { Scope } from '$lib/prefs';
+import { defaultPreferences, type Scope, scopeFor } from '$lib/prefs';
 import { fetchSampleNotes } from '$lib/sample';
 import type { ServerInfo, ServerProfile } from '$lib/types';
 import {
@@ -263,4 +264,18 @@ export async function readIntent(
 		await deps.kv.put(key, JSON.stringify(result), { expirationTtl: INTENT_TTL_SECONDS });
 	}
 	return result;
+}
+
+// トップページの例文の読み取りを、既定の範囲で温め直す（キャッシュの期限内でも置き直す）。
+// Cron Triggers（wrangler.toml の crons）と /api/warm?mode=intents の両方から呼ぶ
+export async function warmIntents(
+	deps: Deps & { runner: ClefRunner }
+): Promise<{ warmed: number; scope: Scope }> {
+	const scope = scopeFor(defaultPreferences());
+	let warmed = 0;
+	for (const text of EXAMPLES) {
+		await readIntent(deps, [text], scope, undefined, { fresh: true });
+		warmed++;
+	}
+	return { warmed, scope };
 }
