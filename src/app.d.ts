@@ -1,8 +1,13 @@
 /// <reference types="@sveltejs/kit" />
 /// <reference types="@cloudflare/workers-types" />
 
+import type { AuthUser } from '$lib/auth';
+
 declare global {
 	namespace App {
+		interface Locals {
+			user: AuthUser | null;
+		}
 		interface Platform {
 			env: {
 				AI: Ai;
@@ -13,5 +18,3 @@ declare global {
 		}
 	}
 }
-
-export {};

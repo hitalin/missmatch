@@ -17,7 +17,8 @@
 		| 'sliders'
 		| 'undo'
 		| 'check'
-		| 'external';
+		| 'external'
+		| 'power';
 	let { name, size = 20, filled = false }: { name: IconName; size?: number; filled?: boolean } =
 		$props();
 </script>
@@ -72,6 +73,8 @@
 		<path d="M5 12l5 5L20 7" />
 	{:else if name === 'external'}
 		<path d="M14 4h6v6M20 4l-9 9" /><path d="M19 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h5" />
+	{:else if name === 'power'}
+		<path d="M7 6a7.75 7.75 0 1 0 10 0" /><path d="M12 4v8" />
 	{/if}
 </svg>
 

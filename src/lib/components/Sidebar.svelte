@@ -1,10 +1,11 @@
 <script lang="ts">
+	import type { AuthUser } from '$lib/auth';
 	import type { Search } from '$lib/search';
 	import Icon from './Icon.svelte';
 	import SearchList from './SearchList.svelte';
 	import type { Tab } from './Shell.svelte';
 
-	// サイドバー（yamix 型）: ロゴ → ナビ → さがした言葉（ここだけスクロール）→ 新しくさがす。
+	// サイドバー（yamix 型）: ロゴ → ナビ → さがした言葉（ここだけスクロール）→ 新しくさがす → アカウント。
 	// デスクトップの左に常駐し、モバイルではドロワーの中身になる
 	let {
 		tab,
@@ -17,7 +18,10 @@
 		onselect,
 		onnew,
 		onrename,
-		ondelete
+		ondelete,
+		user,
+		onlogin,
+		onlogout
 	}: {
 		tab: Tab | null;
 		likes: number;
@@ -30,7 +34,12 @@
 		onnew: () => void; // 新しくさがす（言葉の無い検索＝ランディングに戻る）
 		onrename: (id: string, title: string) => void;
 		ondelete: (id: string) => void;
+		user: AuthUser | null; // Misskey でログイン中なら表示
+		onlogin: () => void;
+		onlogout: () => void;
 	} = $props();
+
+	let menu = $state(false); // アカウントメニューの開閉
 
 	const items: { tab: Tab; label: string; icon: 'flame' | 'heart' | 'x' | 'user'; badge?: number }[] =
 		$derived([
@@ -40,6 +49,8 @@
 			{ tab: 'you', label: 'あなた', icon: 'user' }
 		]);
 </script>
+
+<svelte:window onkeydown={(e) => menu && e.key === 'Escape' && (menu = false)} />
 
 <div class="sidebar">
 	<button class="logo" aria-label="みすまっち（新しくさがす）" onclick={onnew}>
@@ -72,6 +83,37 @@
 		<Icon name="plus" size={18} />
 		<span>新しくさがす</span>
 	</button>
+	<!-- アカウント（Misskey 本家のナビバー下部）: アバター + @user@host。押すとメニュー -->
+	<div class="account">
+		{#if user}
+			<button
+				class="who"
+				aria-haspopup="menu"
+				aria-expanded={menu}
+				title="アカウント: @{user.username}@{user.host}"
+				onclick={() => (menu = !menu)}
+			>
+				{#if user.avatarUrl}<img class="avatar" src={user.avatarUrl} alt="" width="32" height="32" />{:else}<span class="avatar noavatar"><Icon name="user" size={18} /></span>{/if}
+				<span class="acct">@{user.username}<span class="host">@{user.host}</span></span>
+			</button>
+			{#if menu}
+				<button class="menu-backdrop" aria-label="メニューを閉じる" onclick={() => (menu = false)}></button>
+				<div class="menu" role="menu">
+					<a class="item" role="menuitem" href="https://{user.host}/@{user.username}" target="_blank" rel="noopener" onclick={() => (menu = false)}>
+						<Icon name="external" size={18} /><span>Misskey で開く</span>
+					</a>
+					<button class="item" role="menuitem" onclick={() => { menu = false; onlogout(); }}>
+						<Icon name="power" size={18} /><span>ログアウト</span>
+					</button>
+				</div>
+			{/if}
+		{:else}
+			<button class="who" onclick={onlogin}>
+				<span class="avatar noavatar"><Icon name="user" size={18} /></span>
+				<span class="acct">Misskey でログイン</span>
+			</button>
+		{/if}
+	</div>
 </div>
 
 <style>
@@ -190,5 +232,105 @@
 	}
 	.new:hover {
 		background-position: 100% 0;
+	}
+	.account {
+		position: relative;
+		margin: 16px 0 0;
+		flex-shrink: 0;
+	}
+	/* 行はナビの項目と同じ字下げ・ピル形。アバター 32px は本家の MkAvatar と同じ */
+	.who {
+		width: 100%;
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		padding: 6px 14px;
+		border: none;
+		border-radius: 999px;
+		background: none;
+		font-family: inherit;
+		color: var(--fg);
+		cursor: pointer;
+		text-align: left;
+		transition: background 0.15s;
+	}
+	.who:hover,
+	.who[aria-expanded='true'] {
+		background: var(--panel-2);
+	}
+	.avatar {
+		width: 32px;
+		height: 32px;
+		border-radius: 50%;
+		flex-shrink: 0;
+		object-fit: cover;
+	}
+	.noavatar {
+		display: grid;
+		place-items: center;
+		background: var(--panel-2);
+		color: var(--fg-muted);
+	}
+	.acct {
+		min-width: 0;
+		overflow: hidden;
+		white-space: nowrap;
+		text-overflow: ellipsis;
+		font-size: 0.9rem;
+		font-weight: 700;
+	}
+	.host {
+		font-weight: 400;
+		opacity: 0.5;
+	}
+	/* メニュー（本家の MkMenu）: 行の上に出す。選択中の項目はアクセント色で塗る */
+	.menu-backdrop {
+		position: fixed;
+		inset: 0;
+		z-index: 60;
+		border: none;
+		background: transparent;
+		cursor: default;
+	}
+	.menu {
+		position: absolute;
+		left: 8px;
+		bottom: calc(100% + 6px);
+		z-index: 61;
+		min-width: 200px;
+		padding: 8px 0;
+		border-radius: 12px;
+		background: var(--panel);
+		border: 1px solid var(--border);
+		box-shadow: var(--shadow-lg);
+		animation: pop 0.14s cubic-bezier(0.2, 0.8, 0.2, 1);
+	}
+	@keyframes pop {
+		from {
+			opacity: 0;
+			transform: translateY(6px) scale(0.96);
+		}
+	}
+	.item {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		width: calc(100% - 16px);
+		margin: 0 8px;
+		min-height: 32px;
+		padding: 5px 12px;
+		border: none;
+		border-radius: 6px;
+		background: none;
+		font: inherit;
+		font-size: 0.86rem;
+		color: var(--fg);
+		text-align: left;
+		text-decoration: none;
+		cursor: pointer;
+	}
+	.item:hover {
+		background: var(--accent);
+		color: #fff;
 	}
 </style>

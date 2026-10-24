@@ -5,6 +5,7 @@
 
 <script lang="ts">
 	import type { Snippet } from 'svelte';
+	import type { AuthUser } from '$lib/auth';
 	import type { Search } from '$lib/search';
 	import Drawer from './Drawer.svelte';
 	import MobileBar from './MobileBar.svelte';
@@ -24,6 +25,9 @@
 		onnew,
 		onrename,
 		ondelete,
+		user,
+		onlogin,
+		onlogout,
 		children
 	}: {
 		tab: Tab | null; // null = どのタブでもない画面（探すランディング）
@@ -37,6 +41,9 @@
 		onnew: () => void; // 新しくさがす（言葉の無い検索＝ランディングに戻る）
 		onrename: (id: string, title: string) => void;
 		ondelete: (id: string) => void;
+		user: AuthUser | null;
+		onlogin: () => void;
+		onlogout: () => void;
 		children: Snippet;
 	} = $props();
 
@@ -64,6 +71,9 @@
 			{onnew}
 			{onrename}
 			{ondelete}
+			{user}
+			{onlogin}
+			{onlogout}
 		/>
 	</aside>
 	<div class="content">
@@ -86,6 +96,9 @@
 				onnew={closing(onnew)}
 				{onrename}
 				{ondelete}
+				{user}
+				onlogin={closing(onlogin)}
+				{onlogout}
 			/>
 		</Drawer>
 	{/if}

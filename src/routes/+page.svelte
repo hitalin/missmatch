@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { onDestroy, onMount } from 'svelte';
-	
+	import { invalidateAll, replaceState } from '$app/navigation';
+	import { page } from '$app/state';
+
 	import Composer from '$lib/components/Composer.svelte';
 	import Discover from '$lib/components/Discover.svelte';
 	import Icon from '$lib/components/Icon.svelte';
@@ -10,6 +12,7 @@
 		import Settings from '$lib/components/Settings.svelte';
 	import Spinner from '$lib/components/Spinner.svelte';
 	import Landing from '$lib/components/Landing.svelte';
+	import LoginSheet from '$lib/components/LoginSheet.svelte';
 	import Shell, { type Tab } from '$lib/components/Shell.svelte';
 	import { featuresOf } from '$lib/features';
 	import { type AskAxis, isAxisDefault, MAX_INTENT_LENGTH, unsureAxes } from '$lib/intent';
@@ -50,6 +53,16 @@
 
 	const DECK_SIZE = 10;
 	const SAVE_DEBOUNCE_MS = 250;
+
+	// Misskey でログイン中のユーザー（+layout.server.ts）。ログインはサーバーをまたぐので画面遷移で行う
+	let { data } = $props();
+	let loginOpen = $state(false);
+	// /auth/callback で失敗したときの理由（URL に載って戻ってくる）
+	let loginError = $state(page.url.searchParams.get('login_error') ?? '');
+	async function logout() {
+		await fetch('/api/auth/logout', { method: 'POST' });
+		await invalidateAll();
+	}
 
 	// プロフィール（設定・学習した好み・検索ごとのいいね・パス）はブラウザに保持する。
 	// onMount で必ず current の検索を用意するので、それ以降 search は null にならない
@@ -101,6 +114,8 @@
 	// 復元は一度だけ（$effect にすると自分の書き込みで再実行ループになる）。
 	// 探すページで入れた一言がまだ読み取られていなければ、ここで読み取る
 	onMount(() => {
+		// 戻り先のエラーは読んだら URL から消す（再読み込みで出し続けない）
+		if (loginError) replaceState('/', {});
 		const saved = loadSavedProfile();
 		const cur = currentSearch(saved);
 		profile = cur ? saved : selectSearch(saved, newSearch());
@@ -360,6 +375,9 @@
 		onnew={startNew}
 		onrename={rename}
 		ondelete={removeSearch}
+		user={data.user}
+		onlogin={() => (loginOpen = true)}
+		onlogout={logout}
 	>
 		<main>
 			{#if onboarding}
@@ -382,6 +400,12 @@
 			{/if}
 			{#if readError}
 				<p class="banner">言葉を読み取れませんでした（{readError}）。設定は手で選べます。</p>
+			{/if}
+			{#if loginError}
+				<p class="banner">
+					ログインできませんでした（{loginError}）。
+					<button class="link" onclick={() => { loginError = ''; loginOpen = true; }}>やり直す</button>
+				</p>
 			{/if}
 
 			{#if tab === 'discover'}
@@ -442,6 +466,9 @@
 			{/if}
 		</main>
 	</Shell>
+{#if loginOpen}
+	<LoginSheet onclose={() => (loginOpen = false)} />
+{/if}
 
 <style>
 	.onboarding {
