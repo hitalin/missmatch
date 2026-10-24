@@ -14,6 +14,8 @@ import { CASES, type EvalCase } from './cases';
 //   EVAL_LABEL=<名前>       結果を src/eval/results/<名前>.json に残す（既定は日時）
 //   EVAL_COMPARE=<path>    以前の結果と比べて差を出す
 //   EVAL_CACHE=1           サーバー側の読み取りキャッシュを使う（既定はキャッシュを読まず判定し直す）
+//   EVAL_CANDIDATES=<n>    Clef に渡す候補の数（0 で全サーバー＝以前の 13 バッチ。既定はサーバー側の既定）
+//   EVAL_EMBED=<model>     候補を絞る埋め込みモデル（bge-m3 / gemma / plamo / qwen3）
 const BASE = process.env.EVAL_BASE_URL?.replace(/\/$/, '');
 const TOP = 5;
 
@@ -63,7 +65,9 @@ async function runCase(c: EvalCase, profiles: ServerProfile[]): Promise<CaseResu
 		body: JSON.stringify({
 			turns: c.turns,
 			scope: SCOPE,
-			fresh: process.env.EVAL_CACHE !== '1'
+			fresh: process.env.EVAL_CACHE !== '1',
+			candidates: process.env.EVAL_CANDIDATES ? Number(process.env.EVAL_CANDIDATES) : undefined,
+			embed: process.env.EVAL_EMBED
 		})
 	});
 	if (!res.ok) throw new Error(`POST /api/intent (${c.id}): HTTP ${res.status}`);

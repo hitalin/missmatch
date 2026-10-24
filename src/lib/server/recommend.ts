@@ -17,6 +17,21 @@ import {
 	type VibeKv,
 	vibeKey
 } from '$lib/vibe';
+import { type Budget, createBudget, meteredRunner } from './budget';
+import {
+	AFFINITY_CANDIDATES,
+	DEFAULT_EMBED_MODEL,
+	type Embedder,
+	type EmbeddingTable,
+	type EmbedModel,
+	embedRunner,
+	packTable,
+	pickCandidates,
+	queryText,
+	refreshTable,
+	tableKey,
+	unpackTable
+} from './embed';
 
 // ServerInfo の形を変えたら上げる
 const SERVERS_KEY = 'servers:v8';
@@ -32,9 +47,9 @@ const PROFILES_KEEP_SECONDS = 60 * 60 * 24;
 const profilesKey = (scope: Scope) => `profiles:v5:${scope}`;
 const CONCURRENCY = 8;
 // 同じ言葉の読み取りは使い回す（トップページの例文など、同じ言葉は何度も来る）。
-// 雰囲気は 7 日おきにしか変わらないので、1 日古くても順位はほぼ同じ。
-// 例文は cron が 1 日 1 回温め直す（wrangler.toml の crons）ので、その間隔より少し長く持つ
-const INTENT_TTL_SECONDS = 60 * 60 * 25;
+// 雰囲気は 7 日おきにしか変わらないので、同じだけ持つ。例文の温め（cron）は期限切れの分だけ置き直すので、
+// 1 日あたりの Clef は例文 16 個の 1/7 で済む（25 時間で捨てて毎日置き直すと無料枠の 1.8 倍を使った）
+export const INTENT_TTL_SECONDS = 60 * 60 * 24 * 7;
 // 噛み合い判定に渡す state や基準を変えたら上げる（古い判定を 1 時間引きずらない）
 const intentKeyPrefix = (scope: Scope) => `intent:v5:${scope}:`;
 
@@ -71,6 +86,23 @@ export function clefRunner(ai: Ai): ClefRunner {
 		ai.run('@cf/cloudflare/clef' as never, input as never) as unknown as Promise<ClefOutput>;
 }
 
+// ルートと cron が使う依存一式。Clef の使用量を記録し、応答後に flush で KV に足す
+// embedModel を渡したときだけ埋め込みを用意する（評価用。本番は候補を絞らないので埋め込まない）
+export function clefDeps(
+	env: { AI: Ai; VIBE_KV: KVNamespace },
+	embedModel?: EmbedModel
+): Deps & { runner: ClefRunner; budget: Budget } {
+	const kv = kvFrom(env.VIBE_KV);
+	const budget = createBudget(kv);
+	return {
+		kv,
+		runner: meteredRunner(clefRunner(env.AI), budget),
+		budget,
+		embedder: embedModel ? embedRunner(env.AI, embedModel) : undefined,
+		embedModel
+	};
+}
+
 interface ServersCache {
 	fetchedAt: number;
 	servers: ServerInfo[];
@@ -101,6 +133,9 @@ export async function getServers(
 export interface Deps {
 	kv: VibeKv;
 	runner: ClefRunner | null;
+	budget?: Budget; // 裏側の仕事（温め・欠け埋め）を止める判断に使う。無ければ上限なし（テストと vite dev）
+	embedder?: Embedder; // 噛み合い判定の候補を絞る埋め込み（評価用）。無ければ絞らず全サーバーを Clef に渡す
+	embedModel?: EmbedModel;
 	sampler?: (host: string, limit?: number) => Promise<string[]>; // 既定は LTL を取りに行く（テストで差し替える）
 	fetcher?: () => Promise<ServerInfo[]>; // 既定は joinmisskey の一覧を取りに行く（テストで差し替える）
 }
@@ -114,6 +149,11 @@ export async function computeVibes(servers: ServerInfo[], deps: Deps): Promise<S
 		while (next < servers.length) {
 			const i = next++;
 			const server = servers[i];
+			// 枠を使い切ったら欠けのまま残す（翌日の欠け埋めで計算する）
+			if (await deps.budget?.exhausted()) {
+				results[i] = { server, vibe: null };
+				continue;
+			}
 			const vibe = await getOrComputeVibe(server, {
 				kv: deps.kv,
 				runner,
@@ -172,6 +212,14 @@ async function buildProfiles(
 	}));
 	const snapshot: ProfilesSnapshot = { builtAt: Date.now(), profiles, totalCount: servers.length };
 	await putSnapshot(deps.kv, scope, snapshot);
+	// 埋め込みの表も属性表に合わせる（文面の変わったサーバーだけ埋め込み直す。Clef は使わない）
+	if (deps.embedder) {
+		const embedding = ensureTable(deps, scope, profiles).catch((e) =>
+			console.error('[profiles] embeddings', e)
+		);
+		if (defer) defer(embedding);
+		else await embedding;
+	}
 	// 最近失敗したものは欠けに数えない（しばらく再試行しない）
 	const missing = entries
 		.filter(({ entry }) => entry.vibe === null && !entry.failed)
@@ -221,6 +269,25 @@ export interface IntentResult {
 	affinity: Record<string, number>;
 }
 
+// 埋め込みの表を読み、属性表と食い違っていれば合わせて置き直す。埋め込みが無ければ null
+async function ensureTable(
+	deps: Deps,
+	scope: Scope,
+	profiles: ServerProfile[]
+): Promise<EmbeddingTable | null> {
+	if (!deps.embedder) return null;
+	const key = tableKey(deps.embedModel ?? DEFAULT_EMBED_MODEL, scope);
+	const current = unpackTable(await deps.kv.get(key));
+	const { table, embedded } = await refreshTable(profiles, current, deps.embedder);
+	if (embedded > 0 || !current) await deps.kv.put(key, packTable(table));
+	return table;
+}
+
+export interface IntentOptions {
+	fresh?: boolean; // キャッシュを読まずに判定し直す（評価用）
+	candidates?: number; // Clef に渡す候補の数（既定 AFFINITY_CANDIDATES。0 で全サーバー。評価用）
+}
+
 async function intentKey(scope: Scope, turns: string[]): Promise<string> {
 	const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(turns.join('\n')));
 	const hex = [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('');
@@ -235,9 +302,13 @@ export async function readIntent(
 	turns: string[],
 	scope: Scope,
 	defer?: Defer,
-	options: { fresh?: boolean } = {}
+	options: IntentOptions = {}
 ): Promise<IntentResult> {
 	const key = await intentKey(scope, turns);
+	// 既定と違う設定（評価用）の結果は、利用者に返すキャッシュに混ぜない
+	const cacheable =
+		(options.candidates ?? AFFINITY_CANDIDATES) === AFFINITY_CANDIDATES &&
+		(deps.embedModel ?? DEFAULT_EMBED_MODEL) === DEFAULT_EMBED_MODEL;
 	// 属性表は判定キャッシュの読みと並行して読み始める（外れたとき KV 1 往復ぶん早く Clef に入れる）
 	const loading = loadProfiles(deps, defer, scope);
 	loading.catch(() => {}); // 判定キャッシュが当たって使わなかったときの未処理 rejection を防ぐ
@@ -252,31 +323,64 @@ export async function readIntent(
 		}
 	}
 	const { profiles } = await loading;
+	// 評価用: 埋め込みの類似度で候補を上位 K 件に絞る（本番は K = 0 で全サーバーを Clef に渡す。
+	// 絞ると recall@5 が 74 → 60〜69% に落ちた。src/lib/server/embed.ts）
+	const k = options.candidates ?? AFFINITY_CANDIDATES;
+	const { candidates, others } = await selectCandidates(deps, scope, turns, profiles, k);
 	const [intent, { outputs, failed }] = await Promise.all([
 		deps.runner(buildIntentRequest(turns)),
 		// clef-flash は A/B で recall@5 81 → 48%、しかも遅かった（平均 2.2 → 3.3 秒）ので使わない（2026-10-17）
-		runAffinity(deps.runner, buildAffinityRequests(turns, profiles))
+		runAffinity(deps.runner, buildAffinityRequests(turns, candidates))
 	]);
-	const affinity = parseAffinity(outputs, profiles);
+	const affinity = { ...others, ...parseAffinity(outputs, candidates) };
 	// 上位 16 件を 1 本で比べ直す再ランキングは試したが、A/B で recall@5 84 vs 83%、MRR 90 vs 89% と
 	// 誤差の範囲で、応答が 1.6 → 2.8 秒に伸びたので外した（2026-10-17、32 言葉）
 	const result: IntentResult = { answers: intent.answers, affinity };
-	if (failed === 0) {
+	if (failed === 0 && cacheable) {
 		await deps.kv.put(key, JSON.stringify(result), { expirationTtl: INTENT_TTL_SECONDS });
 	}
 	return result;
 }
 
-// トップページの例文の読み取りを、既定の範囲で温め直す（キャッシュの期限内でも置き直す）。
-// Cron Triggers（wrangler.toml の crons）と /api/warm?mode=intents の両方から呼ぶ
+// 言葉を埋め込み、表に近い順で上位 K 件を候補にする。外側には類似度順の値（0.5 未満）を付ける。
+// 埋め込めない環境（AI 無し・表が無い）や K が 0 のときは全サーバーが候補
+async function selectCandidates(
+	deps: Deps,
+	scope: Scope,
+	turns: string[],
+	profiles: ServerProfile[],
+	k: number
+): Promise<{ candidates: ServerProfile[]; others: Record<string, number> }> {
+	if (!deps.embedder || k <= 0) return { candidates: profiles, others: {} };
+	const [table, [query]] = await Promise.all([
+		ensureTable(deps, scope, profiles),
+		deps.embedder([queryText(turns)])
+	]);
+	if (!table || table.hosts.length === 0) return { candidates: profiles, others: {} };
+	const picked = pickCandidates(query, table, k);
+	const byHost = new Map(profiles.map((p) => [p.server.host, p]));
+	const candidates = picked.candidates
+		.map((h) => byHost.get(h))
+		.filter((p): p is ServerProfile => p !== undefined);
+	return { candidates, others: picked.others };
+}
+
+// トップページの例文の読み取りを、既定の範囲で温める。キャッシュが切れた例文だけ判定し、
+// 枠を使い切ったら残りは翌日に回す。Cron Triggers（wrangler.toml の crons）と /api/warm?mode=intents の両方から呼ぶ
 export async function warmIntents(
 	deps: Deps & { runner: ClefRunner }
-): Promise<{ warmed: number; scope: Scope }> {
+): Promise<{ warmed: number; skipped: number; scope: Scope }> {
 	const scope = scopeFor(defaultPreferences());
 	let warmed = 0;
+	let skipped = 0;
 	for (const text of EXAMPLES) {
+		if (await deps.kv.get(await intentKey(scope, [text]))) {
+			skipped++;
+			continue;
+		}
+		if (await deps.budget?.exhausted()) break;
 		await readIntent(deps, [text], scope, undefined, { fresh: true });
 		warmed++;
 	}
-	return { warmed, scope };
+	return { warmed, skipped, scope };
 }

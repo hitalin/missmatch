@@ -1,5 +1,12 @@
 import { json } from '@sveltejs/kit';
-import { clefRunner, kvFrom, loadProfiles, memoryKv, parseScope } from '$lib/server/recommend';
+import {
+	clefDeps,
+	clefRunner,
+	type Deps,
+	loadProfiles,
+	memoryKv,
+	parseScope
+} from '$lib/server/recommend';
 import type { RequestHandler } from './$types';
 
 // vite dev ではバインディングがないため、プロセス内メモリで代用する
@@ -13,15 +20,17 @@ export const GET: RequestHandler = async ({ url, platform, setHeaders }) => {
 	const env = platform?.env;
 	const ctx = platform?.context;
 	const scope = parseScope(url.searchParams.get('scope'));
+	const deps: Deps =
+		env?.AI && env.VIBE_KV
+			? clefDeps(env)
+			: { kv: devKv, runner: env?.AI ? clefRunner(env.AI) : null };
+	// 応答後の欠け埋めで使った Neurons は、その仕事が終わってから KV へ足す
+	const defer = ctx
+		? (work: Promise<unknown>) =>
+				ctx.waitUntil(deps.budget ? work.finally(() => deps.budget?.flush()) : work)
+		: undefined;
 	try {
-		const result = await loadProfiles(
-			{
-				kv: env?.VIBE_KV ? kvFrom(env.VIBE_KV) : devKv,
-				runner: env?.AI ? clefRunner(env.AI) : null
-			},
-			ctx ? (work) => ctx.waitUntil(work) : undefined,
-			scope
-		);
+		const result = await loadProfiles(deps, defer, scope);
 		setHeaders({ 'cache-control': result.pendingCount > 0 ? 'no-store' : 'public, max-age=300' });
 		return json(result);
 	} catch (e) {

@@ -1,14 +1,7 @@
 import { json } from '@sveltejs/kit';
 import { byActivity } from '$lib/candidates';
 import { isInScope } from '$lib/match';
-import {
-	clefRunner,
-	computeVibes,
-	getServers,
-	kvFrom,
-	parseScope,
-	warmIntents
-} from '$lib/server/recommend';
+import { clefDeps, computeVibes, getServers, parseScope, warmIntents } from '$lib/server/recommend';
 import type { RequestHandler } from './$types';
 
 // 雰囲気プロファイルを事前計算する（手で叩く用。例文の温めは Cron Triggers が src/worker.ts から回す）。
@@ -19,23 +12,30 @@ export const POST: RequestHandler = async ({ request, url, platform }) => {
 		return json({ error: 'unauthorized' }, { status: 401 });
 	}
 
-	// mode=intents: トップページの例文の読み取りを温め直す（cron を待たずに手で温めたいとき）
+	const deps = clefDeps(env);
+
+	// mode=intents: トップページの例文の読み取りを温める（cron を待たずに手で温めたいとき）
 	if (url.searchParams.get('mode') === 'intents') {
-		return json(await warmIntents({ kv: kvFrom(env.VIBE_KV), runner: clefRunner(env.AI) }));
+		const result = await warmIntents(deps);
+		await deps.budget.flush();
+		return json({ ...result, neurons: await deps.budget.spent() });
 	}
 
 	const limit = Math.min(Number(url.searchParams.get('limit') ?? 50), 200);
 	const offset = Number(url.searchParams.get('offset') ?? 0);
 
-	const servers = (await getServers(kvFrom(env.VIBE_KV)))
+	const servers = (await getServers(deps.kv))
 		.filter((s) => isInScope(s, parseScope(url.searchParams.get('scope'))))
 		.sort(byActivity)
 		.slice(offset, offset + limit);
 
-	const results = await computeVibes(servers, {
-		kv: kvFrom(env.VIBE_KV),
-		runner: clefRunner(env.AI)
-	});
+	const results = await computeVibes(servers, deps);
+	await deps.budget.flush();
 	const computed = results.filter((r) => r.vibe !== null).length;
-	return json({ requested: servers.length, computed, failed: servers.length - computed });
+	return json({
+		requested: servers.length,
+		computed,
+		failed: servers.length - computed,
+		neurons: await deps.budget.spent()
+	});
 };

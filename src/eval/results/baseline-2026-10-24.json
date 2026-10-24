@@ -1,0 +1,1366 @@
+{
+	"at": "2026-10-24T09:30:15.836Z",
+	"base": "http://localhost:8790",
+	"cases": [
+		{
+			"id": "vent",
+			"turns": [
+				"病み垢として運用したい。弱音や愚痴を吐いても浮かない、静かな場所がいい"
+			],
+			"ranks": {
+				"yami.ski": 1,
+				"drdr.club": 5,
+				"kasei.ski": null,
+				"m.itsukey.jp": 7
+			},
+			"top": [
+				{
+					"host": "yami.ski",
+					"score": 95,
+					"affinity": 0.9457
+				},
+				{
+					"host": "cozy-space.blue",
+					"score": 94,
+					"affinity": 0.9629
+				},
+				{
+					"host": "warpday.net",
+					"score": 89,
+					"affinity": 0.9147
+				},
+				{
+					"host": "misskey.yukineko.me",
+					"score": 88,
+					"affinity": 0.935
+				},
+				{
+					"host": "drdr.club",
+					"score": 87,
+					"affinity": 0.8756
+				}
+			],
+			"recallAt5": 0.5,
+			"recallAt10": 0.75,
+			"best": 1,
+			"must": null,
+			"ms": 2109
+		},
+		{
+			"id": "illust-original",
+			"turns": [
+				"一次創作のイラストを描いていて、作品を見てもらえる場所"
+			],
+			"ranks": {
+				"misskey.design": null,
+				"oekakiskey.com": 1,
+				"misskey.art": 2
+			},
+			"top": [
+				{
+					"host": "oekakiskey.com",
+					"score": 95,
+					"affinity": 0.9475
+				},
+				{
+					"host": "misskey.art",
+					"score": 88,
+					"affinity": 0.9489
+				},
+				{
+					"host": "misskey.day",
+					"score": 68,
+					"affinity": 0.7914
+				},
+				{
+					"host": "sns.ourt-ai.work",
+					"score": 66,
+					"affinity": 0.6272
+				},
+				{
+					"host": "misskey.seitendan.com",
+					"score": 58,
+					"affinity": 0.759
+				}
+			],
+			"recallAt5": 0.6666666666666666,
+			"recallAt10": 0.6666666666666666,
+			"best": 1,
+			"must": null,
+			"ms": 6353
+		},
+		{
+			"id": "novel",
+			"turns": [
+				"小説や文章を書いていて、読んでもらいたい"
+			],
+			"ranks": {
+				"misskey.design": null,
+				"inokashiraskey.jp": 6
+			},
+			"top": [
+				{
+					"host": "noc.ski",
+					"score": 85,
+					"affinity": 0.8549
+				},
+				{
+					"host": "misskeytsf.love",
+					"score": 81,
+					"affinity": 0.7853
+				},
+				{
+					"host": "yumesuki.net",
+					"score": 73,
+					"affinity": 0.6869
+				},
+				{
+					"host": "misskey.art",
+					"score": 56,
+					"affinity": 0.7229
+				},
+				{
+					"host": "m.itsukey.jp",
+					"score": 55,
+					"affinity": 0.5679
+				}
+			],
+			"recallAt5": 0,
+			"recallAt10": 0.5,
+			"best": 6,
+			"must": null,
+			"ms": 2588
+		},
+		{
+			"id": "vrchat",
+			"turns": [
+				"VRChat の人が多いところ"
+			],
+			"ranks": {
+				"buicha.social": 1,
+				"misskey.niri.la": 3
+			},
+			"top": [
+				{
+					"host": "buicha.social",
+					"score": 96,
+					"affinity": 0.9811
+				},
+				{
+					"host": "inokashiraskey.jp",
+					"score": 93,
+					"affinity": 0.9463
+				},
+				{
+					"host": "misskey.niri.la",
+					"score": 91,
+					"affinity": 0.9681
+				},
+				{
+					"host": "misskey.shinanomai.xyz",
+					"score": 85,
+					"affinity": 0.871
+				},
+				{
+					"host": "superneko.net",
+					"score": 79,
+					"affinity": 0.8327
+				}
+			],
+			"recallAt5": 1,
+			"recallAt10": 1,
+			"best": 1,
+			"must": null,
+			"ms": 7179
+		},
+		{
+			"id": "trpg",
+			"turns": [
+				"TRPG の卓募集ができるサーバー"
+			],
+			"ranks": {
+				"takusuki.com": 1
+			},
+			"top": [
+				{
+					"host": "takusuki.com",
+					"score": 86,
+					"affinity": 0.9836
+				},
+				{
+					"host": "social.onlinesession.app",
+					"score": 79,
+					"affinity": 0.8928
+				},
+				{
+					"host": "nijimiss.moe",
+					"score": 51,
+					"affinity": 0.5178
+				},
+				{
+					"host": "n-kaiwai.work",
+					"score": 50,
+					"affinity": 0.4964
+				},
+				{
+					"host": "misskeymint.net",
+					"score": 49,
+					"affinity": 0.4833
+				}
+			],
+			"recallAt5": 1,
+			"recallAt10": 1,
+			"best": 1,
+			"must": null,
+			"ms": 2299
+		},
+		{
+			"id": "splatoon",
+			"turns": [
+				"スプラトゥーンの話ができる"
+			],
+			"ranks": {
+				"ikaskey.bktsk.com": 1
+			},
+			"top": [
+				{
+					"host": "ikaskey.bktsk.com",
+					"score": 97,
+					"affinity": 0.9797
+				},
+				{
+					"host": "chunchun.world",
+					"score": 61,
+					"affinity": 0.6093
+				},
+				{
+					"host": "social.onlinesession.app",
+					"score": 61,
+					"affinity": 0.5481
+				},
+				{
+					"host": "gp.tsukimi.club",
+					"score": 60,
+					"affinity": 0.5691
+				},
+				{
+					"host": "misskey.ruste.red",
+					"score": 60,
+					"affinity": 0.5132
+				}
+			],
+			"recallAt5": 1,
+			"recallAt10": 1,
+			"best": 1,
+			"must": null,
+			"ms": 1663
+		},
+		{
+			"id": "tech",
+			"turns": [
+				"プログラミングや技術の話がしたい"
+			],
+			"ranks": {
+				"misskey.systems": 1,
+				"misskey.kyoupro.com": 3,
+				"msky.work": 5
+			},
+			"top": [
+				{
+					"host": "misskey.systems",
+					"score": 96,
+					"affinity": 0.9755
+				},
+				{
+					"host": "mi0.robotician.jp",
+					"score": 93,
+					"affinity": 0.9425
+				},
+				{
+					"host": "misskey.kyoupro.com",
+					"score": 93,
+					"affinity": 0.9195
+				},
+				{
+					"host": "misskey.shunrin.com",
+					"score": 92,
+					"affinity": 0.9444
+				},
+				{
+					"host": "msky.work",
+					"score": 90,
+					"affinity": 0.9154
+				}
+			],
+			"recallAt5": 1,
+			"recallAt10": 1,
+			"best": 1,
+			"must": null,
+			"ms": 1177
+		},
+		{
+			"id": "tech-vent",
+			"turns": [
+				"仕事の愚痴を IT 系の人と言い合いたい"
+			],
+			"ranks": {
+				"msky.work": 2,
+				"misskey.systems": 1
+			},
+			"top": [
+				{
+					"host": "misskey.systems",
+					"score": 95,
+					"affinity": 0.9623
+				},
+				{
+					"host": "msky.work",
+					"score": 92,
+					"affinity": 0.9368
+				},
+				{
+					"host": "warpday.net",
+					"score": 85,
+					"affinity": 0.8373
+				},
+				{
+					"host": "misskey.shunrin.com",
+					"score": 84,
+					"affinity": 0.8405
+				},
+				{
+					"host": "mi.cbrx.io",
+					"score": 83,
+					"affinity": 0.8341
+				}
+			],
+			"recallAt5": 1,
+			"recallAt10": 1,
+			"best": 1,
+			"must": null,
+			"ms": 1683
+		},
+		{
+			"id": "vocal-synth",
+			"turns": [
+				"ボカロや合成音声の曲を作っている。同じ趣味の人がいるところ"
+			],
+			"ranks": {
+				"voskey.icalo.net": 1,
+				"nicomedkey.cc": 7
+			},
+			"top": [
+				{
+					"host": "voskey.icalo.net",
+					"score": 91,
+					"affinity": 0.9556
+				},
+				{
+					"host": "misskey.vocalodon.net",
+					"score": 82,
+					"affinity": 0.9367
+				},
+				{
+					"host": "mi-k.cloud",
+					"score": 74,
+					"affinity": 0.7435
+				},
+				{
+					"host": "garden.kaku-girl-laboratory.xyz",
+					"score": 69,
+					"affinity": 0.6159
+				},
+				{
+					"host": "u-stella.net",
+					"score": 66,
+					"affinity": 0.6394
+				}
+			],
+			"recallAt5": 0.5,
+			"recallAt10": 1,
+			"best": 1,
+			"must": null,
+			"ms": 1785
+		},
+		{
+			"id": "imas",
+			"turns": [
+				"アイマスの話を気兼ねなくできる場所"
+			],
+			"ranks": {
+				"live-theater.net": 2,
+				"unicuskey.com": 1
+			},
+			"top": [
+				{
+					"host": "unicuskey.com",
+					"score": 92,
+					"affinity": 0.9096
+				},
+				{
+					"host": "live-theater.net",
+					"score": 85,
+					"affinity": 0.8526
+				},
+				{
+					"host": "uttaeruyo.com",
+					"score": 77,
+					"affinity": 0.7199
+				},
+				{
+					"host": "m.eskey.click",
+					"score": 70,
+					"affinity": 0.6164
+				},
+				{
+					"host": "misskey.seitendan.com",
+					"score": 59,
+					"affinity": 0.5789
+				}
+			],
+			"recallAt5": 1,
+			"recallAt10": 1,
+			"best": 1,
+			"must": null,
+			"ms": 1629
+		},
+		{
+			"id": "anime",
+			"turns": [
+				"アニメの実況で盛り上がりたい"
+			],
+			"ranks": {
+				"misskey.seitendan.com": 1,
+				"misskey.stream": 17,
+				"misskirara.net": 2
+			},
+			"top": [
+				{
+					"host": "misskey.seitendan.com",
+					"score": 88,
+					"affinity": 0.9675
+				},
+				{
+					"host": "misskirara.net",
+					"score": 75,
+					"affinity": 0.7067
+				},
+				{
+					"host": "misskey.assaultli.ly",
+					"score": 60,
+					"affinity": 0.5838
+				},
+				{
+					"host": "misskey.delmulin.com",
+					"score": 58,
+					"affinity": 0.4851
+				},
+				{
+					"host": "houshindai.net",
+					"score": 57,
+					"affinity": 0.4903
+				}
+			],
+			"recallAt5": 0.6666666666666666,
+			"recallAt10": 0.6666666666666666,
+			"best": 1,
+			"must": null,
+			"ms": 1486
+		},
+		{
+			"id": "animal",
+			"turns": [
+				"ペットや動物の写真を見たい"
+			],
+			"ranks": {
+				"misskey.dog": 1
+			},
+			"top": [
+				{
+					"host": "misskey.dog",
+					"score": 98,
+					"affinity": 0.9826
+				},
+				{
+					"host": "nijimiss.moe",
+					"score": 86,
+					"affinity": 0.9123
+				},
+				{
+					"host": "geoplanetary.net",
+					"score": 81,
+					"affinity": 0.8356
+				},
+				{
+					"host": "kusso-yotta.com",
+					"score": 76,
+					"affinity": 0.7972
+				},
+				{
+					"host": "warpday.net",
+					"score": 70,
+					"affinity": 0.7596
+				}
+			],
+			"recallAt5": 1,
+			"recallAt10": 1,
+			"best": 1,
+			"must": null,
+			"ms": 1369
+		},
+		{
+			"id": "food",
+			"turns": [
+				"ご飯やお酒の話で盛り上がりたい"
+			],
+			"ranks": {
+				"potato.ski": 1,
+				"kusso-yotta.com": 2
+			},
+			"top": [
+				{
+					"host": "potato.ski",
+					"score": 97,
+					"affinity": 0.9751
+				},
+				{
+					"host": "kusso-yotta.com",
+					"score": 91,
+					"affinity": 0.923
+				},
+				{
+					"host": "drdr.club",
+					"score": 90,
+					"affinity": 0.8975
+				},
+				{
+					"host": "misskey.soda-net.com",
+					"score": 87,
+					"affinity": 0.8826
+				},
+				{
+					"host": "316room.com",
+					"score": 86,
+					"affinity": 0.8638
+				}
+			],
+			"recallAt5": 1,
+			"recallAt10": 1,
+			"best": 1,
+			"must": null,
+			"ms": 1522
+		},
+		{
+			"id": "making",
+			"turns": [
+				"電子工作や 3DCG など、なにか作っている人が集まる場所"
+			],
+			"ranks": {
+				"crafters.aosankaku.net": 2,
+				"mi0.robotician.jp": 1,
+				"www.dazuser.com": 3
+			},
+			"top": [
+				{
+					"host": "mi0.robotician.jp",
+					"score": 94,
+					"affinity": 0.9231
+				},
+				{
+					"host": "crafters.aosankaku.net",
+					"score": 88,
+					"affinity": 0.8964
+				},
+				{
+					"host": "www.dazuser.com",
+					"score": 81,
+					"affinity": 0.7617
+				},
+				{
+					"host": "misskey.doujin.games",
+					"score": 75,
+					"affinity": 0.679
+				},
+				{
+					"host": "misskey.systems",
+					"score": 65,
+					"affinity": 0.5634
+				}
+			],
+			"recallAt5": 1,
+			"recallAt10": 1,
+			"best": 1,
+			"must": null,
+			"ms": 1661
+		},
+		{
+			"id": "diary-slow",
+			"turns": [
+				"日記やひとりごとを気軽に書きたい、流れがゆっくりなところ"
+			],
+			"ranks": {
+				"waff-skey.net": null,
+				"misskey.takehi.to": 34,
+				"drdr.club": 1,
+				"metreee.com": 10
+			},
+			"top": [
+				{
+					"host": "drdr.club",
+					"score": 90,
+					"affinity": 0.9325
+				},
+				{
+					"host": "misskeymint.net",
+					"score": 87,
+					"affinity": 0.9422
+				},
+				{
+					"host": "uhouho.life",
+					"score": 87,
+					"affinity": 0.9121
+				},
+				{
+					"host": "msky.haruyjsn.net",
+					"score": 87,
+					"affinity": 0.9255
+				},
+				{
+					"host": "kusso-yotta.com",
+					"score": 87,
+					"affinity": 0.9074
+				}
+			],
+			"recallAt5": 0.25,
+			"recallAt10": 0.5,
+			"best": 1,
+			"must": null,
+			"ms": 1545
+		},
+		{
+			"id": "beginner-chat",
+			"turns": [
+				"初めての Misskey。のんびり雑談できるところ"
+			],
+			"ranks": {
+				"misskey-square.net": 7,
+				"misskey.day": 36,
+				"misskey.takehi.to": 5,
+				"waff-skey.net": null
+			},
+			"top": [
+				{
+					"host": "drdr.club",
+					"score": 88,
+					"affinity": 0.9218
+				},
+				{
+					"host": "misskeymint.net",
+					"score": 87,
+					"affinity": 0.9511
+				},
+				{
+					"host": "warpday.net",
+					"score": 86,
+					"affinity": 0.9302
+				},
+				{
+					"host": "submarin.online",
+					"score": 84,
+					"affinity": 0.8954
+				},
+				{
+					"host": "misskey.takehi.to",
+					"score": 84,
+					"affinity": 0.9364
+				}
+			],
+			"recallAt5": 0.25,
+			"recallAt10": 0.5,
+			"best": 5,
+			"must": null,
+			"ms": 2405
+		},
+		{
+			"id": "small-quiet",
+			"turns": [
+				"小さめで、顔見知りができやすいところ",
+				"大手の喧騒から離れたい"
+			],
+			"ranks": {
+				"mi.cbrx.io": 37,
+				"misskey.7ka.org": 4,
+				"sns.copi.pe": 20
+			},
+			"top": [
+				{
+					"host": "misskey.takehi.to",
+					"score": 82,
+					"affinity": 0.9312
+				},
+				{
+					"host": "rustearain.space",
+					"score": 79,
+					"affinity": 0.8806
+				},
+				{
+					"host": "m.itsukey.jp",
+					"score": 78,
+					"affinity": 0.8694
+				},
+				{
+					"host": "misskey.7ka.org",
+					"score": 77,
+					"affinity": 0.8583
+				},
+				{
+					"host": "uhouho.life",
+					"score": 75,
+					"affinity": 0.8359
+				}
+			],
+			"recallAt5": 0.3333333333333333,
+			"recallAt10": 0.3333333333333333,
+			"best": 4,
+			"must": null,
+			"ms": 1810
+		},
+		{
+			"id": "roleplay",
+			"turns": [
+				"なりきりやロールプレイをしたい"
+			],
+			"ranks": {
+				"n-kaiwai.work": 1,
+				"ojousama-tea.party": 2
+			},
+			"top": [
+				{
+					"host": "n-kaiwai.work",
+					"score": 84,
+					"affinity": 0.9556
+				},
+				{
+					"host": "ojousama-tea.party",
+					"score": 77,
+					"affinity": 0.8625
+				},
+				{
+					"host": "noc.ski",
+					"score": 70,
+					"affinity": 0.7669
+				},
+				{
+					"host": "takusuki.com",
+					"score": 65,
+					"affinity": 0.6991
+				},
+				{
+					"host": "social.onlinesession.app",
+					"score": 65,
+					"affinity": 0.6942
+				}
+			],
+			"recallAt5": 1,
+			"recallAt10": 1,
+			"best": 1,
+			"must": null,
+			"ms": 1555
+		},
+		{
+			"id": "parenting",
+			"turns": [
+				"子育て中の人と話したい"
+			],
+			"ranks": {
+				"mi.hiyoko.club": 1
+			},
+			"top": [
+				{
+					"host": "mi.hiyoko.club",
+					"score": 95,
+					"affinity": 0.9699
+				},
+				{
+					"host": "warpday.net",
+					"score": 76,
+					"affinity": 0.7055
+				},
+				{
+					"host": "misskeymint.net",
+					"score": 75,
+					"affinity": 0.6995
+				},
+				{
+					"host": "misskey.soda-net.com",
+					"score": 73,
+					"affinity": 0.6992
+				},
+				{
+					"host": "drdr.club",
+					"score": 71,
+					"affinity": 0.6433
+				}
+			],
+			"recallAt5": 1,
+			"recallAt10": 1,
+			"best": 1,
+			"must": null,
+			"ms": 1989
+		},
+		{
+			"id": "latest-features",
+			"turns": [
+				"最新の Misskey を使いたい。機能が多いところ"
+			],
+			"ranks": {
+				"a2c.misskey.casa": 2,
+				"prismisskey.space": 1,
+				"misskey.flowers": 3
+			},
+			"top": [
+				{
+					"host": "prismisskey.space",
+					"score": 82,
+					"affinity": 0.925
+				},
+				{
+					"host": "a2c.misskey.casa",
+					"score": 79,
+					"affinity": 0.8897
+				},
+				{
+					"host": "misskey.flowers",
+					"score": 78,
+					"affinity": 0.8667
+				},
+				{
+					"host": "nijimiss.moe",
+					"score": 75,
+					"affinity": 0.8309
+				},
+				{
+					"host": "misskey.systems",
+					"score": 71,
+					"affinity": 0.7797
+				}
+			],
+			"recallAt5": 1,
+			"recallAt10": 1,
+			"best": 1,
+			"must": null,
+			"ms": 2409
+		},
+		{
+			"id": "lively",
+			"turns": [
+				"人が多くてにぎやかなところ"
+			],
+			"ranks": {
+				"misskey.day": 6,
+				"nijimiss.moe": 1,
+				"misskey-square.net": 2,
+				"takusuki.com": 9
+			},
+			"top": [
+				{
+					"host": "nijimiss.moe",
+					"score": 85,
+					"affinity": 0.9692
+				},
+				{
+					"host": "misskey-square.net",
+					"score": 84,
+					"affinity": 0.9526
+				},
+				{
+					"host": "misskey.ranranhome.info",
+					"score": 84,
+					"affinity": 0.957
+				},
+				{
+					"host": "mivatter.com",
+					"score": 80,
+					"affinity": 0.8994
+				},
+				{
+					"host": "submarin.online",
+					"score": 80,
+					"affinity": 0.8976
+				}
+			],
+			"recallAt5": 0.5,
+			"recallAt10": 1,
+			"best": 1,
+			"must": null,
+			"ms": 2634
+		},
+		{
+			"id": "oshi",
+			"turns": [
+				"推しの話を気兼ねなくできる場所"
+			],
+			"ranks": {
+				"nijimiss.moe": 15,
+				"m.eskey.click": 2,
+				"live-theater.net": 6
+			},
+			"top": [
+				{
+					"host": "unicuskey.com",
+					"score": 90,
+					"affinity": 0.8868
+				},
+				{
+					"host": "m.eskey.click",
+					"score": 85,
+					"affinity": 0.8156
+				},
+				{
+					"host": "misskirara.net",
+					"score": 85,
+					"affinity": 0.8499
+				},
+				{
+					"host": "takanoriskey.toppu.jp",
+					"score": 85,
+					"affinity": 0.8331
+				},
+				{
+					"host": "misskey.assaultli.ly",
+					"score": 83,
+					"affinity": 0.8006
+				}
+			],
+			"recallAt5": 0.3333333333333333,
+			"recallAt10": 0.6666666666666666,
+			"best": 2,
+			"must": null,
+			"ms": 1508
+		},
+		{
+			"id": "game-play",
+			"turns": [
+				"ゲームの話ができて、一緒に遊ぶ人も見つかる"
+			],
+			"ranks": {
+				"ikaskey.bktsk.com": 2,
+				"takusuki.com": 1,
+				"stormskey.works": 7,
+				"mk.puzzlesskey.com": 8
+			},
+			"top": [
+				{
+					"host": "takusuki.com",
+					"score": 93,
+					"affinity": 0.9453
+				},
+				{
+					"host": "ikaskey.bktsk.com",
+					"score": 90,
+					"affinity": 0.8984
+				},
+				{
+					"host": "sns.mouii.net",
+					"score": 90,
+					"affinity": 0.9032
+				},
+				{
+					"host": "social.onlinesession.app",
+					"score": 88,
+					"affinity": 0.9087
+				},
+				{
+					"host": "buicha.social",
+					"score": 87,
+					"affinity": 0.8719
+				}
+			],
+			"recallAt5": 0.5,
+			"recallAt10": 1,
+			"best": 1,
+			"must": null,
+			"ms": 1814
+		},
+		{
+			"id": "fanart",
+			"turns": [
+				"二次創作のイラストを載せたい"
+			],
+			"ranks": {
+				"mivatter.com": 5,
+				"oekakiskey.com": 1,
+				"misskey.design": null,
+				"misskey.art": 2
+			},
+			"top": [
+				{
+					"host": "oekakiskey.com",
+					"score": 95,
+					"affinity": 0.9475
+				},
+				{
+					"host": "misskey.art",
+					"score": 89,
+					"affinity": 0.9593
+				},
+				{
+					"host": "misskey.day",
+					"score": 72,
+					"affinity": 0.8396
+				},
+				{
+					"host": "lokyoski.casacamelia.xyz",
+					"score": 72,
+					"affinity": 0.6667
+				},
+				{
+					"host": "mivatter.com",
+					"score": 70,
+					"affinity": 0.9008
+				}
+			],
+			"recallAt5": 0.75,
+			"recallAt10": 0.75,
+			"best": 1,
+			"must": null,
+			"ms": 1314
+		},
+		{
+			"id": "ai-art",
+			"turns": [
+				"AI で生成したイラストを気兼ねなく投稿したい"
+			],
+			"ranks": {
+				"sns.ourt-ai.work": 1
+			},
+			"top": [
+				{
+					"host": "sns.ourt-ai.work",
+					"score": 79,
+					"affinity": 0.8159
+				},
+				{
+					"host": "misskey.art",
+					"score": 73,
+					"affinity": 0.8066
+				},
+				{
+					"host": "misskey.day",
+					"score": 71,
+					"affinity": 0.8322
+				},
+				{
+					"host": "msky.haruyjsn.net",
+					"score": 59,
+					"affinity": 0.6675
+				},
+				{
+					"host": "misskey-square.net",
+					"score": 58,
+					"affinity": 0.65
+				}
+			],
+			"recallAt5": 1,
+			"recallAt10": 1,
+			"best": 1,
+			"must": null,
+			"ms": 2310
+		},
+		{
+			"id": "solo-quiet",
+			"turns": [
+				"ひとりごと用のサブ垢。干渉が少なくて静かなところ"
+			],
+			"ranks": {
+				"chiranote.com": 9,
+				"torikago-suki.net": 87,
+				"metreee.com": 6
+			},
+			"top": [
+				{
+					"host": "cozy-space.blue",
+					"score": 87,
+					"affinity": 0.9293
+				},
+				{
+					"host": "drdr.club",
+					"score": 82,
+					"affinity": 0.8665
+				},
+				{
+					"host": "misskey.yukineko.me",
+					"score": 81,
+					"affinity": 0.8939
+				},
+				{
+					"host": "msky.haruyjsn.net",
+					"score": 81,
+					"affinity": 0.8431
+				},
+				{
+					"host": "uhouho.life",
+					"score": 79,
+					"affinity": 0.805
+				}
+			],
+			"recallAt5": 0,
+			"recallAt10": 0.6666666666666666,
+			"best": 6,
+			"must": null,
+			"ms": 1666
+		},
+		{
+			"id": "kemono",
+			"turns": [
+				"ケモノやけもみみが好き"
+			],
+			"ranks": {
+				"virtualkemomimi.net": 1,
+				"misskey.bakedbanana.net": 3
+			},
+			"top": [
+				{
+					"host": "virtualkemomimi.net",
+					"score": 83,
+					"affinity": 0.9375
+				},
+				{
+					"host": "fluffy.social",
+					"score": 78,
+					"affinity": 0.8708
+				},
+				{
+					"host": "misskey.bakedbanana.net",
+					"score": 77,
+					"affinity": 0.8611
+				},
+				{
+					"host": "d.kg-misskey.net",
+					"score": 68,
+					"affinity": 0.7349
+				},
+				{
+					"host": "misskey.dog",
+					"score": 64,
+					"affinity": 0.689
+				}
+			],
+			"recallAt5": 1,
+			"recallAt10": 1,
+			"best": 1,
+			"must": null,
+			"ms": 1426
+		},
+		{
+			"id": "longform",
+			"turns": [
+				"長文をゆっくり書きたい。マイペースに参加できるところ"
+			],
+			"ranks": {
+				"misskey-square.net": 1
+			},
+			"top": [
+				{
+					"host": "misskey-square.net",
+					"score": 86,
+					"affinity": 0.9422
+				},
+				{
+					"host": "misskeymint.net",
+					"score": 82,
+					"affinity": 0.8954
+				},
+				{
+					"host": "drdr.club",
+					"score": 82,
+					"affinity": 0.8803
+				},
+				{
+					"host": "warpday.net",
+					"score": 81,
+					"affinity": 0.8554
+				},
+				{
+					"host": "misskey.takehi.to",
+					"score": 80,
+					"affinity": 0.9191
+				}
+			],
+			"recallAt5": 1,
+			"recallAt10": 1,
+			"best": 1,
+			"must": null,
+			"ms": 3520
+		},
+		{
+			"id": "english",
+			"turns": [
+				"英語でも交流できる、海外の人もいるところ"
+			],
+			"ranks": {
+				"feels.moe": 2,
+				"coretalk.space": 3
+			},
+			"top": [
+				{
+					"host": "submarin.online",
+					"score": 70,
+					"affinity": 0.7686
+				},
+				{
+					"host": "feels.moe",
+					"score": 66,
+					"affinity": 0.7128
+				},
+				{
+					"host": "coretalk.space",
+					"score": 61,
+					"affinity": 0.6493
+				},
+				{
+					"host": "misskey.flowers",
+					"score": 56,
+					"affinity": 0.582
+				},
+				{
+					"host": "msk.ilnk.info",
+					"score": 54,
+					"affinity": 0.5517
+				}
+			],
+			"recallAt5": 1,
+			"recallAt10": 1,
+			"best": 2,
+			"must": null,
+			"ms": 2042
+		},
+		{
+			"id": "email-free",
+			"turns": [
+				"メアドなしで登録できるところ"
+			],
+			"ranks": {},
+			"top": [
+				{
+					"host": "msk.i-red.info",
+					"score": 74,
+					"affinity": 0.8134
+				},
+				{
+					"host": "misskey.day",
+					"score": 57,
+					"affinity": 0.5987
+				},
+				{
+					"host": "sns.mouii.net",
+					"score": 53,
+					"affinity": 0.5419
+				},
+				{
+					"host": "feels.moe",
+					"score": 48,
+					"affinity": 0.4795
+				},
+				{
+					"host": "mi.ikkaku.me",
+					"score": 48,
+					"affinity": 0.4712
+				}
+			],
+			"recallAt5": null,
+			"recallAt10": null,
+			"best": null,
+			"must": 1,
+			"ms": 1922
+		},
+		{
+			"id": "ads-free-rules",
+			"turns": [
+				"広告がなくて、ルールがしっかりしている"
+			],
+			"ranks": {},
+			"top": [
+				{
+					"host": "misskey.soda-net.com",
+					"score": 90,
+					"affinity": 0.8778
+				},
+				{
+					"host": "mi.taichan.site",
+					"score": 88,
+					"affinity": 0.8799
+				},
+				{
+					"host": "misskey.nazetws.com",
+					"score": 83,
+					"affinity": 0.7928
+				},
+				{
+					"host": "misskey-square.net",
+					"score": 82,
+					"affinity": 0.8134
+				},
+				{
+					"host": "oekakiskey.com",
+					"score": 80,
+					"affinity": 0.7883
+				}
+			],
+			"recallAt5": null,
+			"recallAt10": null,
+			"best": null,
+			"must": 1,
+			"ms": 1972
+		},
+		{
+			"id": "niche-houshin",
+			"turns": [
+				"封神演義が好き"
+			],
+			"ranks": {
+				"houshindai.net": 1
+			},
+			"top": [
+				{
+					"host": "houshindai.net",
+					"score": 74,
+					"affinity": 0.9717
+				},
+				{
+					"host": "noc.ski",
+					"score": 58,
+					"affinity": 0.4943
+				},
+				{
+					"host": "misskeytsf.love",
+					"score": 47,
+					"affinity": 0.3294
+				},
+				{
+					"host": "misskey.art",
+					"score": 39,
+					"affinity": 0.5002
+				},
+				{
+					"host": "yumesuki.net",
+					"score": 38,
+					"affinity": 0.2203
+				}
+			],
+			"recallAt5": 1,
+			"recallAt10": 1,
+			"best": 1,
+			"must": null,
+			"ms": 3486
+		}
+	],
+	"summary": {
+		"cases": 32,
+		"recallAt5": 0.7416666666666667,
+		"recallAt10": 0.8666666666666667,
+		"mrr": 0.8594444444444445,
+		"must": 1,
+		"meanMs": 2244.6875
+	}
+}

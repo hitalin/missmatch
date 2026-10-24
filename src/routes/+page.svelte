@@ -199,14 +199,15 @@
 		affinity?: Record<string, number>;
 	};
 	const intentRequests = new Map<string, Promise<IntentResponse>>();
-	function fetchIntent(turns: string[], scope: Scope): Promise<IntentResponse> {
+	// prefetch は入力が止まったときの先読み。サーバーは今日の枠が減っていると 503 で断り、送ったときに読み直す
+	function fetchIntent(turns: string[], scope: Scope, prefetch = false): Promise<IntentResponse> {
 		const key = `${scope}\n${turns.join('\n')}`;
 		let request = intentRequests.get(key);
 		if (!request) {
 			request = fetch('/api/intent', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ turns, scope })
+				body: JSON.stringify({ turns, scope, prefetch })
 			}).then(async (res) => {
 				if (!res.ok) throw new Error(`HTTP ${res.status}`);
 				return (await res.json()) as IntentResponse;
@@ -222,7 +223,7 @@
 	function prefetch(turns: string[]) {
 		const last = turns.at(-1) ?? '';
 		if (last.length < PREFETCH_MIN_CHARS || last.length > MAX_INTENT_LENGTH) return;
-		fetchIntent(turns, wantedScope).catch(() => {});
+		fetchIntent(turns, wantedScope, true).catch(() => {});
 	}
 
 	// いまの検索の言葉の並びを Clef に読み取らせ、空いている設定を埋め、各サーバーとの噛み合いを付ける

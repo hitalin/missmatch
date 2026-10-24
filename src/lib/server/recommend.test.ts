@@ -4,6 +4,7 @@ import { mkServer, mkVibe } from '$lib/fixtures.test-helper';
 import type { ServerInfo } from '$lib/types';
 import type { ClefAnswer, ClefInput, ClefOutput, VibeKv } from '$lib/vibe';
 import { VIBE_VERSION, vibeKey } from '$lib/vibe';
+import { createBudget, meteredRunner } from './budget';
 import { loadProfiles, readIntent, warmIntents } from './recommend';
 
 // joinmisskey へ取りに行かないよう、サーバー一覧はキャッシュ済みにしておく
@@ -191,15 +192,110 @@ describe('readIntent', () => {
 		expect(runner.mock.calls.length).toBeGreaterThan(calls);
 	});
 
-	it('warmIntents は例文を全部、キャッシュがあっても判定し直して置く', async () => {
+	it('warmIntents はキャッシュの無い例文だけ判定し、ある例文は飛ばす', async () => {
 		const kv = kvWith(base);
 		const runner = vi.fn(async (input: ClefInput) => output(input));
 		await readIntent({ kv, runner }, [EXAMPLES[0]], 'invite');
 		const before = runner.mock.calls.length;
-		const { warmed } = await warmIntents({ kv, runner });
-		expect(warmed).toBe(EXAMPLES.length);
-		// 例文 1 つにつき読み取り 1 本 + 噛み合い 1 バッチ（3 件）。キャッシュ済みの例文も読み直す
-		expect(runner.mock.calls.length - before).toBe(EXAMPLES.length * 2);
+		const { warmed, skipped } = await warmIntents({ kv, runner });
+		expect(warmed).toBe(EXAMPLES.length - 1);
+		expect(skipped).toBe(1);
+		// 例文 1 つにつき読み取り 1 本 + 噛み合い 1 バッチ（3 件）
+		expect(runner.mock.calls.length - before).toBe((EXAMPLES.length - 1) * 2);
+	});
+
+	it('warmIntents は枠を使い切ったら残りを翌日に回す', async () => {
+		const kv = kvWith(base);
+		// 1 本で 100,000 トークン（約 2,182 Neurons）使う Clef。閾値 1 Neuron なので最初の例文で尽きる
+		const runner = vi.fn(async (input: ClefInput) => ({
+			...output(input),
+			usage: { input_tokens: 100_000, output_tokens: 0 }
+		}));
+		const budget = createBudget(kv, () => Date.UTC(2026, 9, 24), 1);
+		const { warmed } = await warmIntents({ kv, runner: meteredRunner(runner, budget), budget });
+		expect(warmed).toBe(1);
+		expect(runner.mock.calls.length).toBe(2); // 読み取り 1 本 + 噛み合い 1 バッチ。2 例文目は呼ばない
+	});
+
+	it('枠を使い切っていても、送った言葉は Clef で判定して返す（劣化させない）', async () => {
+		const kv = kvWith({ ...base, 'ai:neurons:2026-10-24': '9000' });
+		const runner = vi.fn(async (input: ClefInput) => output(input));
+		const budget = createBudget(kv, () => Date.UTC(2026, 9, 24));
+		const result = await readIntent(
+			{ kv, runner: meteredRunner(runner, budget), budget },
+			['静かな場所'],
+			'open'
+		);
+		expect(Object.keys(result.affinity)).toHaveLength(3);
+		expect(runner.mock.calls.length).toBeGreaterThan(1);
+	});
+
+	it('枠を使い切っていれば雰囲気の欠けは計算せず、失敗マーカーも置かない', async () => {
+		const kv = kvWith({ ...withMissing, 'ai:neurons:2026-10-24': '9000' });
+		const runner = vi.fn(async (input: ClefInput) => output(input));
+		const budget = createBudget(kv, () => Date.UTC(2026, 9, 24));
+		const deferred: Promise<unknown>[] = [];
+		await loadProfiles(
+			{ kv, runner: meteredRunner(runner, budget), budget },
+			(w) => deferred.push(w),
+			'open'
+		);
+		await Promise.all(deferred);
+		expect(runner).not.toHaveBeenCalled();
+		expect(await kv.get(vibeKey('s1.tld'))).toBeNull();
+	});
+
+	it('埋め込みがあれば、言葉に近い上位 K 件だけを Clef に渡し、外側は類似度順の 0.5 未満にする', async () => {
+		const kv = kvWith(base);
+		// s0 は言葉と同じ向き、s1 は直交、s2 は逆向き
+		const vectors: Record<string, number[]> = { s0: [1, 0], s1: [0, 1], s2: [-1, 0] };
+		const embedder = vi.fn(async (texts: string[]) =>
+			texts.map((t) => {
+				const m = t.match(/\((s\d)\.tld\)/);
+				return m ? vectors[m[1]] : [1, 0]; // 言葉は [1, 0]
+			})
+		);
+		const runner = vi.fn(async (input: ClefInput) => output(input));
+		const result = await readIntent({ kv, runner, embedder }, ['静かな場所'], 'open', undefined, {
+			candidates: 1
+		});
+		const affinityCalls = runner.mock.calls.filter(([i]) => 'servers' in (i.state as object));
+		expect(affinityCalls).toHaveLength(1);
+		expect(Object.keys(affinityCalls[0][0].questions)).toEqual(['s0.tld']);
+		expect(result.affinity['s0.tld']).toBe(0.8); // Clef の判定
+		expect(result.affinity['s1.tld']).toBeLessThan(0.5);
+		expect(result.affinity['s2.tld']).toBeLessThan(result.affinity['s1.tld']);
+		// 表は KV に置かれ、2 回目は埋め込み直さない（言葉の 1 本だけ）
+		expect(await kv.get('embeddings:v1:bge-m3:open')).not.toBeNull();
+		const before = embedder.mock.calls.length;
+		await readIntent({ kv, runner, embedder }, ['別の言葉'], 'open', undefined, { candidates: 1 });
+		expect(embedder.mock.calls.length - before).toBe(1);
+	});
+
+	it('既定と違う候補数（評価用）の結果はキャッシュに置かない', async () => {
+		const kv = kvWith(base);
+		const embedder = vi.fn(async (texts: string[]) => texts.map(() => [1, 0]));
+		const runner = vi.fn(async (input: ClefInput) => output(input));
+		await readIntent({ kv, runner, embedder }, ['静かな場所'], 'open', undefined, {
+			candidates: 16
+		});
+		const calls = runner.mock.calls.length;
+		await readIntent({ kv, runner, embedder }, ['静かな場所'], 'open', undefined, {
+			candidates: 0
+		});
+		expect(runner.mock.calls.length).toBe(calls * 2);
+	});
+
+	it('噛み合いのキャッシュは 7 日置く', async () => {
+		const kv = kvWith(base);
+		const ttls: (number | undefined)[] = [];
+		const put = kv.put;
+		kv.put = async (key, value, options) => {
+			if (key.startsWith('intent:')) ttls.push(options?.expirationTtl);
+			return put(key, value, options);
+		};
+		await readIntent({ kv, runner: async (input) => output(input) }, ['静かな場所'], 'open');
+		expect(ttls).toEqual([60 * 60 * 24 * 7]);
 	});
 
 	it('雰囲気の欠けは defer に回し、判定を待たせない', async () => {
