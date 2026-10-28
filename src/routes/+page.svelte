@@ -9,10 +9,14 @@
 	import LikesGrid from '$lib/components/LikesGrid.svelte';
 	import Onboarding from '$lib/components/Onboarding.svelte';
 	import SearchBar from '$lib/components/SearchBar.svelte';
-		import Settings from '$lib/components/Settings.svelte';
+		import ServerCard from '$lib/components/ServerCard.svelte';
+	import ServerDetails from '$lib/components/ServerDetails.svelte';
+	import Settings from '$lib/components/Settings.svelte';
 	import Spinner from '$lib/components/Spinner.svelte';
 	import Landing from '$lib/components/Landing.svelte';
 	import LoginSheet from '$lib/components/LoginSheet.svelte';
+	import People from '$lib/components/People.svelte';
+	import { peopleStore } from '$lib/people-store.svelte';
 	import Shell, { type Tab } from '$lib/components/Shell.svelte';
 	import { featuresOf } from '$lib/features';
 	import { type AskAxis, isAxisDefault, MAX_INTENT_LENGTH, unsureAxes } from '$lib/intent';
@@ -56,7 +60,21 @@
 
 	// Misskey でログイン中のユーザー（+layout.server.ts）。ログインはサーバーをまたぐので画面遷移で行う
 	let { data } = $props();
-	let loginOpen = $state(false);
+	let loginOpen = $state(page.url.searchParams.has('login'));
+	function openLogin(open: boolean) {
+		loginOpen = open;
+		const q = new URLSearchParams();
+		if (mode === 'people') q.set('mode', 'people');
+		if (open) q.set('login', '1');
+		replaceState(q.size ? `/?${q}` : '/', {});
+	}
+	// 何とマッチングするか（サーバー / 人）。ChatGPT の Chat / Work と同じ上部の切替。URL の ?mode=people でも開ける
+	let mode = $state<'server' | 'people'>(page.url.searchParams.get('mode') === 'people' ? 'people' : 'server');
+	function setMode(m: 'server' | 'people') {
+		mode = m;
+		peopleStore.setMode(m);
+		replaceState(m === 'people' ? '/?mode=people' : '/', {});
+	}
 	// /auth/callback で失敗したときの理由（URL に載って戻ってくる）
 	let loginError = $state(page.url.searchParams.get('login_error') ?? '');
 	async function logout() {
@@ -115,7 +133,8 @@
 	// 探すページで入れた一言がまだ読み取られていなければ、ここで読み取る
 	onMount(() => {
 		// 戻り先のエラーは読んだら URL から消す（再読み込みで出し続けない）
-		if (loginError) replaceState('/', {});
+		if (loginError) replaceState(mode === 'people' ? '/?mode=people' : '/', {});
+		if (!page.url.searchParams.has('mode') && peopleStore.mode === 'people') mode = 'people';
 		const saved = loadSavedProfile();
 		const cur = currentSearch(saved);
 		profile = cur ? saved : selectSearch(saved, newSearch());
@@ -366,8 +385,8 @@
 
 <Shell
 		{tab}
-		likes={search.liked.length}
-		passed={search.passed.length}
+		likes={mode === 'people' ? peopleStore.liked.length : search.liked.length}
+		passed={mode === 'people' ? peopleStore.passed.length : search.passed.length}
 		discoverEnabled={ready && !!profiles}
 		searches={profile.searches}
 		current={profile.current}
@@ -377,7 +396,7 @@
 		onrename={rename}
 		ondelete={removeSearch}
 		user={data.user}
-		onlogin={() => (loginOpen = true)}
+		onlogin={() => openLogin(true)}
 		onlogout={logout}
 	>
 		<main>
@@ -405,14 +424,18 @@
 			{#if loginError}
 				<p class="banner">
 					ログインできませんでした（{loginError}）。
-					<button class="link" onclick={() => { loginError = ''; loginOpen = true; }}>やり直す</button>
+					<button class="link" onclick={() => { loginError = ''; openLogin(true); }}>やり直す</button>
 				</p>
 			{/if}
 
-			{#if tab === 'discover'}
+			{#if loginOpen}
+				<LoginSheet onclose={() => openLogin(false)} next={mode === 'people' ? '/?mode=people' : '/'} />
+			{:else if mode === 'people'}
+				<People {tab} user={data.user} onlogin={() => openLogin(true)} {mode} onmode={setMode} />
+			{:else if tab === 'discover'}
 				<div class="discover-tab">
 					{#if !search.query}
-						<Landing onsubmit={start} onsettle={(t) => prefetch([t])} {profiles} />
+						<Landing onsubmit={start} onsettle={(t) => prefetch([t])} {profiles} {mode} onmode={setMode} />
 					{:else}
 					<SearchBar {search} {reading} ondrop={dropTurn} />
 					{#if !profiles}
@@ -420,7 +443,9 @@
 					{:else}
 						{#key deckGen}
 							<Discover
-								matches={deck}
+								items={deck}
+								keyOf={(m) => m.server.host}
+								labelOf={(m) => m.server.name ?? m.server.host}
 								total={deckTotal}
 								onlike={(m) => swipe(m, 'like')}
 								onpass={(m) => swipe(m, 'pass')}
@@ -429,6 +454,21 @@
 								onsettings={() => go('you')}
 								busy={reading ? searchTurns(search).at(-1) ?? '' : ''}
 							>
+								{#snippet card(m, eager)}
+									<ServerCard match={m} {eager} />
+								{/snippet}
+								{#snippet details(m, full, like)}
+									{#if full}
+										<ServerDetails match={m} full>
+											{#snippet actions()}
+												<a class="btn secondary" href="https://{m.server.host}/" target="_blank" rel="noopener">サーバーを見る</a>
+												<button class="btn love" onclick={like}><Icon name="heart" size={15} filled /> いいね</button>
+											{/snippet}
+										</ServerDetails>
+									{:else}
+										<ServerDetails match={m} />
+									{/if}
+								{/snippet}
 								{#snippet composer()}
 									<Composer
 										bind:value={draft}
@@ -467,9 +507,6 @@
 			{/if}
 		</main>
 	</Shell>
-{#if loginOpen}
-	<LoginSheet onclose={() => (loginOpen = false)} />
-{/if}
 
 <style>
 	.onboarding {

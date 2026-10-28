@@ -3,7 +3,7 @@ import { GENRES } from './types';
 import type { ClefAnswer, ClefInput, ClefQuestion } from './vibe';
 
 // 参加者本人の公開ノート・bio・固定ノートを Clef に 1 回読ませ、話題の確率と、
-// 募集・勧誘の表明（bio と各ノート）・宣伝・未成年の記述を同じ呼び出しで判定する。
+// 募集・勧誘の表明（bio と各ノート）・宣伝を同じ呼び出しで判定する。
 // 空気と会話の型は推定しない（並びに使わないものは計算しない。docs/PEOPLE.md §3）
 
 // サーバー向けの設問（vibe.ts）は「サーバーか」と問うものがあるので、人向けに言い換える
@@ -34,7 +34,7 @@ const SEEKING_CRITERIA = {
 };
 
 const MAX_NOTE_QUESTIONS = 50; // Clef は 1 リクエスト 64 問まで。ノート 50 + bio + 話題 15 + 宣伝 + 未成年 < 64 にはならないので、ノートは 45 本に切る
-const NOTE_QUESTION_LIMIT = 64 - GENRES.length - 3; // 46
+const NOTE_QUESTION_LIMIT = 64 - GENRES.length - 2; // 47
 
 export interface MemberInput {
 	name: string;
@@ -70,10 +70,6 @@ export function buildMemberRequest(input: MemberInput): ClefInput {
 		instructions:
 			'商品・サービスの価格や購入、有料の入会、別サーバーへの移住を呼びかける宣伝・勧誘が投稿の中心か'
 	};
-	questions.minor = {
-		type: 'noul',
-		instructions: '学年・年齢・保護者・部活・学校など、本人が 18 歳未満であることを示す記述があるか'
-	};
 	return {
 		model: 'clef',
 		state: {
@@ -93,7 +89,6 @@ export interface MemberAnswers {
 	seekingBio: boolean;
 	seekingNotes: string[]; // 募集の表明と判定したノートの id
 	ads: number;
-	minor: number;
 }
 
 const THRESHOLD = 0.7;
@@ -111,20 +106,17 @@ export function parseMemberAnswers(
 		genre,
 		seekingBio: noul(answers['seeking.bio']) >= THRESHOLD,
 		seekingNotes: noteIds.filter((id) => noul(answers[`seeking.${id}`]) >= THRESHOLD),
-		ads: noul(answers.ads),
-		minor: noul(answers.minor)
+		ads: noul(answers.ads)
 	};
 }
 
 export type Judgement =
 	| { verdict: 'ok' }
 	| { verdict: 'warn'; noteIds: string[] } // 募集の表明がノート 1 件。本人に該当ノートを見せる
-	| { verdict: 'reject'; kind: 'seeking' | 'ads' | 'minor'; noteIds: string[] };
+	| { verdict: 'reject'; kind: 'seeking' | 'ads'; noteIds: string[] };
 
-// bio・固定ノートは 1 件で止め、ノートは 2 件以上で止める（docs/PEOPLE.md §2）。
-// 未成年の記述は理由を細かく出さない（noteIds を返さない）
+// bio・固定ノートは 1 件で止め、ノートは 2 件以上で止める（docs/PEOPLE.md §2）
 export function judgeMember(a: MemberAnswers): Judgement {
-	if (a.minor >= THRESHOLD) return { verdict: 'reject', kind: 'minor', noteIds: [] };
 	if (a.seekingBio || a.seekingNotes.length >= 2) {
 		return { verdict: 'reject', kind: 'seeking', noteIds: a.seekingNotes };
 	}

@@ -102,7 +102,7 @@ const session = {
 	user: { host: 'misskey.io', id: 'u1', username: 'taka', name: 'たか', avatarUrl: 'x' },
 	token: 'tok-1'
 };
-const input = { adultChecked: true, chips: ['food' as const], profileOnly: false };
+const input = { chips: ['food' as const], profileOnly: false };
 
 describe('joinMember', () => {
 	it('条件を満たせば、推定・代表ノート・フォロー一覧・暗号化したトークンを置いて参加する', async () => {
@@ -140,26 +140,6 @@ describe('joinMember', () => {
 		];
 		const d = await deps({ api: api(notes) });
 		expect(await joinMember(d, session, input)).toEqual({ ok: false, reason: 'notes' });
-	});
-	it('18 歳のチェックが無い、誕生日で未成年、アカウントが若い、は参加できない', async () => {
-		expect(await joinMember(await deps(), session, { ...input, adultChecked: false })).toEqual({
-			ok: false,
-			reason: 'adult'
-		});
-		expect(
-			await joinMember(
-				await deps({ api: api(undefined, { birthday: '2015-01-01' }) }),
-				session,
-				input
-			)
-		).toEqual({ ok: false, reason: 'minor' });
-		expect(
-			await joinMember(
-				await deps({ api: api(undefined, { createdAt: new Date(now - 3 * day).toISOString() }) }),
-				session,
-				input
-			)
-		).toEqual({ ok: false, reason: 'account-age' });
 	});
 	it('bio に募集の表明があれば参加できず、ノート 1 件なら警告付きで参加する', async () => {
 		const bio = await deps({ runner: clef({ 'seeking.bio': 0.9 }) });

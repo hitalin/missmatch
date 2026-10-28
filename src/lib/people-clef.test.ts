@@ -8,7 +8,7 @@ const notes = [
 ];
 
 describe('buildMemberRequest', () => {
-	it('話題の設問と、募集の表明（bio と各ノート）・宣伝・未成年の設問を 1 本にまとめる', () => {
+	it('話題の設問と、募集の表明（bio と各ノート）・宣伝の設問を 1 本にまとめる', () => {
 		const req = buildMemberRequest({
 			name: 'たか',
 			description: 'ジャズと料理',
@@ -24,8 +24,7 @@ describe('buildMemberRequest', () => {
 				'seeking.bio',
 				'seeking.n1',
 				'seeking.n2',
-				'ads',
-				'minor'
+				'ads'
 			])
 		);
 		expect(Object.keys(req.questions).length).toBeLessThanOrEqual(64);
@@ -54,8 +53,7 @@ describe('parseMemberAnswers / judgeMember', () => {
 		'seeking.bio': noul(0.1),
 		'seeking.n1': noul(0.05),
 		'seeking.n2': noul(0.95),
-		ads: noul(0.1),
-		minor: noul(0.05)
+		ads: noul(0.1)
 	};
 	it('話題の確率と、募集の表明があったノートの id を取り出す', () => {
 		const r = parseMemberAnswers(
@@ -83,12 +81,7 @@ describe('parseMemberAnswers / judgeMember', () => {
 			noteIds: ['n2']
 		});
 	});
-	it('未成年の記述は理由を細かく出さず拒否、宣伝は拒否', () => {
-		expect(
-			judgeMember(
-				parseMemberAnswers({ ...answers, 'seeking.n2': noul(0.1), minor: noul(0.8) }, ['n1', 'n2'])
-			)
-		).toEqual({ verdict: 'reject', kind: 'minor', noteIds: [] });
+	it('宣伝は拒否', () => {
 		expect(
 			judgeMember(
 				parseMemberAnswers({ ...answers, 'seeking.n2': noul(0.1), ads: noul(0.9) }, ['n1', 'n2'])

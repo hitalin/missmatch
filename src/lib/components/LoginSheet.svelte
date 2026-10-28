@@ -1,8 +1,8 @@
 <script lang="ts">
-	import Sheet from './Sheet.svelte';
 	import Spinner from './Spinner.svelte';
 
-	// Misskey のサーバーを入れて MiAuth に送る。許可後は /auth/callback に戻ってきてログイン状態になる
+	// Misskey のサーバーを入れて MiAuth に送る。許可後は /auth/callback に戻ってきてログイン状態になる。
+	// モーダルではなく本文（サイドバーの右）に出す
 	let { onclose, next = '/' }: { onclose: () => void; next?: string } = $props();
 
 	let host = $state('');
@@ -34,7 +34,7 @@
 	}
 </script>
 
-<Sheet label="Misskey でログイン" {onclose}>
+<section class="panel wrap">
 	<form class="login" onsubmit={submit}>
 		<h2>Misskey でログイン</h2>
 		<p class="muted">使っているサーバーのドメインを入れると、そのサーバーの許可画面に移ります。</p>
@@ -57,15 +57,20 @@
 			{#if busy}<Spinner label="接続中" size={16} />接続中{:else}ログイン{/if}
 		</button>
 		<p class="note muted">求める権限はアカウント情報の読み取りだけです。投稿は行いません。</p>
+		<button class="btn ghost" type="button" onclick={onclose}>戻る</button>
 	</form>
-</Sheet>
+</section>
 
 <style>
+	.wrap {
+		width: min(100%, 440px);
+		margin: 24px auto;
+		padding: 20px 22px;
+	}
 	.login {
 		display: flex;
 		flex-direction: column;
 		gap: 12px;
-		padding-top: 8px;
 	}
 	h2 {
 		margin: 0;

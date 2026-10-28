@@ -1,9 +1,16 @@
 <script lang="ts">
-	import type { ServerInfo } from '$lib/types';
 
 	// ランディングの背景（マッチングアプリの文法）: 明るい地に、実際のサーバーのカードが周縁に浮かび、
 	// 小さなハートが瞬く。中央の検索ボックスの周りは空け、本文の読みやすさを優先する。装飾なので支援技術からは隠す
-	let { servers = [] }: { servers?: ServerInfo[] } = $props();
+	// 浮かべるカード（サーバーでも人でもよい）
+	interface BackdropCard {
+		host: string;
+		name: string | null;
+		bannerUrl: string | null;
+		iconUrl: string | null;
+		themeColor: string | null;
+	}
+	let { servers = [] }: { servers?: BackdropCard[] } = $props();
 
 	// カードの置き場（6 枚）。上段は上から、下段は下からの距離で置き、画面の外に落とさない。
 	// corner は四隅で、モバイルではそこだけ出す

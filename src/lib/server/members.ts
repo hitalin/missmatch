@@ -128,7 +128,6 @@ interface Self {
 }
 
 export interface JoinInput {
-	adultChecked: boolean;
 	chips: Genre[];
 	profileOnly: boolean;
 }
@@ -223,7 +222,6 @@ export async function joinMember(
 	const now = (deps.now ?? Date.now)();
 	const { host } = session.user;
 	if (await deps.kv.get(banKey(host, session.user.id))) return { ok: false, reason: 'banned' };
-	if (!input.adultChecked) return { ok: false, reason: 'adult' };
 	const [total, onHost] = await Promise.all([countMembers(deps.kv), countMembers(deps.kv, host)]);
 	if (total >= MEMBER_CAP) return { ok: false, reason: 'cap' };
 	const server = deps.servers.find((s) => s.host === host);
@@ -231,13 +229,7 @@ export async function joinMember(
 
 	const self = (await deps.api(host, 'i', {}, session.token)) as Self;
 	const eligible = await fetchEligible(deps, host, self.id, session.token);
-	const eligibility = joinEligibility({
-		eligibleCount: eligible.length,
-		createdAt: self.createdAt,
-		birthday: self.birthday,
-		adultChecked: input.adultChecked,
-		now
-	});
+	const eligibility = joinEligibility({ eligibleCount: eligible.length });
 	if (!eligibility.ok) return { ok: false, reason: eligibility.reason };
 
 	const { judgement, estimate: est } = await estimate(deps, self, eligible);
@@ -253,7 +245,6 @@ export async function joinMember(
 		name: self.name ?? self.username,
 		acct: normalizeAcct(self.username, host),
 		joinedAt: now,
-		adultCheckedAt: now,
 		chips: input.chips.slice(0, 3),
 		profileOnly: input.profileOnly,
 		followingPublic,

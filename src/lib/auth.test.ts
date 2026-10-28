@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isAllowedHost, miauthUrl, normalizeHost, parseCheck } from './auth';
-import { mkServer } from './fixtures.test-helper';
+import { miauthUrl, normalizeHost, parseCheck } from './auth';
 
 describe('normalizeHost', () => {
 	it('ホスト名だけなら小文字にして返す', () => {
@@ -62,20 +61,5 @@ describe('parseCheck', () => {
 		expect(parseCheck({ ok: true, token: 'tok' }, 'misskey.io')).toBeNull();
 		expect(parseCheck(null, 'misskey.io')).toBeNull();
 		expect(parseCheck('x', 'misskey.io')).toBeNull();
-	});
-});
-
-describe('isAllowedHost', () => {
-	// ログインできるのは joinmisskey に掲載され生きているサーバーだけ（/api/meta を返すだけの偽ホストを防ぐ）
-	const servers = [
-		mkServer({ host: 'misskey.io', dru15: 1000 }),
-		mkServer({ host: 'dead.tld', registration: 'closed', dru15: 0 }),
-		mkServer({ host: 'en.tld', langs: ['en'] })
-	];
-	it('掲載されていて生きているホストだけ通す', () => {
-		expect(isAllowedHost(servers, 'misskey.io')).toBe(true);
-		expect(isAllowedHost(servers, 'dead.tld')).toBe(false);
-		expect(isAllowedHost(servers, 'en.tld')).toBe(false);
-		expect(isAllowedHost(servers, 'misskey.io.example.com')).toBe(false);
 	});
 });

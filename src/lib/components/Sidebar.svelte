@@ -70,10 +70,6 @@
 				{#if it.badge}<i class="badge" class:dim={it.tab === 'passed'}>{it.badge}</i>{/if}
 			</button>
 		{/each}
-		<a class="people" href="/match" title="参加した人同士で、話が合いそうな人を見つける">
-			<Icon name="user" />
-			<span>マッチング</span>
-		</a>
 	</nav>
 	<div class="history">
 		<p class="head">さがした言葉</p>
@@ -162,22 +158,6 @@
 		font-weight: 700;
 		cursor: pointer;
 		transition: background 0.15s;
-	}
-	nav .people {
-		height: 40px;
-		display: flex;
-		align-items: center;
-		gap: 12px;
-		padding: 0 14px;
-		border-radius: 999px;
-		color: var(--fg-muted);
-		font-size: 0.95rem;
-		font-weight: 700;
-		text-decoration: none;
-		transition: background 0.15s;
-	}
-	nav .people:hover {
-		background: var(--panel-2);
 	}
 	nav button:hover:not(:disabled) {
 		background: var(--panel-2);

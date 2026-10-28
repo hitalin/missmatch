@@ -4,6 +4,7 @@
 	import { MAX_INTENT_LENGTH } from '$lib/intent';
 	import type { ServerProfile } from '$lib/types';
 	import LandingBackdrop from './LandingBackdrop.svelte';
+	import ModeToggle from './ModeToggle.svelte';
 	import PromptBox from './PromptBox.svelte';
 
 	// 言葉がまだ無い「さがす」: 検索ボックスだけのランディング。送るとこの検索の言葉になる。
@@ -12,11 +13,15 @@
 	let {
 		onsubmit,
 		onsettle,
-		profiles = null
+		profiles = null,
+		mode = 'server',
+		onmode
 	}: {
 		onsubmit: (text: string) => void;
 		onsettle?: (text: string) => void;
 		profiles?: ServerProfile[] | null;
+		mode?: 'server' | 'people';
+		onmode?: (m: 'server' | 'people') => void; // サーバー / 人 の切替（ChatGPT のフロントページと同じ位置）
 	} = $props();
 
 	// 背景のカード: バナーのある活発な鯖の上位から、偏らないよう 3 つおきに 6 枚
@@ -73,6 +78,7 @@
 	<div class="center">
 		<h1 class="brand"><img class="logo" src="/logo.svg" alt="" width="48" height="48" /> <span class="text-grad">みすまっち</span></h1>
 		<p class="tagline">Misskey のサーバーと、マッチング。</p>
+		{#if onmode}<ModeToggle {mode} onchange={onmode} />{/if}
 		<p class="ask">どんな場所を探している？</p>
 
 		<div class="search">

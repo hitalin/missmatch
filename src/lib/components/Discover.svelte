@@ -1,15 +1,17 @@
-<script lang="ts">
+<script lang="ts" generics="T">
 	import type { Snippet } from 'svelte';
-	import type { Match } from '$lib/types';
 	import Icon from './Icon.svelte';
-	import ServerCard from './ServerCard.svelte';
-	import ServerDetails from './ServerDetails.svelte';
 	import Sheet from './Sheet.svelte';
 	import Spinner from './Spinner.svelte';
 
-	// Tinder のデッキ: ドラッグでスワイプ、スタンプ、丸ボタン、戻す、詳細シート
+	// Tinder のデッキ: ドラッグでスワイプ、スタンプ、丸ボタン、戻す、詳細シート。
+	// サーバーにも人にも同じ UI を使うので、カードと詳細の中身は snippet で受ける
 	let {
-		matches,
+		items,
+		keyOf,
+		labelOf,
+		card,
+		details,
 		onlike,
 		onpass,
 		onundo,
@@ -17,17 +19,31 @@
 		onsettings,
 		total,
 		busy = '',
-		composer
+		composer,
+		emptyTitle = '条件に合うカードがありません',
+		emptyHint = '絶対条件や規模・流速を緩めると出ます。',
+		doneTitle = 'いまの条件のカードは見終わりました',
+		doneHint = '条件を変えるか、よくないねから戻すと続きが出ます。',
+		settingsLabel = '条件を見直す'
 	}: {
-		matches: Match[];
+		items: T[];
+		keyOf: (item: T) => string;
+		labelOf: (item: T) => string;
+		card: Snippet<[T, boolean]>; // (item, eager)
+		details: Snippet<[T, boolean, () => void]>; // (item, full, like)。full はシート（モバイル）
 		total: number; // いまの条件で残っているカードの総数（このデッキ以外も含む）
-		onlike: (m: Match) => void;
-		onpass: (m: Match) => void;
-		onundo: (m: Match, action: 'like' | 'pass') => void;
+		onlike: (m: T) => void;
+		onpass: (m: T) => void;
+		onundo: (m: T, action: 'like' | 'pass') => void;
 		onexhausted: () => void; // このデッキを見終わった（次の束を頼む）
 		onsettings: () => void;
 		busy?: string; // Clef が読み取り中の言葉（空でなければ、カードと判定の上にスピナーを重ねて古い並びを隠す）
 		composer?: Snippet; // 言葉を足す箱。モバイルは束の下、デスクトップは右パネルの下に置く
+		emptyTitle?: string;
+		emptyHint?: string;
+		doneTitle?: string;
+		doneHint?: string;
+		settingsLabel?: string;
 	} = $props();
 
 	const THRESHOLD = 90;
@@ -39,13 +55,13 @@
 	let dragging = $state(false);
 	let leaving = $state<'left' | 'right' | null>(null);
 	let sheet = $state(false);
-	let history = $state<{ match: Match; action: 'like' | 'pass' }[]>([]);
+	let history = $state<{ match: T; action: 'like' | 'pass' }[]>([]);
 	let startX = 0;
 	let startY = 0;
 	let pointerId: number | null = null;
 
-	const current = $derived(matches[index] as Match | undefined);
-	const stack = $derived(matches.slice(index, index + 3));
+	const current = $derived(items[index] as T | undefined);
+	const stack = $derived(items.slice(index, index + 3));
 	const rotation = $derived(dx * 0.05);
 	const likeOpacity = $derived(Math.min(1, Math.max(0, dx / THRESHOLD)));
 	const passOpacity = $derived(Math.min(1, Math.max(0, -dx / THRESHOLD)));
@@ -94,7 +110,7 @@
 			dx = 0;
 			dy = 0;
 			leaving = null;
-			if (index >= matches.length) onexhausted();
+			if (index >= items.length) onexhausted();
 		}, FLY_MS);
 	}
 
@@ -132,7 +148,7 @@
 					<p>Clef で読み取り中</p>
 				</div>
 			{/if}
-			{#each stack.toReversed() as m, rev (m.server.host)}
+			{#each stack.toReversed() as m, rev (keyOf(m))}
 				{@const depth = stack.length - 1 - rev}
 				{#if depth === 0}
 					<div
@@ -145,15 +161,15 @@
 						{onpointerup}
 						onpointercancel={onpointerup}
 						role="group"
-						aria-label="{m.server.name ?? m.server.host} のカード。タップで詳細"
+						aria-label="{labelOf(m)} のカード。タップで詳細"
 					>
 						<div class="stamp like" style:opacity={likeOpacity}>LIKE</div>
 						<div class="stamp nope" style:opacity={passOpacity}>NOPE</div>
-						<ServerCard match={m} eager />
+						{@render card(m, true)}
 					</div>
 				{:else}
 					<div class="slot" style:transform={`translate3d(0, ${depth * 10}px, 0) scale(${1 - depth * 0.04})`}>
-						<ServerCard match={m} />
+						{@render card(m, false)}
 					</div>
 				{/if}
 			{/each}
@@ -168,15 +184,15 @@
 		<p class="hint">左右にスワイプ · タップで詳細 · ← → キー</p>
 	{:else}
 		<div class="done">
-			<p class="big"><Icon name={total === 0 && matches.length === 0 ? 'search' : 'sparkle'} size={40} /></p>
-			{#if matches.length === 0}
-				<h2>条件に合うカードがありません</h2>
-				<p class="muted">絶対条件や規模・流速を緩めると出ます。</p>
+			<p class="big"><Icon name={total === 0 && items.length === 0 ? 'search' : 'sparkle'} size={40} /></p>
+			{#if items.length === 0}
+				<h2>{emptyTitle}</h2>
+				<p class="muted">{emptyHint}</p>
 			{:else}
-				<h2>いまの条件のカードは見終わりました</h2>
-				<p class="muted">条件を変えるか、よくないねから戻すと続きが出ます。</p>
+				<h2>{doneTitle}</h2>
+				<p class="muted">{doneHint}</p>
 			{/if}
-			<button class="btn primary" onclick={onsettings}>条件を見直す</button>
+			<button class="btn primary" onclick={onsettings}>{settingsLabel}</button>
 		</div>
 	{/if}
 
@@ -185,22 +201,16 @@
 	{#if current}
 		<div class="right">
 			<aside class="aside panel">
-				<ServerDetails match={current} />
+				{@render details(current, false, () => fly('right'))}
 			</aside>
 			{#if composer}<div class="composer-slot">{@render composer()}</div>{/if}
 		</div>
 	{/if}
 
 	{#if sheet && current}
-		{@const host = current.server.host}
 		<div class="mobile-only">
-			<Sheet label="{current.server.name ?? host} の詳細" onclose={() => (sheet = false)}>
-				<ServerDetails match={current} full>
-					{#snippet actions()}
-						<a class="btn secondary" href="https://{host}/" target="_blank" rel="noopener">サーバーを見る</a>
-						<button class="btn love" onclick={() => fly('right')}><Icon name="heart" size={15} filled /> いいね</button>
-					{/snippet}
-				</ServerDetails>
+			<Sheet label="{labelOf(current)} の詳細" onclose={() => (sheet = false)}>
+				{@render details(current, true, () => fly('right'))}
 			</Sheet>
 		</div>
 	{/if}

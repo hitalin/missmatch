@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
 	eligibleNotes,
-	isAdultByBirthday,
 	joinEligibility,
 	type MisskeyNote,
 	normalizeAcct,
@@ -88,46 +87,10 @@ describe('representativeNoteIds / replyRatio / notesPerDay', () => {
 	});
 });
 
-describe('isAdultByBirthday', () => {
-	it('公開された誕生日から 18 歳以上かを判定し、無ければ null', () => {
-		expect(isAdultByBirthday('2008-10-28', now)).toBe(true);
-		expect(isAdultByBirthday('2008-10-29', now)).toBe(false);
-		expect(isAdultByBirthday(null, now)).toBeNull();
-		expect(isAdultByBirthday('not-a-date', now)).toBeNull();
-	});
-});
-
 describe('joinEligibility', () => {
-	const base = {
-		eligibleCount: 12,
-		createdAt: new Date(now - 60 * day).toISOString(),
-		birthday: null as string | null,
-		adultChecked: true,
-		now
-	};
-	it('条件をすべて満たせば ok', () => {
-		expect(joinEligibility(base)).toEqual({ ok: true });
-	});
-	it('公開ノートが 10 件未満', () => {
-		expect(joinEligibility({ ...base, eligibleCount: 9 })).toEqual({ ok: false, reason: 'notes' });
-	});
-	it('アカウント作成から 30 日未満', () => {
-		expect(joinEligibility({ ...base, createdAt: new Date(now - 10 * day).toISOString() })).toEqual(
-			{
-				ok: false,
-				reason: 'account-age'
-			}
-		);
-	});
-	it('18 歳以上のチェックが無い、または誕生日で 18 歳未満', () => {
-		expect(joinEligibility({ ...base, adultChecked: false })).toEqual({
-			ok: false,
-			reason: 'adult'
-		});
-		expect(joinEligibility({ ...base, birthday: '2015-01-01' })).toEqual({
-			ok: false,
-			reason: 'minor'
-		});
+	it('公開ノートが 10 件以上なら参加できる（年齢やアカウントの古さは見ない）', () => {
+		expect(joinEligibility({ eligibleCount: 12 })).toEqual({ ok: true });
+		expect(joinEligibility({ eligibleCount: 9 })).toEqual({ ok: false, reason: 'notes' });
 	});
 });
 

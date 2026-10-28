@@ -5,8 +5,7 @@ import type { Genre } from './types';
 // 参加者本人の公開ノートから話題を推定し、参加の条件を判定する
 
 export const PEOPLE_VERSION = 1;
-export const MIN_ELIGIBLE_NOTES = 10; // 参加に要る公開ノートの数
-export const MIN_ACCOUNT_AGE_DAYS = 30;
+export const MIN_ELIGIBLE_NOTES = 10; // 参加に要る公開ノートの数（推定の材料として要る）
 export const MAX_NOTES_READ = 50; // Clef に読ませる上限
 export const MIN_NOTE_CHARS = 20;
 export const REPRESENTATIVE_NOTES = 3;
@@ -82,34 +81,12 @@ export function notesPerDay(notes: EligibleNote[]): number {
 	return notes.length / days;
 }
 
-// Misskey の birthday（YYYY-MM-DD、任意項目）から 18 歳以上か。無ければ null
-export function isAdultByBirthday(
-	birthday: string | null | undefined,
-	now: number
-): boolean | null {
-	if (!birthday) return null;
-	const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(birthday);
-	if (!m) return null;
-	const birth = Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
-	if (Number.isNaN(birth)) return null;
-	const eighteenth = Date.UTC(Number(m[1]) + 18, Number(m[2]) - 1, Number(m[3]));
-	return now >= eighteenth;
-}
+export type JoinReason = 'notes';
 
-export type JoinReason = 'notes' | 'account-age' | 'adult' | 'minor';
-
+// 参加の条件は公開ノートの数だけ（年齢やアカウントの古さで弾かない。作者の判断）
 export function joinEligibility(input: {
 	eligibleCount: number;
-	createdAt: string;
-	birthday: string | null;
-	adultChecked: boolean;
-	now: number;
 }): { ok: true } | { ok: false; reason: JoinReason } {
-	if (!input.adultChecked) return { ok: false, reason: 'adult' };
-	if (isAdultByBirthday(input.birthday, input.now) === false) return { ok: false, reason: 'minor' };
-	const ageMs = input.now - Date.parse(input.createdAt);
-	if (!(ageMs >= MIN_ACCOUNT_AGE_DAYS * 24 * 60 * 60 * 1000))
-		return { ok: false, reason: 'account-age' };
 	if (input.eligibleCount < MIN_ELIGIBLE_NOTES) return { ok: false, reason: 'notes' };
 	return { ok: true };
 }
@@ -124,7 +101,7 @@ export function serverCap(dru15: number | null): number {
 	return Math.max(5, Math.round((dru15 ?? 0) * 0.1));
 }
 
-export type HiddenKind = 'seeking' | 'ads' | 'minor' | 'report';
+export type HiddenKind = 'seeking' | 'ads' | 'report';
 
 // KV に置く参加者の記録。ノート本文・bio・アバターは置かない
 export interface Member {
@@ -135,7 +112,6 @@ export interface Member {
 	name: string;
 	acct: string; // user@host（小文字）
 	joinedAt: number;
-	adultCheckedAt: number;
 	chips: Genre[]; // 本人が選んだ話題（任意）
 	profileOnly: boolean; // 代表ノートをカードに出さない
 	followingPublic: boolean; // followingVisibility が public なら共通のフォロー先を計算する
