@@ -81,13 +81,10 @@
 		</ul>
 		{#if loggedIn && onbrowse}<button class="link" onclick={onbrowse}>言葉を入れずに全員を見る</button>{/if}
 		{#if error}<p class="err">{error}</p>{/if}
-		{#if aiNote}<p class="note">Misskey で AI 学習の防止をオンにしている方へ: 話題の推定に Workers AI を使いますが、学習には使われません。</p>{/if}
+		{#if aiNote}<p class="note">判定に使う AI はノートを学習しません（AI 学習の防止をオンにしている方へ）</p>{/if}
 	</div>
 	<footer>
-		<p>
-			参加した人同士のカードが出ます{#if count !== null}（いま {count} 人）{/if}。右スワイプは「いいね」、フォローは Misskey で、相互フォローでマッチ
-			· 浮かんでいるのは参加者と、各サーバーが「みつける」に載せている人
-		</p>
+		<p>右スワイプでいいね · フォローは Misskey で · 相互フォローでマッチ{#if count !== null} · いま {count} 人{/if}</p>
 	</footer>
 </div>
 

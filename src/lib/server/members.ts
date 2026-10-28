@@ -149,7 +149,7 @@ async function fetchEligible(deps: PeopleDeps, host: string, userId: string, tok
 	return eligibleNotes(notes);
 }
 
-// 直近 50 件を Clef に読ませ、推定と判定を返す
+// 直近 50 件（無ければ bio と固定ノートだけ）を Clef に読ませ、推定と判定を返す
 async function estimate(deps: PeopleDeps, self: Self, eligible: EligibleNote[]) {
 	const read = eligible.slice(0, MAX_NOTES_READ);
 	const request = buildMemberRequest({

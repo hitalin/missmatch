@@ -126,20 +126,12 @@ describe('joinMember', () => {
 		).not.toContain('tok-1');
 		expect(await countMembers(d.kv)).toBe(1);
 	});
-	it('公開ノートが 10 件未満なら参加できない', async () => {
-		const d = await deps({ api: api(Array.from({ length: 9 }, (_, i) => note(i))) });
-		expect(await joinMember(d, session, input)).toEqual({ ok: false, reason: 'notes' });
-		expect(await countMembers(d.kv)).toBe(0);
-	});
-	it('home 可視性や CW のノートは数えない', async () => {
-		const notes = [
-			...Array.from({ length: 8 }, (_, i) => note(i)),
-			note(20, { visibility: 'home' }),
-			note(21, { cw: 'x' }),
-			note(22, { localOnly: true })
-		];
-		const d = await deps({ api: api(notes) });
-		expect(await joinMember(d, session, input)).toEqual({ ok: false, reason: 'notes' });
+	it('ノートが無くてもプロフィールだけで参加できる（推定は空）', async () => {
+		const d = await deps({ api: api([]) });
+		expect(await joinMember(d, session, input)).toEqual({ ok: true });
+		const m = await readMember(d.kv, 'misskey.io', 'u1');
+		expect(m?.noteIds).toEqual([]);
+		expect(m?.estimate?.sampleCount).toBe(0);
 	});
 	it('bio に募集の表明があれば参加できず、ノート 1 件なら警告付きで参加する', async () => {
 		const bio = await deps({ runner: clef({ 'seeking.bio': 0.9 }) });

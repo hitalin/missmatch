@@ -5,9 +5,9 @@ import type { Genre } from './types';
 // 参加者本人の公開ノートから話題を推定し、参加の条件を判定する
 
 export const PEOPLE_VERSION = 1;
-export const MIN_ELIGIBLE_NOTES = 10; // 参加に要る公開ノートの数（推定の材料として要る）
+export const MIN_ELIGIBLE_NOTES = 0; // 参加にノート数の条件は置かない（無ければプロフィールだけで参加し、推定はノートが増えてから）
 export const MAX_NOTES_READ = 50; // Clef に読ませる上限
-export const MIN_NOTE_CHARS = 20;
+export const MIN_NOTE_CHARS = 8;
 export const REPRESENTATIVE_NOTES = 3;
 export const MAX_CHIPS = 3;
 export const MAX_FOLLOWING = 2000;

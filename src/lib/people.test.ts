@@ -28,7 +28,7 @@ const note = (over: Partial<MisskeyNote> = {}): MisskeyNote => ({
 });
 
 describe('eligibleNotes', () => {
-	it('公開・CW なし・連合あり・20 字以上の本文だけを残し、本文は整形する', () => {
+	it('公開・CW なし・連合あり・8 字以上の本文だけを残し、本文は整形する', () => {
 		const out = eligibleNotes([
 			note({
 				id: 'ok',
@@ -88,9 +88,9 @@ describe('representativeNoteIds / replyRatio / notesPerDay', () => {
 });
 
 describe('joinEligibility', () => {
-	it('公開ノートが 10 件以上なら参加できる（年齢やアカウントの古さは見ない）', () => {
-		expect(joinEligibility({ eligibleCount: 12 })).toEqual({ ok: true });
-		expect(joinEligibility({ eligibleCount: 9 })).toEqual({ ok: false, reason: 'notes' });
+	it('ノートが無くても参加できる（年齢やアカウントの古さも見ない）', () => {
+		expect(joinEligibility({ eligibleCount: 3 })).toEqual({ ok: true });
+		expect(joinEligibility({ eligibleCount: 0 })).toEqual({ ok: true });
 	});
 });
 

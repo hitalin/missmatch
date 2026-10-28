@@ -56,7 +56,6 @@
 	let relations = $state<Record<string, Relation>>({});
 
 	const REASONS: Record<string, string> = {
-		notes: '公開のノート（CW なし・連合あり）が 10 件たまると参加できます。',
 		seeking: '恋人・出会いを求める内容が自己紹介やノートにあるため参加できません。',
 		ads: '宣伝が中心のアカウントは参加できません。',
 		banned: '参加できません。',
