@@ -1,3 +1,4 @@
+import { runAffinity } from '$lib/intent';
 import type { HiddenKind, Member } from '$lib/people';
 import {
 	type Badges,
@@ -7,6 +8,11 @@ import {
 	rankCandidates,
 	rationSize
 } from '$lib/people-deck';
+import {
+	buildPeopleAffinityRequests,
+	type PersonState,
+	parsePeopleAffinity
+} from '$lib/people-intent';
 import { cleanNoteText } from '$lib/sample';
 import type { Genre } from '$lib/types';
 import {
@@ -145,11 +151,20 @@ async function followingOf(kv: MemberKv, members: Member[]): Promise<Record<stri
 	return out;
 }
 
+const AFFINITY_CANDIDATES = 48; // 言葉で絞るとき Clef に渡す上限（3 バッチ。参加者数に依存しない）
+const PEOPLE_INTENT_TTL_SECONDS = 60 * 60 * 24 * 7;
+
+async function sha(text: string): Promise<string> {
+	const d = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+	return [...new Uint8Array(d).slice(0, 12)].map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+
 export async function buildDeck(
 	deps: PeopleDeps,
 	viewer: Viewer,
-	exclude: Set<string> // いいね・よくないね済み（ブラウザから）
-): Promise<{ cards: Card[]; count: number }> {
+	exclude: Set<string>, // いいね・よくないね済み（ブラウザから）
+	turns: string[] = [] // 言葉で絞る（空なら並び順だけ）
+): Promise<{ cards: Card[]; count: number; refused: boolean }> {
 	const me = viewer.member;
 	const all = (await listMembers(deps.kv)).filter((m) => !m.hidden);
 	const candidates = all.filter((m) => m.acct !== me.acct && !exclude.has(m.acct));
@@ -167,8 +182,49 @@ export async function buildDeck(
 	}
 	const resolved = candidates.filter((m) => relations[m.acct]);
 	const following = await followingOf(deps.kv, [me, ...resolved]);
-	const ranked = rankCandidates(me, resolved, relations, following);
-	const picked = diversify(ranked, (r) => r.member.host, rationSize(all.length), 4);
+	let ranked = rankCandidates(me, resolved, relations, following);
+	let refused = false;
+	if (turns.length > 0 && ranked.length > 0) {
+		// 上位 48 人だけ Clef に渡し、噛み合いの高い順に並べ直す。同じ言葉と候補なら 7 日は使い回す
+		const top = ranked.slice(0, AFFINITY_CANDIDATES);
+		const people: PersonState[] = top.map(({ member: m }) => {
+			const d = detailed.get(ids.get(m.acct) as string) as Detailed;
+			return {
+				acct: m.acct,
+				name: m.name,
+				description: cleanNoteText(d.description ?? ''),
+				pinned: (d.pinnedNotes ?? [])
+					.map((n) => cleanNoteText(n.text ?? ''))
+					.filter((t) => t.length > 0),
+				chips: m.chips,
+				topics: m.estimate?.genre ?? {}
+			};
+		});
+		const key = `intent:people:v1:${await sha(turns.join('\n'))}:${await sha(top.map((r) => `${r.member.acct}:${r.member.estimate?.at ?? 0}`).join(','))}`;
+		let result: { refused: boolean; affinity: Record<string, number> } | null = null;
+		const cached = await deps.kv.get(key);
+		if (cached) result = JSON.parse(cached) as typeof result;
+		if (!result) {
+			const { outputs, failed } = await runAffinity(
+				deps.runner,
+				buildPeopleAffinityRequests(turns, people)
+			);
+			result = parsePeopleAffinity(
+				outputs,
+				people.map((p) => p.acct)
+			);
+			if (failed === 0)
+				await deps.kv.put(key, JSON.stringify(result), {
+					expirationTtl: PEOPLE_INTENT_TTL_SECONDS
+				});
+		}
+		refused = result.refused;
+		if (!refused) {
+			const aff = result.affinity;
+			ranked = [...top].sort((a, b) => (aff[b.member.acct] ?? 0) - (aff[a.member.acct] ?? 0));
+		}
+	}
+	const picked = refused ? [] : diversify(ranked, (r) => r.member.host, rationSize(all.length), 4);
 	const cards: Card[] = picked.map(({ member: m, badges }) => {
 		const d = detailed.get(ids.get(m.acct) as string) as Detailed;
 		return {
@@ -190,7 +246,7 @@ export async function buildDeck(
 			isLocked: d.isLocked
 		};
 	});
-	return { cards, count: all.length };
+	return { cards, count: all.length, refused };
 }
 
 // 代表ノートは相手本人のトークンで相手のサーバーから（未認証で見せないサーバーでも取れる）

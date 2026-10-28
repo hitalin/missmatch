@@ -75,10 +75,10 @@
 
 <div class="landing">
 	<LandingBackdrop servers={backdropServers} />
+	{#if onmode}<div class="mode"><ModeToggle {mode} onchange={onmode} /></div>{/if}
 	<div class="center">
 		<h1 class="brand"><img class="logo" src="/logo.svg" alt="" width="48" height="48" /> <span class="text-grad">みすまっち</span></h1>
 		<p class="tagline">Misskey のサーバーと、マッチング。</p>
-		{#if onmode}<ModeToggle {mode} onchange={onmode} />{/if}
 		<p class="ask">どんな場所を探している？</p>
 
 		<div class="search">
@@ -120,6 +120,12 @@
 		flex-direction: column;
 		position: relative;
 		isolation: isolate;
+	}
+	/* ChatGPT のフロントページと同じく、切替は一番上の中央 */
+	.mode {
+		display: flex;
+		justify-content: center;
+		padding-top: 8px;
 	}
 	.center {
 		flex: 1;

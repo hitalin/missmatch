@@ -1,30 +1,43 @@
 <script lang="ts">
+	import { MAX_INTENT_LENGTH } from '$lib/intent';
 	import type { ExampleUser } from '$lib/server/examples';
 	import LandingBackdrop from './LandingBackdrop.svelte';
 	import ModeToggle from './ModeToggle.svelte';
+	import PromptBox from './PromptBox.svelte';
 
-	// 人モードのランディング。サーバー探しのランディングと同じ骨組みで、背景には実在のユーザー
-	// （参加者。少ない間は各サーバーがピン留めしている人）のカードを浮かべる。参加はボタン 1 つ
+	// 人モードのランディング。サーバー探しと同じ骨組み（切替 → ロゴ → 問いかけ → 入力欄 → 例文）。
+	// 背景には実在のユーザー（参加者。少ない間は各サーバーがピン留めしている人）のカード。
+	// ログイン = 参加なので、言葉を送るとそのまま探し始める（未ログインならログインへ）
 	let {
 		mode,
 		onmode,
 		loggedIn,
-		count,
-		busy = false,
+		count = null,
 		error = '',
 		aiNote = false,
-		onstart
+		onsubmit,
+		onbrowse
 	}: {
 		mode: 'server' | 'people';
 		onmode: (m: 'server' | 'people') => void;
 		loggedIn: boolean;
-		count: number;
-		busy?: boolean;
+		count?: number | null;
 		error?: string;
-		aiNote?: boolean; // Misskey で AI 学習の防止をオンにしている人向けの一文
-		onstart: () => void;
+		aiNote?: boolean;
+		onsubmit: (text: string) => void;
+		onbrowse?: () => void; // 言葉なしで全員を見る
 	} = $props();
 
+	const EXAMPLES = [
+		'ジャズと料理の話ができる人',
+		'深夜に小説の話をしたい',
+		'自作キーボード仲間がほしい',
+		'VRChat で一緒に遊べる人',
+		'猫の写真を見せ合いたい',
+		'ゲームの話で盛り上がれる人',
+		'イラストを描く仲間',
+		'技術の話を気兼ねなくしたい'
+	];
 	let examples = $state<ExampleUser[]>([]);
 	$effect(() => {
 		fetch('/api/people/examples')
@@ -37,25 +50,44 @@
 	const cards = $derived(
 		examples.map((u) => ({ host: u.host, name: u.name, bannerUrl: u.avatarUrl, iconUrl: null, themeColor: null }))
 	);
+	let text = $state('');
+	const go = (t: string) => onsubmit(t.trim().slice(0, MAX_INTENT_LENGTH));
 </script>
 
 <div class="landing">
 	<LandingBackdrop servers={cards} />
+	<div class="mode"><ModeToggle {mode} onchange={onmode} /></div>
 	<div class="center">
 		<h1 class="brand"><img class="logo" src="/logo.svg" alt="" width="48" height="48" /> <span class="text-grad">みすまっち</span></h1>
 		<p class="tagline">Misskey のユーザーと、マッチング。</p>
-		<ModeToggle {mode} onchange={onmode} />
-		<p class="ask">参加して、話が合いそうな人をスワイプで見つけよう</p>
-		<button class="btn love big" onclick={onstart} disabled={busy}>
-			{busy ? '確認しています…' : loggedIn ? '参加する' : 'Misskey でログインしてはじめる'}
-		</button>
+		<p class="ask">どんな人と話したい？</p>
+		<div class="search">
+			<PromptBox
+				bind:value={text}
+				label="どんな人と話したい？"
+				placeholder="例: ジャズと料理の話ができる人"
+				minRows={3}
+				onsubmit={go}
+			>
+				{#snippet left()}
+					<span>{loggedIn ? 'Enter で探す · Shift+Enter で改行' : '送ると Misskey でログインして参加します'}</span>
+				{/snippet}
+			</PromptBox>
+		</div>
+		<ul class="examples">
+			{#each EXAMPLES as ex (ex)}
+				<li><button class="chip ghost" onclick={() => go(ex)}>{ex}</button></li>
+			{/each}
+		</ul>
+		{#if loggedIn && onbrowse}<button class="link" onclick={onbrowse}>言葉を入れずに全員を見る</button>{/if}
 		{#if error}<p class="err">{error}</p>{/if}
-		<p class="note">いま {count} 人が参加 · 右スワイプは「いいね」、フォローは Misskey で · 相互フォローでマッチ</p>
-		<p class="note small">参加すると、あなたのプロフィールと反応の多い公開ノートがカードに出て、公開ノートを AI が読んで話題を推定します（ノートは保存しません）。出会い・恋愛ではなく、話が合う人を見つけるためのものです。</p>
-		{#if aiNote}<p class="note small">Misskey で AI 学習の防止をオンにしている方へ: 話題の推定に Workers AI を使いますが、学習には使われません。</p>{/if}
+		{#if aiNote}<p class="note">Misskey で AI 学習の防止をオンにしている方へ: 話題の推定に Workers AI を使いますが、学習には使われません。</p>{/if}
 	</div>
 	<footer>
-		<p>例として浮かんでいるのは、参加者と、各サーバーが「みつける」に載せている人です</p>
+		<p>
+			参加した人同士のカードが出ます{#if count !== null}（いま {count} 人）{/if}。右スワイプは「いいね」、フォローは Misskey で、相互フォローでマッチ
+			· 浮かんでいるのは参加者と、各サーバーが「みつける」に載せている人
+		</p>
 	</footer>
 </div>
 
@@ -66,6 +98,11 @@
 		flex-direction: column;
 		position: relative;
 		isolation: isolate;
+	}
+	.mode {
+		display: flex;
+		justify-content: center;
+		padding-top: 8px;
 	}
 	.center {
 		flex: 1;
@@ -78,7 +115,6 @@
 		max-width: 640px;
 		margin: 0 auto;
 		padding: 48px 0 24px;
-		text-align: center;
 	}
 	.brand {
 		margin: 0;
@@ -100,32 +136,55 @@
 		font-size: 1.05rem;
 		color: var(--fg-muted);
 	}
-	.big {
-		padding: 0.9em 2.2em;
-		font-size: 1.05rem;
+	.search {
+		width: 100%;
 	}
-	.note {
+	.examples {
+		list-style: none;
 		margin: 0;
-		font-size: 0.86rem;
-		color: var(--fg-muted);
+		padding: 0;
+		display: flex;
+		flex-wrap: wrap;
+		justify-content: center;
+		gap: 8px;
 	}
-	.note.small {
-		font-size: 0.74rem;
-		max-width: 520px;
-		line-height: 1.6;
+	@media (max-width: 899px) {
+		.examples li:nth-child(n + 6) {
+			display: none;
+		}
+	}
+	.link {
+		border: none;
+		background: none;
+		padding: 0;
+		color: var(--fg-muted);
+		font-size: 0.82rem;
+		font-weight: 700;
+		cursor: pointer;
+		text-decoration: underline;
 	}
 	.err {
 		margin: 0;
 		color: var(--nope);
 		font-weight: 700;
 		font-size: 0.86rem;
+		text-align: center;
 		word-break: break-all;
+	}
+	.note {
+		margin: 0;
+		font-size: 0.76rem;
+		color: var(--fg-muted);
+		text-align: center;
+		max-width: 520px;
 	}
 	footer {
 		padding: 16px 0 24px;
 		font-size: 0.72rem;
 		color: var(--fg-muted);
 		text-align: center;
+		max-width: 640px;
+		margin: 0 auto;
 	}
 	footer p {
 		margin: 0;

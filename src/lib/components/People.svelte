@@ -1,22 +1,22 @@
 <script lang="ts">
 	import type { AuthUser } from '$lib/auth';
-	import type { Member } from '$lib/people';
+	import { MAX_INTENT_LENGTH } from '$lib/intent';
+	import { MAX_CHIPS, type Member } from '$lib/people';
+	import type { Relation } from '$lib/people-deck';
 	import { peopleStore } from '$lib/people-store.svelte';
 	import type { Card } from '$lib/server/deck';
-	import type { Relation } from '$lib/people-deck';
-	import { MAX_CHIPS } from '$lib/people';
 	import { GENRE_LABELS, GENRES, type Genre } from '$lib/types';
 	import Discover from './Discover.svelte';
+	import Icon from './Icon.svelte';
 	import ModeToggle from './ModeToggle.svelte';
 	import PeopleLanding from './PeopleLanding.svelte';
-	import Icon from './Icon.svelte';
 	import PersonCard from './PersonCard.svelte';
 	import PersonDetails from './PersonDetails.svelte';
-	import Spinner from './Spinner.svelte';
+	import PromptBox from './PromptBox.svelte';
 	import type { Tab } from './Shell.svelte';
 
-	// 人モード（docs/PEOPLE.md v6.4）。サーバー探しと同じデッキ UI で、参加した人同士のカードをスワイプする。
-	// 右 = いいね（ブラウザだけ）、「フォローする」ボタンが Misskey でのフォロー、相互フォローになったらマッチ
+	// 人モード（docs/PEOPLE.md v6.6）。サーバー探しと同じデッキ UI で、参加した人同士のカードをスワイプする。
+	// ログイン = 参加。言葉で絞れる。右 = いいね（ブラウザだけ）、「フォローする」が Misskey でのフォロー、相互フォローでマッチ
 	let {
 		tab,
 		user,
@@ -39,19 +39,22 @@
 		self: { preventAiLearning: boolean } | null;
 		canFollow: boolean;
 	};
+	const PENDING_KEY = 'missmatch:people:pending'; // ログインをまたいで持ち越す言葉
 	let status = $state<Status | null>(null);
-	let statusError = $state('');
+	let joinError = $state('');
+	let joining = false;
+	let turns = $state<string[]>([]);
+	let browsing = $state(false); // ランディングから進んでデッキを見ている（サーバー探しの「言葉がある検索」に相当）
 	let cards = $state.raw<Card[]>([]);
+	let refused = $state(false);
 	let deckGen = $state(0);
 	let deckLoading = $state(false);
 	let deckError = $state('');
+	let draft = $state('');
 	let matches = $state<{ acct: string; host: string; username: string; name: string }[]>([]);
 	let newMatches = $state<typeof matches>([]);
 	let relations = $state<Record<string, Relation>>({});
 
-	// 参加はボタン 1 つ（条件はサーバー側で判定し、満たさないときだけ理由を出す）
-	let busy = $state(false);
-	let error = $state('');
 	const REASONS: Record<string, string> = {
 		notes: '公開のノート（CW なし・連合あり）が 10 件たまると参加できます。',
 		seeking: '恋人・出会いを求める内容が自己紹介やノートにあるため参加できません。',
@@ -63,13 +66,37 @@
 	const avatar = (host: string, username: string) => `https://${host}/avatar/@${encodeURIComponent(username)}`;
 
 	async function loadStatus() {
-		statusError = '';
 		try {
 			const res = await fetch('/api/people/status');
-			if (!res.ok) throw new Error(`HTTP ${res.status}`);
-			status = (await res.json()) as Status;
-		} catch (e) {
-			statusError = e instanceof Error ? e.message : String(e);
+			if (res.ok) status = (await res.json()) as Status;
+		} catch {
+			// 人数などが取れなくてもランディングは出す
+		}
+	}
+	// ログイン = 参加。条件を満たさないときだけ理由を出す
+	async function autoJoin(): Promise<boolean> {
+		if (joining) return false;
+		joining = true;
+		joinError = '';
+		try {
+			const res = await fetch('/api/people/join', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ chips: [], profileOnly: false })
+			});
+			const r = (await res.json()) as { ok?: boolean; reason?: string; noteIds?: string[] };
+			if (!res.ok || !r.ok) {
+				joinError = REASONS[r.reason ?? ''] ?? '参加できませんでした。時間をおいて試してください。';
+				if (r.noteIds?.length) joinError += ` 該当ノート: ${r.noteIds.map((id) => `https://${user?.host}/notes/${id}`).join(' ')}`;
+				return false;
+			}
+			await loadStatus();
+			return true;
+		} catch {
+			joinError = '通信に失敗しました';
+			return false;
+		} finally {
+			joining = false;
 		}
 	}
 	async function loadDeck() {
@@ -79,11 +106,12 @@
 			const res = await fetch('/api/people/deck', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ exclude: peopleStore.excluded })
+				body: JSON.stringify({ exclude: peopleStore.excluded, turns })
 			});
 			if (!res.ok) throw new Error(`HTTP ${res.status}`);
-			const d = (await res.json()) as { cards: Card[]; count: number };
+			const d = (await res.json()) as { cards: Card[]; count: number; refused: boolean };
 			cards = d.cards;
+			refused = d.refused;
 			deckGen += 1;
 		} catch (e) {
 			deckError = e instanceof Error ? e.message : String(e);
@@ -116,38 +144,64 @@
 			// 状態が取れなくても一覧は出す
 		}
 	}
+
+	// 言葉を送る: 未ログインなら言葉を持ち越してログインへ。参加していなければ参加してから探す
+	async function search(text: string) {
+		if (!user) {
+			sessionStorage.setItem(PENDING_KEY, text);
+			onlogin();
+			return;
+		}
+		if (!status?.me && !(await autoJoin())) return;
+		turns = text ? [text] : [];
+		cards = [];
+		browsing = true;
+		await loadDeck();
+	}
+	function refine(text: string) {
+		const t = text.trim().slice(0, MAX_INTENT_LENGTH);
+		if (!t) return;
+		turns = [...turns, t].slice(-5);
+		draft = '';
+		cards = [];
+		loadDeck();
+	}
+	function dropTurn(i: number) {
+		turns = turns.filter((_, j) => j !== i);
+		cards = [];
+		loadDeck();
+	}
+	function backToLanding() {
+		browsing = false;
+		turns = [];
+		cards = [];
+		refused = false;
+	}
+
 	$effect(() => {
 		void user;
 		loadStatus();
 	});
+	// ログイン直後: 持ち越した言葉があれば参加して探す。無くても参加だけはしておく（ログイン = 参加）
+	$effect(() => {
+		if (!user || !status || status.me) return;
+		const pending = sessionStorage.getItem(PENDING_KEY);
+		sessionStorage.removeItem(PENDING_KEY);
+		if (pending) search(pending);
+		else autoJoin();
+	});
 	$effect(() => {
 		if (!status?.me) return;
-		if (tab === 'discover' && cards.length === 0 && !deckLoading) loadDeck();
+		if (tab === 'discover' && browsing && cards.length === 0 && !deckLoading && !deckError && !refused) loadDeck();
 		if (tab === 'likes') loadRelations();
 		loadMatches();
 	});
 
-	async function join() {
-		busy = true;
-		error = '';
-		try {
-			const res = await fetch('/api/people/join', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ adultChecked: true, aiConsent: true, chips: [], profileOnly: false })
-			});
-			const r = (await res.json()) as { ok?: boolean; reason?: string; noteIds?: string[] };
-			if (!res.ok || !r.ok) {
-				error = REASONS[r.reason ?? ''] ?? '参加できませんでした。時間をおいて試してください。';
-				if (r.noteIds?.length) error += ` 該当ノート: ${r.noteIds.map((id) => `https://${user?.host}/notes/${id}`).join(' ')}`;
-				return;
-			}
-			await loadStatus();
-		} catch {
-			error = '通信に失敗しました';
-		} finally {
-			busy = false;
-		}
+	async function leave() {
+		if (!confirm('参加をやめて、記録を消します。フォロー関係は Misskey にそのまま残ります。')) return;
+		await fetch('/api/people/leave', { method: 'POST' });
+		cards = [];
+		await loadStatus();
 	}
 	async function patchMe(patch: { chips?: Genre[]; profileOnly?: boolean }) {
 		const res = await fetch('/api/people/me', {
@@ -161,12 +215,6 @@
 		const chips = status?.me?.chips ?? [];
 		const next = chips.includes(g) ? chips.filter((c) => c !== g) : chips.length < MAX_CHIPS ? [...chips, g] : chips;
 		if (next !== chips) patchMe({ chips: next });
-	}
-	async function leave() {
-		if (!confirm('参加をやめて、記録を消します。フォロー関係は Misskey にそのまま残ります。')) return;
-		await fetch('/api/people/leave', { method: 'POST' });
-		cards = [];
-		await loadStatus();
 	}
 
 	// 「フォローする」。権限が無ければ MiAuth で write:following を足して取り直す（step-up）
@@ -234,24 +282,26 @@
 	}
 </script>
 
-{#if statusError}
-	<p class="banner">人モードを読み込めません（{statusError}）。<button class="link" onclick={loadStatus}>再試行</button></p>
-{:else if !status}
-	<div class="loading"><Spinner label="読み込み中" /></div>
-{:else if !status.me}
-	{#if tab === 'discover'}
-		<PeopleLanding {mode} {onmode} loggedIn={!!user} count={status.count} {busy} {error} aiNote={status.self?.preventAiLearning ?? false} onstart={user ? join : onlogin} />
-	{:else}
-		<section class="panel block"><p class="muted">参加すると、ここに{tab === 'likes' ? 'いいねした人' : tab === 'passed' ? 'よくないねした人' : 'あなたの参加状態'}が出ます。</p></section>
-	{/if}
+{#if tab === 'discover' && !browsing}
+	<PeopleLanding {mode} {onmode} loggedIn={!!user} count={status?.count ?? null} error={joinError} aiNote={status?.self?.preventAiLearning ?? false} onsubmit={search} onbrowse={() => search('')} />
+{:else if !status?.me}
+	<section class="panel block"><p class="muted">{joinError || '参加すると、ここに' + (tab === 'likes' ? 'いいねした人' : tab === 'passed' ? 'よくないねした人' : 'あなたの参加状態') + 'が出ます。'}</p></section>
 {:else if tab === 'discover'}
+	<div class="top"><ModeToggle {mode} onchange={onmode} /><button class="link" onclick={backToLanding}>言葉を変える</button></div>
+	{#if turns.length > 0}
+		<ul class="turns">
+			{#each turns as t, i (t + i)}
+				<li><span class="chip on">{t}<button class="x" aria-label="この言葉を外す" onclick={() => dropTurn(i)}><Icon name="x" size={12} /></button></span></li>
+			{/each}
+		</ul>
+	{/if}
 	{#if deckLoading && cards.length === 0}
-		<div class="loading"><Spinner label="カードを集めています" /><p class="muted">カードを集めています</p></div>
+		<div class="loading"><p class="muted">{turns.length ? 'Clef で読み取り中' : 'カードを集めています'}</p></div>
 	{:else if deckError}
 		<p class="banner">カードを取得できません（{deckError}）。<button class="link" onclick={loadDeck}>再試行</button></p>
+	{:else if refused}
+		<div class="panel block"><p>この言葉では探せません。話題や趣味、話し方を手がかりにしてください。</p><button class="btn secondary" onclick={() => { turns = []; refused = false; loadDeck(); }}>言葉を消す</button></div>
 	{:else}
-		<ModeToggle {mode} onchange={onmode} />
-		<p class="count-line muted">参加 {status.count} 人 · いいね {peopleStore.liked.length}</p>
 		{#key deckGen}
 			<Discover
 				items={cards}
@@ -263,7 +313,7 @@
 				onundo={(c, action) => (action === 'like' ? peopleStore.unlike(c.acct) : peopleStore.restore(c.acct))}
 				onexhausted={loadDeck}
 				onsettings={loadDeck}
-				emptyTitle={status.count <= 1 ? 'まだあなただけです' : '今日のカードは見終わりました'}
+				emptyTitle={status.count <= 1 ? 'まだあなただけです' : turns.length ? 'この言葉に合う人はいまはいません' : '今日のカードは見終わりました'}
 				emptyHint={status.count <= 1 ? '参加する人が増えると、ここにカードが出ます。' : 'いいねした人は いいね タブから Misskey でフォローできます。'}
 				doneTitle="今日のカードは見終わりました"
 				doneHint="いいねした人は いいね タブから Misskey でフォローできます。"
@@ -272,6 +322,11 @@
 				{#snippet card(c, eager)}<PersonCard card={c} {eager} />{/snippet}
 				{#snippet details(c, full, like)}
 					<PersonDetails card={c} {full} canFollow={status?.canFollow ?? false} onfollow={follow} onreport={reportCard} onlike={full ? like : undefined} />
+				{/snippet}
+				{#snippet composer()}
+					<PromptBox bind:value={draft} label="言葉を足して絞る" placeholder="言葉を足して絞る（例: 深夜によく起きている人）" onsubmit={refine}>
+						{#snippet left()}<span>参加 {status?.count ?? 0} 人 · いいね {peopleStore.liked.length}</span>{/snippet}
+					</PromptBox>
 				{/snippet}
 			</Discover>
 		{/key}
@@ -375,6 +430,33 @@
 {/if}
 
 <style>
+	.top {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: 14px;
+		margin-bottom: 6px;
+	}
+	.turns {
+		list-style: none;
+		margin: 0 0 6px;
+		padding: 0;
+		display: flex;
+		flex-wrap: wrap;
+		justify-content: center;
+		gap: 6px;
+	}
+	.turns .chip {
+		gap: 6px;
+	}
+	.turns .x {
+		display: inline-flex;
+		border: none;
+		background: none;
+		padding: 0;
+		color: inherit;
+		cursor: pointer;
+	}
 	.loading {
 		flex: 1;
 		display: flex;
@@ -416,11 +498,6 @@
 		margin: 0;
 		font-size: 0.9rem;
 		line-height: 1.6;
-	}
-	.count-line {
-		text-align: center;
-		font-size: 0.8rem;
-		margin: 0;
 	}
 	.me {
 		border-radius: 50%;
