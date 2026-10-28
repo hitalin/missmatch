@@ -70,6 +70,7 @@
 	}
 	// 何とマッチングするか（サーバー / 人）。ChatGPT の Chat / Work と同じ上部の切替。URL の ?mode=people でも開ける
 	let mode = $state<'server' | 'people'>(page.url.searchParams.get('mode') === 'people' ? 'people' : 'server');
+	let peopleReset = $state(0); // 「新しくさがす」で人モードのデッキをランディングに戻す
 	function setMode(m: 'server' | 'people') {
 		mode = m;
 		peopleStore.setMode(m);
@@ -329,6 +330,7 @@
 	}
 	// 新しくさがす: 言葉の無い検索（＝ランディング）に戻る
 	function startNew() {
+		if (mode === 'people') peopleReset += 1;
 		const rest = { ...profile, searches: profile.searches.filter((s) => s.query) };
 		profile = selectSearch(rest, newSearch());
 		draft = '';
@@ -431,13 +433,13 @@
 			{#if loginOpen}
 				<LoginSheet onclose={() => openLogin(false)} next={mode === 'people' ? '/?mode=people' : '/'} />
 			{:else if mode === 'people'}
-				<People {tab} user={data.user} onlogin={() => openLogin(true)} {mode} onmode={setMode} />
+				<People {tab} user={data.user} onlogin={() => openLogin(true)} {mode} onmode={setMode} reset={peopleReset} />
 			{:else if tab === 'discover'}
 				<div class="discover-tab">
 					{#if !search.query}
 						<Landing onsubmit={start} onsettle={(t) => prefetch([t])} {profiles} {mode} onmode={setMode} />
 					{:else}
-					<SearchBar {search} {reading} ondrop={dropTurn} />
+					<SearchBar turns={search.turns} {reading} ondrop={dropTurn} />
 					{#if !profiles}
 						<div class="loading"><Spinner label="サーバー情報を取得中" /><p class="muted">サーバー情報を取得中</p></div>
 					{:else}

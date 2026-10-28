@@ -1,7 +1,15 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { Member } from '$lib/people';
 import { keyFromSecret } from './crypto';
-import { buildDeck, followAcct, matchesFor, relationsFor, report, unfollowAcct } from './deck';
+import {
+	buildDeck,
+	cardFor,
+	followAcct,
+	matchesFor,
+	relationsFor,
+	report,
+	unfollowAcct
+} from './deck';
 import type { PeopleDeps } from './members';
 
 const now = Date.UTC(2026, 9, 28, 12);
@@ -209,6 +217,20 @@ describe('matchesFor / relationsFor', () => {
 		await d.kv.put('following:v1:x:id-me', JSON.stringify(['a@y', 'b@z']));
 		const m = await matchesFor(d, viewer);
 		expect(m.map((x) => x.acct)).toEqual(['a@y']);
+	});
+	it('いいね一覧の詳細: 1 人分のカードと関係を閲覧者のサーバーから取る。非参加者と非表示は null', async () => {
+		const d = await deps({ api: api({ followed: ['a@y'] }) });
+		await seed(d, [
+			me,
+			member('a', 'y'),
+			member('h', 'z', { hidden: { kind: 'report', noteIds: [], at: now } })
+		]);
+		const r = await cardFor(d, viewer, 'a@y');
+		expect(r?.card.description).toBe('bio of a');
+		expect(r?.card.badges.followsYou).toBe(true);
+		expect(r?.relation.isFollowed).toBe(true);
+		expect(await cardFor(d, viewer, 'nobody@y')).toBeNull();
+		expect(await cardFor(d, viewer, 'h@z')).toBeNull();
 	});
 	it('いいね一覧の状態', async () => {
 		const d = await deps({ api: api({ followed: ['a@y'] }) });

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { untrack } from 'svelte';
 	import type { AuthUser } from '$lib/auth';
 	import { MAX_INTENT_LENGTH } from '$lib/intent';
 	import { MAX_CHIPS, type Member } from '$lib/people';
@@ -7,11 +8,13 @@
 	import type { Card } from '$lib/server/deck';
 	import { GENRE_LABELS, GENRES, type Genre } from '$lib/types';
 	import Discover from './Discover.svelte';
+	import Spinner from './Spinner.svelte';
 	import Icon from './Icon.svelte';
-	import ModeToggle from './ModeToggle.svelte';
 	import PeopleLanding from './PeopleLanding.svelte';
 	import PersonCard from './PersonCard.svelte';
+	import PeopleGrid from './PeopleGrid.svelte';
 	import PersonDetails from './PersonDetails.svelte';
+	import SearchBar from './SearchBar.svelte';
 	import PromptBox from './PromptBox.svelte';
 	import type { Tab } from './Shell.svelte';
 
@@ -22,13 +25,15 @@
 		user,
 		onlogin,
 		mode,
-		onmode
+		onmode,
+		reset = 0
 	}: {
 		tab: Tab;
 		user: AuthUser | null;
 		onlogin: () => void;
 		mode: 'server' | 'people';
 		onmode: (m: 'server' | 'people') => void;
+		reset?: number; // 「新しくさがす」が押されるたびに増える
 	} = $props();
 
 	type Status = {
@@ -176,6 +181,9 @@
 		cards = [];
 		refused = false;
 	}
+	$effect(() => {
+		if (reset > 0) backToLanding();
+	});
 
 	$effect(() => {
 		void user;
@@ -189,11 +197,15 @@
 		if (pending) search(pending);
 		else autoJoin();
 	});
+	// 参加が確認できたら・タブを変えたらマッチを確認する。デッキは言葉を送ったときなど明示の操作でだけ集める
+	// （cards や deckLoading をここで読むと、カードが 0 枚のとき集め直しが止まらない）
 	$effect(() => {
 		if (!status?.me) return;
-		if (tab === 'discover' && browsing && cards.length === 0 && !deckLoading && !deckError && !refused) loadDeck();
-		if (tab === 'likes') loadRelations();
-		loadMatches();
+		const t = tab;
+		untrack(() => {
+			if (t === 'likes') loadRelations();
+			loadMatches();
+		});
 	});
 
 	async function leave() {
@@ -282,20 +294,13 @@
 </script>
 
 {#if tab === 'discover' && !browsing}
-	<PeopleLanding {mode} {onmode} loggedIn={!!user} count={status?.count ?? null} error={joinError} aiNote={status?.self?.preventAiLearning ?? false} onsubmit={search} onbrowse={() => search('')} />
+	<PeopleLanding {mode} {onmode} loggedIn={!!user} count={status?.count ?? null} error={joinError} aiNote={status?.self?.preventAiLearning ?? false} onsubmit={search} />
 {:else if !status?.me}
 	<section class="panel block"><p class="muted">{joinError || '参加すると、ここに' + (tab === 'likes' ? 'いいねした人' : tab === 'passed' ? 'よくないねした人' : 'あなたの参加状態') + 'が出ます。'}</p></section>
 {:else if tab === 'discover'}
-	<div class="top"><ModeToggle {mode} onchange={onmode} /><button class="link" onclick={backToLanding}>言葉を変える</button></div>
-	{#if turns.length > 0}
-		<ul class="turns">
-			{#each turns as t, i (t + i)}
-				<li><span class="chip on">{t}<button class="x" aria-label="この言葉を外す" onclick={() => dropTurn(i)}><Icon name="x" size={12} /></button></span></li>
-			{/each}
-		</ul>
-	{/if}
+	<SearchBar {turns} reading={deckLoading} ondrop={dropTurn} />
 	{#if deckLoading && cards.length === 0}
-		<div class="loading"><p class="muted">{turns.length ? 'Clef で読み取り中' : 'カードを集めています'}</p></div>
+		<div class="loading"><Spinner label="カードを集めています" /><p class="muted">{turns.length ? 'Clef で読み取り中' : 'カードを集めています'}</p></div>
 	{:else if deckError}
 		<p class="banner">カードを取得できません（{deckError}）。<button class="link" onclick={loadDeck}>再試行</button></p>
 	{:else if refused}
@@ -317,6 +322,7 @@
 				doneTitle="今日のカードは見終わりました"
 				doneHint="いいねした人は いいね タブから Misskey でフォローできます。"
 				settingsLabel="もう一度集める"
+				busy={deckLoading && turns.length ? (turns.at(-1) ?? '') : ''}
 			>
 				{#snippet card(c, eager)}<PersonCard card={c} {eager} />{/snippet}
 				{#snippet details(c, full, like)}
@@ -331,30 +337,9 @@
 		{/key}
 	{/if}
 {:else if tab === 'likes'}
-	<section class="list">
-		<h2>いいね <span class="muted small">{peopleStore.liked.length} 人</span></h2>
-		{#if peopleStore.liked.length === 0}
-			<p class="muted">右にスワイプした人がここに入ります。相手には何も届きません。</p>
-		{/if}
-		<ul class="people">
-			{#each peopleStore.liked as p (p.acct)}
-				{@const r = relations[p.acct]}
-				<li class="person">
-					<img src={avatar(p.host, p.username)} alt="" width="44" height="44" referrerpolicy="no-referrer" loading="lazy" />
-					<div class="names"><b>{p.name}</b><small>@{p.username}@{p.host}</small><small class="state">{relationLabel(r, false)}</small></div>
-					<div class="ops">
-						{#if r?.isFollowing || r?.hasPendingFollowRequestFromYou}
-							<button class="chip ghost" onclick={() => unfollow(p.acct)}>取り消す</button>
-						{:else}
-							<button class="chip on" onclick={async () => alert((await follow({ acct: p.acct })).message)}>フォローする</button>
-						{/if}
-						<a class="chip ghost" href="https://{p.host}/@{p.username}" target="_blank" rel="noopener">見る</a>
-						<button class="chip ghost" onclick={() => peopleStore.unlike(p.acct)}>外す</button>
-					</div>
-				</li>
-			{/each}
-		</ul>
-		{#if matches.length > 0}
+	<PeopleGrid people={peopleStore.liked} {relations} canFollow={status.canFollow} onremove={(a) => peopleStore.unlike(a)} onfollow={follow} onunfollow={unfollow} onreport={reportCard} />
+	{#if matches.length > 0}
+		<section class="list">
 			<h2>マッチ <span class="muted small">{matches.length} 人</span></h2>
 			<ul class="people">
 				{#each matches as m (m.acct)}
@@ -368,22 +353,10 @@
 					</li>
 				{/each}
 			</ul>
-		{/if}
-	</section>
+		</section>
+	{/if}
 {:else if tab === 'passed'}
-	<section class="list">
-		<h2>よくないね <span class="muted small">{peopleStore.passed.length} 人</span></h2>
-		{#if peopleStore.passed.length === 0}<p class="muted">左にスワイプした人がここに入ります。30 日たつとまた出ます。</p>{/if}
-		<ul class="people">
-			{#each peopleStore.passed as p (p.acct)}
-				<li class="person">
-					<img src={avatar(p.host, p.username)} alt="" width="44" height="44" referrerpolicy="no-referrer" loading="lazy" />
-					<div class="names"><b>{p.name}</b><small>@{p.username}@{p.host}</small></div>
-					<div class="ops"><button class="chip ghost" onclick={() => peopleStore.restore(p.acct)}>戻す</button></div>
-				</li>
-			{/each}
-		</ul>
-	</section>
+	<PeopleGrid people={peopleStore.passed} mode="passed" onremove={(a) => peopleStore.restore(a)} onfollow={follow} onunfollow={unfollow} onreport={reportCard} />
 {:else}
 	<section class="panel block">
 		<h2>参加しています</h2>
@@ -429,33 +402,6 @@
 {/if}
 
 <style>
-	.top {
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		gap: 14px;
-		margin-bottom: 6px;
-	}
-	.turns {
-		list-style: none;
-		margin: 0 0 6px;
-		padding: 0;
-		display: flex;
-		flex-wrap: wrap;
-		justify-content: center;
-		gap: 6px;
-	}
-	.turns .chip {
-		gap: 6px;
-	}
-	.turns .x {
-		display: inline-flex;
-		border: none;
-		background: none;
-		padding: 0;
-		color: inherit;
-		cursor: pointer;
-	}
 	.loading {
 		flex: 1;
 		display: flex;

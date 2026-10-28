@@ -1,22 +1,22 @@
 <script lang="ts">
-	import type { Search } from '$lib/search';
 	import Icon from './Icon.svelte';
 
 	// 足した絞り込みの言葉（外せる）。最初の言葉はサイドバーの一覧に、言葉を足す箱は Composer にある
+	// サーバー探しと人探しで同じものを使う
 	let {
-		search,
+		turns,
 		reading,
 		ondrop
 	}: {
-		search: Search;
+		turns: string[];
 		reading: boolean; // 読み取り中
 		ondrop: (index: number) => void; // 絞り込みを外す
 	} = $props();
 </script>
 
-{#if search.turns.length > 0}
+{#if turns.length > 0}
 	<ul class="turns">
-		{#each search.turns as turn, i (i)}
+		{#each turns as turn, i (i)}
 			<li>
 				<span>{turn}</span>
 				<button aria-label="「{turn}」を外す" disabled={reading} onclick={() => ondrop(i)}>

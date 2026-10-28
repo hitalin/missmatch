@@ -26,6 +26,26 @@ import type { MisskeyApiError } from './misskey';
 
 // デッキ・フォロー・マッチ・通報（docs/PEOPLE.md v6.4 §4・§4a・§5）。
 // 相手のサーバーへ未認証で行かない。関係と bio は閲覧者本人のサーバーの users/show（userIds バッチ）で読み、
+// いいね一覧の詳細: 1 人分のカードと関係を、閲覧者のサーバーから表示のたびに取る（保存しない）
+export async function cardFor(
+	deps: PeopleDeps,
+	viewer: Viewer,
+	acct: string
+): Promise<{ card: Card; relation: Relation } | null> {
+	const m = await findMember(deps.kv, acct);
+	if (!m || m.hidden) return null;
+	const id = (await resolveIds(deps, viewer, [acct])).get(acct);
+	if (!id) return null;
+	const d = (await fetchDetailed(deps, viewer, [id])).get(id);
+	if (!d) return null;
+	const badges: Badges = {
+		followsYou: d.isFollowed,
+		common: 0,
+		sameHost: m.host === viewer.member.host
+	};
+	return { card: toCard(m, d, badges), relation: relationOf(d) };
+}
+
 // 代表ノートは相手本人のトークンで相手のサーバーから読む
 
 export interface Viewer {
@@ -39,6 +59,7 @@ export interface Card {
 	username: string;
 	name: string;
 	avatarUrl: string;
+	bannerUrl: string | null; // 本人のサーバーが持つプロフィールのバナー（カードの全面写真）
 	chips: Genre[];
 	badges: Badges;
 	description: string;
@@ -101,6 +122,7 @@ async function resolveIds(
 
 interface Detailed {
 	id: string;
+	bannerUrl?: string | null;
 	description: string | null;
 	fields: { name: string; value: string }[];
 	pinnedNotes: { text?: string | null }[];
@@ -132,6 +154,25 @@ async function fetchDetailed(
 	}
 	return out;
 }
+const toCard = (m: Member, d: Detailed, badges: Badges): Card => ({
+	acct: m.acct,
+	host: m.host,
+	username: m.username,
+	name: m.name,
+	avatarUrl: avatarUrlOf(m.host, m.username),
+	bannerUrl: d.bannerUrl ?? null,
+	chips: m.chips,
+	badges,
+	description: cleanNoteText(d.description ?? ''),
+	fields: (d.fields ?? []).slice(0, 4),
+	pinned: (d.pinnedNotes ?? [])
+		.map((n) => cleanNoteText(n.text ?? ''))
+		.filter((t) => t.length > 0)
+		.slice(0, 2),
+	noteIds: m.profileOnly ? [] : m.noteIds,
+	profileOnly: m.profileOnly,
+	isLocked: d.isLocked
+});
 const relationOf = (d: Detailed): Relation => ({
 	isFollowing: d.isFollowing,
 	isFollowed: d.isFollowed,
@@ -225,27 +266,9 @@ export async function buildDeck(
 		}
 	}
 	const picked = refused ? [] : diversify(ranked, (r) => r.member.host, rationSize(all.length), 4);
-	const cards: Card[] = picked.map(({ member: m, badges }) => {
-		const d = detailed.get(ids.get(m.acct) as string) as Detailed;
-		return {
-			acct: m.acct,
-			host: m.host,
-			username: m.username,
-			name: m.name,
-			avatarUrl: avatarUrlOf(m.host, m.username),
-			chips: m.chips,
-			badges,
-			description: cleanNoteText(d.description ?? ''),
-			fields: (d.fields ?? []).slice(0, 4),
-			pinned: (d.pinnedNotes ?? [])
-				.map((n) => cleanNoteText(n.text ?? ''))
-				.filter((t) => t.length > 0)
-				.slice(0, 2),
-			noteIds: m.profileOnly ? [] : m.noteIds,
-			profileOnly: m.profileOnly,
-			isLocked: d.isLocked
-		};
-	});
+	const cards: Card[] = picked.map(({ member: m, badges }) =>
+		toCard(m, detailed.get(ids.get(m.acct) as string) as Detailed, badges)
+	);
 	return { cards, count: all.length, refused };
 }
 
