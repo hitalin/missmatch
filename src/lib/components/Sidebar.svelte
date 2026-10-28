@@ -93,8 +93,8 @@
 				title="アカウント: @{user.username}@{user.host}"
 				onclick={() => (menu = !menu)}
 			>
-				{#if user.avatarUrl}<img class="avatar" src={user.avatarUrl} alt="" width="32" height="32" />{:else}<span class="avatar noavatar"><Icon name="user" size={18} /></span>{/if}
-				<span class="acct">@{user.username}<span class="host">@{user.host}</span></span>
+				<img class="avatar" src={user.avatarUrl} alt="" width="32" height="32" referrerpolicy="no-referrer" />
+				<span class="acct"><span>@{user.username}</span><span class="host">@{user.host}</span></span>
 			</button>
 			{#if menu}
 				<button class="menu-backdrop" aria-label="メニューを閉じる" onclick={() => (menu = false)}></button>
@@ -271,15 +271,22 @@
 		background: var(--panel-2);
 		color: var(--fg-muted);
 	}
+	/* acct は 2 行（@user / @host）で、host を省略しない（偽ホストの見分けのため） */
 	.acct {
 		min-width: 0;
-		overflow: hidden;
-		white-space: nowrap;
-		text-overflow: ellipsis;
+		display: flex;
+		flex-direction: column;
+		line-height: 1.2;
 		font-size: 0.9rem;
 		font-weight: 700;
 	}
+	.acct > span {
+		overflow: hidden;
+		white-space: nowrap;
+		text-overflow: ellipsis;
+	}
 	.host {
+		font-size: 0.72rem;
 		font-weight: 400;
 		opacity: 0.5;
 	}

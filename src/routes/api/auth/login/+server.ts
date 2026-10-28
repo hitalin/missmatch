@@ -1,6 +1,10 @@
 import { json } from '@sveltejs/kit';
-import { miauthUrl, normalizeHost, PENDING_COOKIE } from '$lib/auth';
+import { isAllowedHost, miauthUrl, normalizeHost, PENDING_COOKIE } from '$lib/auth';
+import { getServers, kvFrom, memoryKv } from '$lib/server/recommend';
 import type { RequestHandler } from './$types';
+
+// vite dev ではバインディングがないため、プロセス内メモリで代用する
+const devKv = memoryKv();
 
 const UA = 'missmatch/1.0 (+https://github.com/hitalin/missmatch)';
 const META_TIMEOUT_MS = 10_000;
@@ -29,7 +33,7 @@ async function isMisskey(host: string): Promise<{ ok: true } | { ok: false; erro
 }
 
 // MiAuth を始める。戻り先で照合するため、セッション id とホストを短命の Cookie に残す
-export const POST: RequestHandler = async ({ request, url, cookies }) => {
+export const POST: RequestHandler = async ({ request, url, cookies, platform }) => {
 	let body: { host?: unknown };
 	try {
 		body = (await request.json()) as typeof body;
@@ -38,6 +42,20 @@ export const POST: RequestHandler = async ({ request, url, cookies }) => {
 	}
 	const host = typeof body.host === 'string' ? normalizeHost(body.host) : null;
 	if (!host) return json({ error: 'サーバーのドメインを入れてください' }, { status: 400 });
+
+	// 掲載サーバーに限る（一覧は KV に 1 時間。無ければ joinmisskey から取る）
+	const kv = platform?.env.VIBE_KV ? kvFrom(platform.env.VIBE_KV) : devKv;
+	const ctx = platform?.context;
+	const servers = await getServers(kv, ctx ? (work) => ctx.waitUntil(work) : undefined);
+	if (!isAllowedHost(servers, host)) {
+		return json(
+			{
+				error:
+					'ログインできるのは joinmisskey に掲載されている日本語の Misskey サーバーのアカウントだけです'
+			},
+			{ status: 400 }
+		);
+	}
 
 	const check = await isMisskey(host);
 	if (!check.ok) return json({ error: check.error }, { status: 400 });

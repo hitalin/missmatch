@@ -1,3 +1,6 @@
+import { isListed } from './match';
+import type { ServerInfo } from './types';
+
 // MiAuth でのログイン。サーバーもブラウザも使う、副作用のない部分
 
 export interface AuthUser {
@@ -5,7 +8,7 @@ export interface AuthUser {
 	id: string;
 	username: string;
 	name: string;
-	avatarUrl: string | null;
+	avatarUrl: string; // 本人ホストの転送 URL（応答の URL は信用しない）
 }
 
 // Misskey に求める権限。いまはアカウント情報の読み取りだけ
@@ -33,6 +36,16 @@ export function normalizeHost(input: string): string | null {
 	return host;
 }
 
+// ログインできるのは joinmisskey に掲載され生きているサーバーだけ。
+// /api/meta と /api/miauth/*/check を返すだけの偽ホストで任意の表示名・アバターのセッションを作らせない
+export function isAllowedHost(servers: ServerInfo[], host: string): boolean {
+	return servers.some((s) => s.host === host && isListed(s));
+}
+
+// アバターは本人ホストの転送（Misskey の /avatar/@user）。任意オリジンの画像を全員に配らない
+export const avatarUrlOf = (host: string, username: string) =>
+	`https://${host}/avatar/@${encodeURIComponent(username)}`;
+
 // MiAuth の開始 URL。ユーザーをここに送ると、許可後に callback?session=<session> へ戻ってくる
 export function miauthUrl(host: string, session: string, origin: string): string {
 	const u = new URL(`https://${host}/miauth/${session}`);
@@ -58,7 +71,7 @@ export function parseCheck(data: unknown, host: string): { token: string; user: 
 			id: u.id,
 			username: u.username,
 			name: typeof u.name === 'string' && u.name ? u.name : u.username,
-			avatarUrl: typeof u.avatarUrl === 'string' ? u.avatarUrl : null
+			avatarUrl: avatarUrlOf(host, u.username)
 		}
 	};
 }
