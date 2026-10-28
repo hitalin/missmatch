@@ -93,7 +93,10 @@ const WANT_CRITERIA: Partial<Record<Genre, { true: string; false: string }>> = {
 	}
 };
 
-export function buildPeopleIntentRequest(turns: string[]): ClefInput {
+export function buildPeopleIntentRequest(
+	turns: string[],
+	model: ClefInput['model'] = 'clef'
+): ClefInput {
 	const questions: Record<string, ClefQuestion> = {};
 	for (const g of GENRES) {
 		questions[`want.${g}`] = {
@@ -132,7 +135,7 @@ export function buildPeopleIntentRequest(turns: string[]): ClefInput {
 		}
 	};
 	questions.refuse = REFUSE_QUESTION;
-	return { model: 'clef', state: userState(turns), questions };
+	return { model, state: userState(turns), questions };
 }
 
 const noulOf = (a: ClefAnswer | undefined) => (a?.type === 'noul' ? a.noul : 0);

@@ -1,5 +1,5 @@
 import { runAffinity } from '$lib/intent';
-import type { HiddenKind, Member } from '$lib/people';
+import { type HiddenKind, type Member, PEOPLE_EXAMPLES } from '$lib/people';
 import {
 	type Badges,
 	type Detail,
@@ -19,6 +19,7 @@ import {
 } from '$lib/people-intent';
 import { cleanNoteText } from '$lib/sample';
 import type { Genre } from '$lib/types';
+import type { ClefInput } from '$lib/vibe';
 import {
 	listMembers,
 	type MemberKv,
@@ -203,18 +204,36 @@ const AFFINITY_CANDIDATES = 48; // 言葉で絞るとき Clef に渡す上限（
 const PEOPLE_INTENT_TTL_SECONDS = 60 * 60 * 24 * 7;
 
 // 言葉 → 希望（話題 15 軸・会話の型・夜型・投稿量・拒否）。言葉ごとに 1 回で、7 日使い回す
+export const INTENT_MODEL: ClefInput['model'] = 'clef';
 export async function readPeopleIntent(
 	deps: PeopleDeps,
 	turns: string[],
-	fresh = false // 評価用: キャッシュを読まず判定し直す
+	options: { fresh?: boolean; model?: ClefInput['model'] } = {} // 評価用: キャッシュを読まず判定し直す / モデルを替える
 ): Promise<PeopleIntent> {
 	const key = `pintent:v1:${await sha(turns.join('\n'))}`;
-	const cached = fresh ? null : await deps.kv.get(key);
+	const cached = options.fresh ? null : await deps.kv.get(key);
 	if (cached) return JSON.parse(cached) as PeopleIntent;
-	const out = await deps.runner(buildPeopleIntentRequest(turns));
+	const out = await deps.runner(buildPeopleIntentRequest(turns, options.model ?? INTENT_MODEL));
 	const intent = parsePeopleIntent(out.answers);
 	await deps.kv.put(key, JSON.stringify(intent), { expirationTtl: PEOPLE_INTENT_TTL_SECONDS });
 	return intent;
+}
+
+// 例文の希望の読み取りを 1 日 1 回温める（切れた分だけ。例文クリックを待たせない）
+export async function warmPeopleIntents(
+	deps: PeopleDeps
+): Promise<{ warmed: number; skipped: number }> {
+	let warmed = 0;
+	let skipped = 0;
+	for (const text of PEOPLE_EXAMPLES) {
+		if (await deps.kv.get(`pintent:v1:${await sha(text)}`)) {
+			skipped++;
+			continue;
+		}
+		await readPeopleIntent(deps, [text]);
+		warmed++;
+	}
+	return { warmed, skipped };
 }
 
 async function sha(text: string): Promise<string> {
@@ -231,9 +250,9 @@ export async function buildDeck(
 ): Promise<{ cards: Card[]; count: number; refused: boolean }> {
 	const me = viewer.member;
 	const all = (await listMembers(deps.kv)).filter((m) => !m.hidden);
-	// 言葉があれば先に希望に読む。断る言葉なら相手のサーバーへ行く前に返す
-	const intent = turns.length > 0 ? await readPeopleIntent(deps, turns) : null;
-	if (intent?.refused) return { cards: [], count: all.length, refused: true };
+	// 言葉があれば希望に読む。Misskey への往復（解決・関係）と独立なので並べて走らせ、断る言葉なら結果を捨てる
+	const intentPromise = turns.length > 0 ? readPeopleIntent(deps, turns) : Promise.resolve(null);
+	intentPromise.catch(() => {}); // 先に Misskey 側が落ちても未処理の reject にしない
 	const byAcct = new Map(all.map((m) => [m.acct, m]));
 	const pick = (accts: string[] | undefined) =>
 		(accts ?? []).map((a) => byAcct.get(a)).filter((m): m is Member => !!m);
@@ -246,6 +265,8 @@ export async function buildDeck(
 		candidates.map((m) => m.acct)
 	);
 	const detailed = await fetchDetailed(deps, viewer, [...ids.values()]);
+	const intent = await intentPromise;
+	if (intent?.refused) return { cards: [], count: all.length, refused: true };
 	const relations: Record<string, Relation> = {};
 	for (const m of candidates) {
 		const id = ids.get(m.acct);

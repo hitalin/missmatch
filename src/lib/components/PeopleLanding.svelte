@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { MAX_INTENT_LENGTH } from '$lib/intent';
+	import { PEOPLE_EXAMPLES as EXAMPLES } from '$lib/people';
 	import type { ExampleUser } from '$lib/server/examples';
 	import LandingBackdrop from './LandingBackdrop.svelte';
 	import ModeToggle from './ModeToggle.svelte';
@@ -15,7 +16,8 @@
 		count = null,
 		error = '',
 		aiNote = false,
-		onsubmit
+		onsubmit,
+		onsettle
 	}: {
 		mode: 'server' | 'people';
 		onmode: (m: 'server' | 'people') => void;
@@ -24,27 +26,10 @@
 		error?: string;
 		aiNote?: boolean;
 		onsubmit: (text: string) => void;
+		onsettle?: (text: string) => void; // 打つ手が止まったときの言葉（送られる前に希望の読み取りを始める）
 	} = $props();
 
-	// 例文（サーバー探しと同じく 16 個から 8 個を、表示後にシャッフルして出す）
-	const EXAMPLES = [
-		'ジャズと料理の話ができる人',
-		'深夜に小説の話をしたい',
-		'自作キーボード仲間がほしい',
-		'VRChat で一緒に遊べる人',
-		'猫の写真を見せ合いたい',
-		'ゲームの話で盛り上がれる人',
-		'イラストを描く仲間',
-		'技術の話を気兼ねなくしたい',
-		'日記みたいな投稿を読み合いたい',
-		'推しの話を聞いてくれる人',
-		'音楽を作っている人',
-		'アニメの感想を言い合いたい',
-		'ものづくりの進捗を見せ合いたい',
-		'ゆるく雑談できる人',
-		'写真を撮るのが好きな人',
-		'同じ趣味で長く話せる人'
-	];
+	// 例文（サーバー探しと同じく 16 個から 8 個を、表示後にシャッフルして出す）。cron が温めるので $lib/people に置く
 	const SHOWN = 8;
 	let examples = $state(EXAMPLES.slice(0, SHOWN));
 	$effect(() => {
@@ -109,6 +94,7 @@
 				minRows={3}
 				autofocus
 				onsubmit={go}
+				{onsettle}
 			>
 				{#snippet left()}
 					<span>{loggedIn ? 'Enter で探す · Shift+Enter で改行' : '送ると Misskey でログインして参加します'}</span>

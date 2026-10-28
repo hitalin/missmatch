@@ -6,6 +6,7 @@ import { PEOPLE_CASES, type PeopleCase } from './people-cases';
 
 // 人探しの「言葉 → 希望」を /api/people/intent で測る（Clef 実機。課金対象）。
 //   EVAL_BASE_URL=http://localhost:8788 EVAL_COOKIE="missmatch_session=<id>" pnpm eval
+//   EVAL_MODEL=clef-flash で小さいモデルを試す
 // 参加者のセッション Cookie が要る（ローカルの KV にある session:v1:<id>）。
 // 指標: want の再現率（読み取ってほしい話題が 0.5 以上）、avoid の精度（読み取ってはいけない話題が 0.5 未満）、
 // style / night / pace / refused の一致率
@@ -32,7 +33,11 @@ async function runCase(c: PeopleCase): Promise<CaseResult> {
 	const res = await fetch(`${BASE}/api/people/intent`, {
 		method: 'POST',
 		headers: { 'Content-Type': 'application/json', Cookie: COOKIE },
-		body: JSON.stringify({ turns: c.turns, fresh: process.env.EVAL_CACHE !== '1' })
+		body: JSON.stringify({
+			turns: c.turns,
+			fresh: process.env.EVAL_CACHE !== '1',
+			model: process.env.EVAL_MODEL // clef-flash を試すとき
+		})
 	});
 	if (!res.ok) throw new Error(`POST /api/people/intent: HTTP ${res.status}`);
 	const intent = (await res.json()) as PeopleIntent;

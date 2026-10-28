@@ -81,9 +81,13 @@ export function kvFrom(ns: KVNamespace): VibeKv {
 	};
 }
 
+// モデルは input.model で選ぶ（clef-flash は別の ID。本体に 'clef-flash' を渡すと 3030 で断られる）
 export function clefRunner(ai: Ai): ClefRunner {
 	return (input: ClefInput) =>
-		ai.run('@cf/cloudflare/clef' as never, input as never) as unknown as Promise<ClefOutput>;
+		ai.run(
+			(input.model === 'clef-flash' ? '@cf/cloudflare/clef-flash' : '@cf/cloudflare/clef') as never,
+			input as never
+		) as unknown as Promise<ClefOutput>;
 }
 
 // ルートと cron が使う依存一式。Clef の使用量を記録し、応答後に flush で KV に足す

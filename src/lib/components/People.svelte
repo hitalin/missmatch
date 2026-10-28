@@ -175,6 +175,18 @@
 		if (!status?.me && !(await autoJoin())) return;
 		onsearch(text);
 	}
+	// 打つ手が止まったら希望の読み取りを先に始める（結果は言葉ごとに 7 日キャッシュされ、送ったときに効く）
+	const prefetched = new Set<string>();
+	function prefetchIntent(turns: string[]) {
+		const key = turns.join('\n');
+		if (!status?.me || key.length < 2 || prefetched.has(key)) return;
+		prefetched.add(key);
+		fetch('/api/people/intent', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ turns })
+		}).catch(() => prefetched.delete(key));
+	}
 	function refine(text: string) {
 		const t = text.trim().slice(0, MAX_INTENT_LENGTH);
 		if (!t) return;
@@ -302,7 +314,7 @@
 </script>
 
 {#if tab === 'discover' && !browsing}
-	<PeopleLanding {mode} {onmode} loggedIn={!!user} count={status?.count ?? null} error={joinError} aiNote={status?.self?.preventAiLearning ?? false} onsubmit={search} />
+	<PeopleLanding {mode} {onmode} loggedIn={!!user} count={status?.count ?? null} error={joinError} aiNote={status?.self?.preventAiLearning ?? false} onsubmit={search} onsettle={(t) => prefetchIntent([t])} />
 {:else if !status?.me}
 	<section class="panel block"><p class="muted">{joinError || '参加すると、ここに' + (tab === 'likes' ? 'いいねした人' : tab === 'passed' ? 'よくないねした人' : 'あなたの参加状態') + 'が出ます。'}</p></section>
 {:else if tab === 'discover'}
@@ -337,7 +349,7 @@
 					<PersonDetails card={c} {full} canFollow={status?.canFollow ?? false} onfollow={follow} onreport={reportCard} onlike={full ? like : undefined} />
 				{/snippet}
 				{#snippet composer()}
-					<PromptBox bind:value={draft} label="言葉を足して絞る" placeholder="言葉を足して絞る（例: 深夜によく起きている人）" onsubmit={refine}>
+					<PromptBox bind:value={draft} label="言葉を足して絞る" placeholder="言葉を足して絞る（例: 深夜によく起きている人）" onsubmit={refine} onsettle={(t) => prefetchIntent([...allTurns, t])}>
 						{#snippet left()}<span>参加 {status?.count ?? 0} 人 · いいね {peopleStore.liked.length}</span>{/snippet}
 					</PromptBox>
 				{/snippet}

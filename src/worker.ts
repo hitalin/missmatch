@@ -4,6 +4,7 @@
 // wrangler.toml の [alias] で .svelte-kit/cloudflare/_worker.js に向けている（型は src/kit-worker.d.ts）。
 // 直接 import すると svelte-check が生成物まで型検査して大量のエラーになる
 import kit from 'kit-worker';
+import { warmPeopleIntents } from '$lib/server/deck';
 import { refreshMembers } from '$lib/server/members';
 import { peopleDeps } from '$lib/server/people';
 import { clefDeps, warmIntents } from '$lib/server/recommend';
@@ -18,8 +19,12 @@ export default {
 		// 参加者の推定を 7 日おきに読み直し、連携が切れた人を外す（枠が無ければ翌日）
 		ctx.waitUntil(
 			peopleDeps({ env, context: ctx })
-				.then((p) => refreshMembers(p))
-				.then((r) => console.log(`[cron] members refreshed ${r.refreshed}, removed ${r.removed}`))
+				.then(async (p) => {
+					const r = await refreshMembers(p);
+					console.log(`[cron] members refreshed ${r.refreshed}, removed ${r.removed}`);
+					const w = await warmPeopleIntents(p);
+					console.log(`[cron] people intents warmed ${w.warmed}, skipped ${w.skipped}`);
+				})
 				.catch((e) => console.error('[cron] members', e))
 		);
 		ctx.waitUntil(

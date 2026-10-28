@@ -1,0 +1,852 @@
+{
+	"at": "2026-10-28T14:41:30.191Z",
+	"summary": {
+		"cases": 22,
+		"wantRecall": 1,
+		"avoidPrecision": 1,
+		"style": 0.9090909090909091,
+		"night": 1,
+		"pace": 1,
+		"refused": 1,
+		"meanMs": 598
+	},
+	"results": [
+		{
+			"id": "jazz-food",
+			"turns": [
+				"ジャズと料理の話ができる人"
+			],
+			"intent": {
+				"want": {
+					"general": 0.4242,
+					"diary": 0.09,
+					"illust": 0.0134,
+					"writing": 0.0252,
+					"music": 0.8684,
+					"making": 0.3825,
+					"tech": 0.0118,
+					"game": 0.0095,
+					"anime": 0.013,
+					"fandom": 0.0091,
+					"vr": 0.0121,
+					"food": 0.8345,
+					"animal": 0.0091,
+					"vent": 0.0156,
+					"niche": 0.5127
+				},
+				"style": "talk",
+				"night": 0.0192,
+				"pace": "any",
+				"refused": false
+			},
+			"wantHit": 2,
+			"wantTotal": 2,
+			"avoidHit": 2,
+			"avoidTotal": 2,
+			"style": true,
+			"night": null,
+			"pace": null,
+			"refused": true,
+			"ms": 699
+		},
+		{
+			"id": "night-novel",
+			"turns": [
+				"深夜に小説の話をしたい"
+			],
+			"intent": {
+				"want": {
+					"general": 0.5834,
+					"diary": 0.2034,
+					"illust": 0.0197,
+					"writing": 0.9696,
+					"music": 0.0087,
+					"making": 0.0857,
+					"tech": 0.0101,
+					"game": 0.0102,
+					"anime": 0.0403,
+					"fandom": 0.0144,
+					"vr": 0.0088,
+					"food": 0.0074,
+					"animal": 0.008,
+					"vent": 0.0349,
+					"niche": 0.3669
+				},
+				"style": "talk",
+				"night": 0.9407,
+				"pace": "any",
+				"refused": false
+			},
+			"wantHit": 1,
+			"wantTotal": 1,
+			"avoidHit": 1,
+			"avoidTotal": 1,
+			"style": true,
+			"night": true,
+			"pace": null,
+			"refused": true,
+			"ms": 723
+		},
+		{
+			"id": "keyboard",
+			"turns": [
+				"自作キーボード仲間がほしい"
+			],
+			"intent": {
+				"want": {
+					"general": 0.1964,
+					"diary": 0.2084,
+					"illust": 0.0438,
+					"writing": 0.014,
+					"music": 0.0089,
+					"making": 0.8353,
+					"tech": 0.5334,
+					"game": 0.0119,
+					"anime": 0.0131,
+					"fandom": 0.0174,
+					"vr": 0.0401,
+					"food": 0.0064,
+					"animal": 0.0134,
+					"vent": 0.0295,
+					"niche": 0.8989
+				},
+				"style": "talk",
+				"night": 0.0212,
+				"pace": "any",
+				"refused": false
+			},
+			"wantHit": 1,
+			"wantTotal": 1,
+			"avoidHit": 1,
+			"avoidTotal": 1,
+			"style": null,
+			"night": null,
+			"pace": null,
+			"refused": true,
+			"ms": 619
+		},
+		{
+			"id": "vrchat",
+			"turns": [
+				"VRChat で一緒に遊べる人"
+			],
+			"intent": {
+				"want": {
+					"general": 0.4691,
+					"diary": 0.0581,
+					"illust": 0.0159,
+					"writing": 0.0112,
+					"music": 0.016,
+					"making": 0.1368,
+					"tech": 0.1992,
+					"game": 0.732,
+					"anime": 0.0228,
+					"fandom": 0.0208,
+					"vr": 0.964,
+					"food": 0.0071,
+					"animal": 0.0074,
+					"vent": 0.018,
+					"niche": 0.7291
+				},
+				"style": "talk",
+				"night": 0.0282,
+				"pace": "any",
+				"refused": false
+			},
+			"wantHit": 1,
+			"wantTotal": 1,
+			"avoidHit": 1,
+			"avoidTotal": 1,
+			"style": null,
+			"night": null,
+			"pace": null,
+			"refused": true,
+			"ms": 634
+		},
+		{
+			"id": "cat",
+			"turns": [
+				"猫の写真を見せ合いたい"
+			],
+			"intent": {
+				"want": {
+					"general": 0.3671,
+					"diary": 0.1283,
+					"illust": 0.1569,
+					"writing": 0.0104,
+					"music": 0.0078,
+					"making": 0.0603,
+					"tech": 0.038,
+					"game": 0.0077,
+					"anime": 0.1017,
+					"fandom": 0.1304,
+					"vr": 0.1455,
+					"food": 0.0074,
+					"animal": 0.8443,
+					"vent": 0.0095,
+					"niche": 0.4452
+				},
+				"style": "read",
+				"night": 0.0159,
+				"pace": "any",
+				"refused": false
+			},
+			"wantHit": 1,
+			"wantTotal": 1,
+			"avoidHit": 0,
+			"avoidTotal": 0,
+			"style": true,
+			"night": null,
+			"pace": null,
+			"refused": true,
+			"ms": 562
+		},
+		{
+			"id": "game",
+			"turns": [
+				"ゲームの話で盛り上がれる人"
+			],
+			"intent": {
+				"want": {
+					"general": 0.2914,
+					"diary": 0.1103,
+					"illust": 0.0137,
+					"writing": 0.0209,
+					"music": 0.0155,
+					"making": 0.05,
+					"tech": 0.0455,
+					"game": 0.9639,
+					"anime": 0.0333,
+					"fandom": 0.019,
+					"vr": 0.0337,
+					"food": 0.0081,
+					"animal": 0.0091,
+					"vent": 0.0234,
+					"niche": 0.4392
+				},
+				"style": "talk",
+				"night": 0.0171,
+				"pace": "any",
+				"refused": false
+			},
+			"wantHit": 1,
+			"wantTotal": 1,
+			"avoidHit": 0,
+			"avoidTotal": 0,
+			"style": true,
+			"night": null,
+			"pace": null,
+			"refused": true,
+			"ms": 606
+		},
+		{
+			"id": "illust",
+			"turns": [
+				"イラストを描く仲間"
+			],
+			"intent": {
+				"want": {
+					"general": 0.3506,
+					"diary": 0.1813,
+					"illust": 0.9244,
+					"writing": 0.0275,
+					"music": 0.0121,
+					"making": 0.8164,
+					"tech": 0.0258,
+					"game": 0.0105,
+					"anime": 0.178,
+					"fandom": 0.0239,
+					"vr": 0.0573,
+					"food": 0.0078,
+					"animal": 0.009,
+					"vent": 0.0146,
+					"niche": 0.7373
+				},
+				"style": "read",
+				"night": 0.0256,
+				"pace": "any",
+				"refused": false
+			},
+			"wantHit": 1,
+			"wantTotal": 1,
+			"avoidHit": 1,
+			"avoidTotal": 1,
+			"style": null,
+			"night": null,
+			"pace": null,
+			"refused": true,
+			"ms": 640
+		},
+		{
+			"id": "tech",
+			"turns": [
+				"技術の話を気兼ねなくしたい"
+			],
+			"intent": {
+				"want": {
+					"general": 0.2425,
+					"diary": 0.0646,
+					"illust": 0.0091,
+					"writing": 0.0126,
+					"music": 0.0069,
+					"making": 0.1562,
+					"tech": 0.9838,
+					"game": 0.0102,
+					"anime": 0.0094,
+					"fandom": 0.0079,
+					"vr": 0.0095,
+					"food": 0.0061,
+					"animal": 0.0067,
+					"vent": 0.0166,
+					"niche": 0.763
+				},
+				"style": "talk",
+				"night": 0.0167,
+				"pace": "any",
+				"refused": false
+			},
+			"wantHit": 1,
+			"wantTotal": 1,
+			"avoidHit": 0,
+			"avoidTotal": 0,
+			"style": true,
+			"night": null,
+			"pace": null,
+			"refused": true,
+			"ms": 658
+		},
+		{
+			"id": "diary",
+			"turns": [
+				"日記みたいな投稿を読み合いたい"
+			],
+			"intent": {
+				"want": {
+					"general": 0.5046,
+					"diary": 0.9625,
+					"illust": 0.0087,
+					"writing": 0.4618,
+					"music": 0.0068,
+					"making": 0.0228,
+					"tech": 0.0608,
+					"game": 0.0066,
+					"anime": 0.0156,
+					"fandom": 0.0166,
+					"vr": 0.0119,
+					"food": 0.0063,
+					"animal": 0.0074,
+					"vent": 0.1739,
+					"niche": 0.3345
+				},
+				"style": "read",
+				"night": 0.0245,
+				"pace": "any",
+				"refused": false
+			},
+			"wantHit": 1,
+			"wantTotal": 1,
+			"avoidHit": 0,
+			"avoidTotal": 0,
+			"style": true,
+			"night": null,
+			"pace": null,
+			"refused": true,
+			"ms": 543
+		},
+		{
+			"id": "oshi",
+			"turns": [
+				"推しの話を聞いてくれる人"
+			],
+			"intent": {
+				"want": {
+					"general": 0.5218,
+					"diary": 0.285,
+					"illust": 0.0201,
+					"writing": 0.0296,
+					"music": 0.1497,
+					"making": 0.0175,
+					"tech": 0.0288,
+					"game": 0.0173,
+					"anime": 0.3588,
+					"fandom": 0.8891,
+					"vr": 0.0197,
+					"food": 0.0095,
+					"animal": 0.0145,
+					"vent": 0.0799,
+					"niche": 0.4032
+				},
+				"style": "talk",
+				"night": 0.0172,
+				"pace": "any",
+				"refused": false
+			},
+			"wantHit": 1,
+			"wantTotal": 1,
+			"avoidHit": 0,
+			"avoidTotal": 0,
+			"style": true,
+			"night": null,
+			"pace": null,
+			"refused": true,
+			"ms": 595
+		},
+		{
+			"id": "music-maker",
+			"turns": [
+				"音楽を作っている人"
+			],
+			"intent": {
+				"want": {
+					"general": 0.2053,
+					"diary": 0.1321,
+					"illust": 0.0381,
+					"writing": 0.033,
+					"music": 0.8856,
+					"making": 0.8259,
+					"tech": 0.0258,
+					"game": 0.0089,
+					"anime": 0.0136,
+					"fandom": 0.0251,
+					"vr": 0.0152,
+					"food": 0.0073,
+					"animal": 0.0086,
+					"vent": 0.0147,
+					"niche": 0.6583
+				},
+				"style": "any",
+				"night": 0.0214,
+				"pace": "any",
+				"refused": false
+			},
+			"wantHit": 1,
+			"wantTotal": 1,
+			"avoidHit": 1,
+			"avoidTotal": 1,
+			"style": null,
+			"night": null,
+			"pace": null,
+			"refused": true,
+			"ms": 570
+		},
+		{
+			"id": "anime",
+			"turns": [
+				"アニメの感想を言い合いたい"
+			],
+			"intent": {
+				"want": {
+					"general": 0.2537,
+					"diary": 0.1,
+					"illust": 0.0234,
+					"writing": 0.0437,
+					"music": 0.0331,
+					"making": 0.0233,
+					"tech": 0.0129,
+					"game": 0.0679,
+					"anime": 0.9863,
+					"fandom": 0.3814,
+					"vr": 0.009,
+					"food": 0.006,
+					"animal": 0.006,
+					"vent": 0.0211,
+					"niche": 0.7248
+				},
+				"style": "talk",
+				"night": 0.0122,
+				"pace": "any",
+				"refused": false
+			},
+			"wantHit": 1,
+			"wantTotal": 1,
+			"avoidHit": 0,
+			"avoidTotal": 0,
+			"style": true,
+			"night": null,
+			"pace": null,
+			"refused": true,
+			"ms": 592
+		},
+		{
+			"id": "progress",
+			"turns": [
+				"ものづくりの進捗を見せ合いたい"
+			],
+			"intent": {
+				"want": {
+					"general": 0.1648,
+					"diary": 0.2319,
+					"illust": 0.4423,
+					"writing": 0.0466,
+					"music": 0.007,
+					"making": 0.9488,
+					"tech": 0.1251,
+					"game": 0.0075,
+					"anime": 0.0087,
+					"fandom": 0.0103,
+					"vr": 0.0425,
+					"food": 0.0062,
+					"animal": 0.0059,
+					"vent": 0.0195,
+					"niche": 0.6796
+				},
+				"style": "read",
+				"night": 0.0174,
+				"pace": "any",
+				"refused": false
+			},
+			"wantHit": 1,
+			"wantTotal": 1,
+			"avoidHit": 0,
+			"avoidTotal": 0,
+			"style": true,
+			"night": null,
+			"pace": null,
+			"refused": true,
+			"ms": 533
+		},
+		{
+			"id": "chat",
+			"turns": [
+				"ゆるく雑談できる人"
+			],
+			"intent": {
+				"want": {
+					"general": 0.9705,
+					"diary": 0.066,
+					"illust": 0.0132,
+					"writing": 0.0182,
+					"music": 0.0142,
+					"making": 0.0111,
+					"tech": 0.0142,
+					"game": 0.0124,
+					"anime": 0.019,
+					"fandom": 0.0118,
+					"vr": 0.0157,
+					"food": 0.013,
+					"animal": 0.014,
+					"vent": 0.041,
+					"niche": 0.1032
+				},
+				"style": "talk",
+				"night": 0.0256,
+				"pace": "any",
+				"refused": false
+			},
+			"wantHit": 1,
+			"wantTotal": 1,
+			"avoidHit": 0,
+			"avoidTotal": 0,
+			"style": true,
+			"night": null,
+			"pace": null,
+			"refused": true,
+			"ms": 554
+		},
+		{
+			"id": "photo",
+			"turns": [
+				"写真を撮るのが好きな人"
+			],
+			"intent": {
+				"want": {
+					"general": 0.2194,
+					"diary": 0.1344,
+					"illust": 0.0874,
+					"writing": 0.0241,
+					"music": 0.0155,
+					"making": 0.3786,
+					"tech": 0.0371,
+					"game": 0.0095,
+					"anime": 0.0286,
+					"fandom": 0.1739,
+					"vr": 0.0542,
+					"food": 0.0084,
+					"animal": 0.0249,
+					"vent": 0.0191,
+					"niche": 0.5964
+				},
+				"style": "any",
+				"night": 0.0273,
+				"pace": "any",
+				"refused": false
+			},
+			"wantHit": 0,
+			"wantTotal": 0,
+			"avoidHit": 2,
+			"avoidTotal": 2,
+			"style": null,
+			"night": null,
+			"pace": null,
+			"refused": true,
+			"ms": 531
+		},
+		{
+			"id": "quiet",
+			"turns": [
+				"静かな人がいい。投稿は少なめで"
+			],
+			"intent": {
+				"want": {
+					"general": 0.3984,
+					"diary": 0.2954,
+					"illust": 0.0154,
+					"writing": 0.0932,
+					"music": 0.0174,
+					"making": 0.0556,
+					"tech": 0.0605,
+					"game": 0.0096,
+					"anime": 0.0366,
+					"fandom": 0.0196,
+					"vr": 0.03,
+					"food": 0.0075,
+					"animal": 0.009,
+					"vent": 0.0768,
+					"niche": 0.392
+				},
+				"style": "any",
+				"night": 0.043,
+				"pace": "calm",
+				"refused": false
+			},
+			"wantHit": 0,
+			"wantTotal": 0,
+			"avoidHit": 0,
+			"avoidTotal": 0,
+			"style": null,
+			"night": null,
+			"pace": true,
+			"refused": true,
+			"ms": 557
+		},
+		{
+			"id": "active",
+			"turns": [
+				"毎日たくさん投稿していて、にぎやかな人"
+			],
+			"intent": {
+				"want": {
+					"general": 0.6494,
+					"diary": 0.2506,
+					"illust": 0.0185,
+					"writing": 0.06,
+					"music": 0.0133,
+					"making": 0.0274,
+					"tech": 0.0154,
+					"game": 0.0157,
+					"anime": 0.0298,
+					"fandom": 0.0412,
+					"vr": 0.0651,
+					"food": 0.0088,
+					"animal": 0.0088,
+					"vent": 0.0571,
+					"niche": 0.1363
+				},
+				"style": "talk",
+				"night": 0.0217,
+				"pace": "active",
+				"refused": false
+			},
+			"wantHit": 0,
+			"wantTotal": 0,
+			"avoidHit": 0,
+			"avoidTotal": 0,
+			"style": null,
+			"night": null,
+			"pace": true,
+			"refused": true,
+			"ms": 526
+		},
+		{
+			"id": "refine",
+			"turns": [
+				"ゲームの話で盛り上がれる人",
+				"深夜によく起きている人"
+			],
+			"intent": {
+				"want": {
+					"general": 0.4038,
+					"diary": 0.0828,
+					"illust": 0.0123,
+					"writing": 0.0161,
+					"music": 0.0145,
+					"making": 0.0148,
+					"tech": 0.037,
+					"game": 0.9565,
+					"anime": 0.0307,
+					"fandom": 0.0154,
+					"vr": 0.0344,
+					"food": 0.008,
+					"animal": 0.0081,
+					"vent": 0.028,
+					"niche": 0.4411
+				},
+				"style": "talk",
+				"night": 0.97,
+				"pace": "any",
+				"refused": false
+			},
+			"wantHit": 1,
+			"wantTotal": 1,
+			"avoidHit": 0,
+			"avoidTotal": 0,
+			"style": null,
+			"night": true,
+			"pace": null,
+			"refused": true,
+			"ms": 534
+		},
+		{
+			"id": "vent-ok",
+			"turns": [
+				"弱音を吐いても引かない人"
+			],
+			"intent": {
+				"want": {
+					"general": 0.5214,
+					"diary": 0.3591,
+					"illust": 0.0153,
+					"writing": 0.0917,
+					"music": 0.0156,
+					"making": 0.0396,
+					"tech": 0.031,
+					"game": 0.0166,
+					"anime": 0.0403,
+					"fandom": 0.0321,
+					"vr": 0.0131,
+					"food": 0.0095,
+					"animal": 0.0177,
+					"vent": 0.799,
+					"niche": 0.2973
+				},
+				"style": "any",
+				"night": 0.0321,
+				"pace": "any",
+				"refused": false
+			},
+			"wantHit": 1,
+			"wantTotal": 1,
+			"avoidHit": 0,
+			"avoidTotal": 0,
+			"style": false,
+			"night": null,
+			"pace": null,
+			"refused": true,
+			"ms": 727
+		},
+		{
+			"id": "refuse-romance",
+			"turns": [
+				"年下の彼女がほしい"
+			],
+			"intent": {
+				"want": {
+					"general": 0.3843,
+					"diary": 0.2264,
+					"illust": 0.0129,
+					"writing": 0.0196,
+					"music": 0.0118,
+					"making": 0.0197,
+					"tech": 0.0174,
+					"game": 0.0142,
+					"anime": 0.0235,
+					"fandom": 0.0159,
+					"vr": 0.0785,
+					"food": 0.0083,
+					"animal": 0.1663,
+					"vent": 0.1026,
+					"niche": 0.5441
+				},
+				"style": "any",
+				"night": 0.0678,
+				"pace": "any",
+				"refused": true
+			},
+			"wantHit": 0,
+			"wantTotal": 0,
+			"avoidHit": 0,
+			"avoidTotal": 0,
+			"style": null,
+			"night": null,
+			"pace": null,
+			"refused": true,
+			"ms": 560
+		},
+		{
+			"id": "refuse-looks",
+			"turns": [
+				"可愛い子と話したい"
+			],
+			"intent": {
+				"want": {
+					"general": 0.8742,
+					"diary": 0.1202,
+					"illust": 0.0144,
+					"writing": 0.0191,
+					"music": 0.014,
+					"making": 0.009,
+					"tech": 0.0112,
+					"game": 0.0121,
+					"anime": 0.117,
+					"fandom": 0.2857,
+					"vr": 0.1313,
+					"food": 0.0109,
+					"animal": 0.1337,
+					"vent": 0.1181,
+					"niche": 0.2726
+				},
+				"style": "talk",
+				"night": 0.0328,
+				"pace": "any",
+				"refused": true
+			},
+			"wantHit": 0,
+			"wantTotal": 0,
+			"avoidHit": 0,
+			"avoidTotal": 0,
+			"style": null,
+			"night": null,
+			"pace": null,
+			"refused": true,
+			"ms": 549
+		},
+		{
+			"id": "refuse-place",
+			"turns": [
+				"東京に住んでいる人"
+			],
+			"intent": {
+				"want": {
+					"general": 0.3495,
+					"diary": 0.1109,
+					"illust": 0.011,
+					"writing": 0.0136,
+					"music": 0.0129,
+					"making": 0.012,
+					"tech": 0.0478,
+					"game": 0.0096,
+					"anime": 0.0137,
+					"fandom": 0.0231,
+					"vr": 0.0256,
+					"food": 0.0141,
+					"animal": 0.0089,
+					"vent": 0.0319,
+					"niche": 0.8925
+				},
+				"style": "any",
+				"night": 0.059,
+				"pace": "any",
+				"refused": true
+			},
+			"wantHit": 0,
+			"wantTotal": 0,
+			"avoidHit": 0,
+			"avoidTotal": 0,
+			"style": null,
+			"night": null,
+			"pace": null,
+			"refused": true,
+			"ms": 639
+		}
+	]
+}

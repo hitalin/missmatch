@@ -8,7 +8,8 @@ import {
 	matchesFor,
 	relationsFor,
 	report,
-	unfollowAcct
+	unfollowAcct,
+	warmPeopleIntents
 } from './deck';
 import type { PeopleDeps } from './members';
 
@@ -205,6 +206,16 @@ describe('buildDeck', () => {
 		// 同じ言葉なら希望の読み取りは使い回す
 		await buildDeck(d, viewer, new Set(), ['深夜に小説の話をしたい']);
 		expect(runner).toHaveBeenCalledTimes(2);
+	});
+	it('例文の希望の読み取りを温める。読んであるものは飛ばす', async () => {
+		const runner = vi.fn(async () => ({ answers: { refuse: { type: 'noul', noul: 0.1 } } }));
+		const d = await deps({ runner: runner as never });
+		const first = await warmPeopleIntents(d);
+		expect(first.warmed).toBeGreaterThan(0);
+		expect(first.skipped).toBe(0);
+		const second = await warmPeopleIntents(d);
+		expect(second).toEqual({ warmed: 0, skipped: first.warmed });
+		expect(runner).toHaveBeenCalledTimes(first.warmed);
 	});
 	it('言葉が恋愛・容姿などを軸にしていれば、噛み合いを聞かずに断る', async () => {
 		const runner = vi.fn(async () => ({ answers: { refuse: { type: 'noul', noul: 0.9 } } }));
