@@ -426,7 +426,10 @@
 		onlogout={logout}
 	>
 		<main>
-			{#if onboarding}
+			{#if !hydrated}
+				<!-- 保存した設定を読むまで何も出さない（年齢確認が一瞬出て、その間の操作が上書きされるのを防ぐ） -->
+			{:else if onboarding || !ready}
+				<!-- 年齢が未設定なら、どの経路でも年齢確認に戻す（閉じたまま進めなくなる状態を作らない） -->
 				<div class="onboarding">
 					<Onboarding
 						bind:prefs={profile.prefs}
