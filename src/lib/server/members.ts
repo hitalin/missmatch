@@ -12,6 +12,7 @@ import {
 	MEMBER_CAP,
 	type Member,
 	type MisskeyNote,
+	nightRatio,
 	normalizeAcct,
 	notesPerDay,
 	PEOPLE_VERSION,
@@ -179,6 +180,7 @@ async function estimate(deps: PeopleDeps, self: Self, eligible: EligibleNote[]) 
 			genre: answers.genre,
 			replyRatio: replyRatio(eligible),
 			notesPerDay: notesPerDay(eligible),
+			nightRatio: nightRatio(eligible),
 			sampleCount: read.length,
 			hash,
 			at: (deps.now ?? Date.now)()

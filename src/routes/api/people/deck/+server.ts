@@ -7,7 +7,7 @@ import type { RequestHandler } from './$types';
 export const POST: RequestHandler = async ({ request, cookies, platform }) => {
 	const v = await viewerFrom(cookies, platform);
 	if (v instanceof Response) return v;
-	let body: { exclude?: unknown; turns?: unknown };
+	let body: { exclude?: unknown; turns?: unknown; liked?: unknown; passed?: unknown };
 	try {
 		body = (await request.json()) as typeof body;
 	} catch {
@@ -23,8 +23,16 @@ export const POST: RequestHandler = async ({ request, cookies, platform }) => {
 		.map((t) => t.trim().slice(0, 200))
 		.filter((t) => t.length > 0)
 		.slice(0, 5);
+	// スワイプ学習の元（いいね・よくないねした参加者の acct。3 人以上で効く）
+	const accts = (x: unknown) =>
+		(Array.isArray(x) ? x : []).filter((a): a is string => typeof a === 'string').slice(0, 50);
 	try {
-		return json(await buildDeck(v.deps, v.viewer, exclude, turns));
+		return json(
+			await buildDeck(v.deps, v.viewer, exclude, turns, {
+				liked: accts(body.liked),
+				passed: accts(body.passed)
+			})
+		);
 	} catch (e) {
 		console.error('[people/deck]', e);
 		return json({ error: 'failed' }, { status: 502 });

@@ -121,7 +121,12 @@
 			const res = await fetch('/api/people/deck', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ exclude: peopleStore.excluded, turns: allTurns })
+				body: JSON.stringify({
+					exclude: peopleStore.excluded,
+					turns: allTurns,
+					liked: peopleStore.liked.slice(0, 50).map((p) => p.acct),
+					passed: peopleStore.passed.slice(0, 50).map((p) => p.acct)
+				})
 			});
 			if (!res.ok) throw new Error(`HTTP ${res.status}`);
 			const d = (await res.json()) as { cards: Card[]; count: number; refused: boolean };

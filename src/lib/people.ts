@@ -72,6 +72,16 @@ export function replyRatio(notes: EligibleNote[]): number {
 	return notes.filter((n) => n.isReply).length / notes.length;
 }
 
+// 日本時間 0〜5 時台に投稿した割合（夜型の目安。Clef を使わず計算）
+export function nightRatio(notes: EligibleNote[]): number {
+	if (notes.length === 0) return 0;
+	const night = notes.filter((n) => {
+		const h = (new Date(n.createdAt).getUTCHours() + 9) % 24;
+		return h < 6;
+	}).length;
+	return night / notes.length;
+}
+
 // 最古から最新までの日数で割る。1 件や同日なら 1 日に数える
 export function notesPerDay(notes: EligibleNote[]): number {
 	if (notes.length === 0) return 0;
@@ -120,6 +130,7 @@ export interface Member {
 		genre: Record<Genre, number>;
 		replyRatio: number;
 		notesPerDay: number;
+		nightRatio?: number; // 日本時間 0〜5 時台の割合（古い推定には無い）
 		sampleCount: number;
 		hash: string; // 読んだ範囲
 		at: number;

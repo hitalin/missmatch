@@ -165,6 +165,77 @@ describe('buildDeck', () => {
 			).length
 		).toBe(calls);
 	});
+	it('言葉があれば、まず言葉を希望に読み（1 回・キャッシュ）、全員を希望で採点してから上位だけ噛み合いを聞く', async () => {
+		const runner = vi.fn(async (input: { questions: Record<string, unknown> }) => {
+			const keys = Object.keys(input.questions);
+			if (keys.includes('want.writing'))
+				return {
+					answers: {
+						'want.writing': { type: 'noul', noul: 0.9 },
+						style: { type: 'choice', choice: 'talk', probabilities: {}, confidence: 1 },
+						refuse: { type: 'noul', noul: 0.05 }
+					}
+				};
+			return {
+				answers: Object.fromEntries(
+					keys
+						.filter((k) => k.startsWith('fit.'))
+						.map((k) => [k, { type: 'noul', noul: k === 'fit.nov@y' ? 0.9 : 0.2 }])
+				)
+			};
+		});
+		const d = await deps({ runner: runner as never });
+		const est = (g: Partial<Record<string, number>>) => ({
+			genre: { ...genre, ...g } as typeof genre,
+			replyRatio: 0.5,
+			notesPerDay: 2,
+			sampleCount: 10,
+			hash: 'h',
+			at: now
+		});
+		await seed(d, [
+			me,
+			member('cook', 'y', { estimate: est({ food: 0.9 }) }),
+			member('nov', 'y', { estimate: est({ writing: 0.9 }) })
+		]);
+		const deck = await buildDeck(d, viewer, new Set(), ['深夜に小説の話をしたい']);
+		expect(deck.refused).toBe(false);
+		expect(deck.cards.map((c) => c.acct)).toEqual(['nov@y', 'cook@y']);
+		expect(runner).toHaveBeenCalledTimes(2); // 希望 1 回 + 噛み合い 1 バッチ
+		// 同じ言葉なら希望の読み取りは使い回す
+		await buildDeck(d, viewer, new Set(), ['深夜に小説の話をしたい']);
+		expect(runner).toHaveBeenCalledTimes(2);
+	});
+	it('言葉が恋愛・容姿などを軸にしていれば、噛み合いを聞かずに断る', async () => {
+		const runner = vi.fn(async () => ({ answers: { refuse: { type: 'noul', noul: 0.9 } } }));
+		const d = await deps({ runner: runner as never });
+		await seed(d, [me, member('a', 'y')]);
+		const deck = await buildDeck(d, viewer, new Set(), ['年下の彼女がほしい']);
+		expect(deck).toEqual({ cards: [], count: 2, refused: true });
+		expect(runner).toHaveBeenCalledTimes(1);
+	});
+	it('いいねした人たち（3 人以上）に話題が近い人を先に出す（スワイプ学習）', async () => {
+		const d = await deps();
+		const est = (g: Partial<Record<string, number>>) => ({
+			genre: { ...genre, ...g } as typeof genre,
+			replyRatio: 0,
+			notesPerDay: 1,
+			sampleCount: 10,
+			hash: 'h',
+			at: now
+		});
+		await seed(d, [
+			me,
+			member('code', 'y', { estimate: est({ tech: 0.9 }) }),
+			member('cook', 'y', { estimate: est({ food: 0.9 }) }),
+			member('l1', 'z', { estimate: est({ food: 0.8 }) }),
+			member('l2', 'z', { estimate: est({ food: 0.8 }) }),
+			member('l3', 'z', { estimate: est({ food: 0.8 }) })
+		]);
+		const liked = ['l1@z', 'l2@z', 'l3@z'];
+		const deck = await buildDeck(d, viewer, new Set(liked), [], { liked });
+		expect(deck.cards.map((c) => c.acct)).toEqual(['cook@y', 'code@y']);
+	});
 	it('いいね・よくないね済みと、ブロック関係は出さない', async () => {
 		const d = await deps({ api: api({ blocked: ['b@z'] }) });
 		await seed(d, [me, member('a', 'y'), member('b', 'z'), member('c', 'z')]);

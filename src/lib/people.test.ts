@@ -3,6 +3,7 @@ import {
 	eligibleNotes,
 	joinEligibility,
 	type MisskeyNote,
+	nightRatio,
 	normalizeAcct,
 	notesPerDay,
 	replyRatio,
@@ -60,6 +61,27 @@ describe('eligibleNotes', () => {
 		]);
 		expect(out.map((n) => n.id)).toEqual(['quote']);
 		expect(out[0].text).not.toContain('他人の本文');
+	});
+});
+
+describe('nightRatio', () => {
+	it('日本時間 0〜5 時台に投稿した割合', () => {
+		const at = (iso: string) => ({
+			id: iso,
+			text: 'x',
+			createdAt: Date.parse(iso),
+			isReply: false,
+			reactions: 0
+		});
+		expect(nightRatio([])).toBe(0);
+		expect(
+			nightRatio([
+				at('2026-10-28T16:30:00Z'), // 01:30 JST
+				at('2026-10-28T20:00:00Z'), // 05:00 JST
+				at('2026-10-28T21:00:00Z'), // 06:00 JST
+				at('2026-10-28T03:00:00Z') // 12:00 JST
+			])
+		).toBe(0.5);
 	});
 });
 
