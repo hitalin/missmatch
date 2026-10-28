@@ -123,6 +123,7 @@ function parseSearch(x: unknown): Search | null {
 	if (!isStr(s.id) || !isStr(s.query)) return null;
 	return {
 		id: s.id,
+		mode: s.mode === 'people' ? 'people' : 'server',
 		query: s.query,
 		title: isStr(s.title) ? s.title : '',
 		turns: strArray(s.turns),

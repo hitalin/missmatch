@@ -26,14 +26,25 @@
 		onlogin,
 		mode,
 		onmode,
-		reset = 0
+		query = '',
+		turns = [],
+		onsearch,
+		onrefine,
+		ondrop,
+		onclear
 	}: {
 		tab: Tab;
 		user: AuthUser | null;
 		onlogin: () => void;
 		mode: 'server' | 'people';
 		onmode: (m: 'server' | 'people') => void;
-		reset?: number; // 「新しくさがす」が押されるたびに増える
+		// 言葉はサーバー探しと同じ検索セッション（+page.svelte）が持つ。query が最初の言葉、turns が絞り込み
+		query?: string;
+		turns?: string[];
+		onsearch: (text: string) => void;
+		onrefine: (text: string) => void;
+		ondrop: (index: number) => void;
+		onclear: () => void; // 言葉を消してランディングへ
 	} = $props();
 
 	type Status = {
@@ -48,8 +59,8 @@
 	let status = $state<Status | null>(null);
 	let joinError = $state('');
 	let joining = false;
-	let turns = $state<string[]>([]);
-	let browsing = $state(false); // ランディングから進んでデッキを見ている（サーバー探しの「言葉がある検索」に相当）
+	const allTurns = $derived([query, ...turns].filter((t) => t.length > 0));
+	const browsing = $derived(query.length > 0); // 言葉があればデッキ、無ければランディング
 	let cards = $state.raw<Card[]>([]);
 	let refused = $state(false);
 	let deckGen = $state(0);
@@ -110,7 +121,7 @@
 			const res = await fetch('/api/people/deck', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ exclude: peopleStore.excluded, turns })
+				body: JSON.stringify({ exclude: peopleStore.excluded, turns: allTurns })
 			});
 			if (!res.ok) throw new Error(`HTTP ${res.status}`);
 			const d = (await res.json()) as { cards: Card[]; count: number; refused: boolean };
@@ -157,32 +168,24 @@
 			return;
 		}
 		if (!status?.me && !(await autoJoin())) return;
-		turns = text ? [text] : [];
-		cards = [];
-		browsing = true;
-		await loadDeck();
+		onsearch(text);
 	}
 	function refine(text: string) {
 		const t = text.trim().slice(0, MAX_INTENT_LENGTH);
 		if (!t) return;
-		turns = [...turns, t].slice(-5);
 		draft = '';
-		cards = [];
-		loadDeck();
+		onrefine(t);
 	}
-	function dropTurn(i: number) {
-		turns = turns.filter((_, j) => j !== i);
-		cards = [];
-		loadDeck();
-	}
-	function backToLanding() {
-		browsing = false;
-		turns = [];
-		cards = [];
-		refused = false;
-	}
+	// 言葉の並びが変わったら（送る・足す・外す・過去の検索を開く）、参加済みならデッキを集め直す
 	$effect(() => {
-		if (reset > 0) backToLanding();
+		const key = allTurns.join('\n');
+		if (!browsing || !status?.me) return;
+		untrack(() => {
+			void key;
+			cards = [];
+			refused = false;
+			loadDeck();
+		});
 	});
 
 	$effect(() => {
@@ -298,13 +301,13 @@
 {:else if !status?.me}
 	<section class="panel block"><p class="muted">{joinError || '参加すると、ここに' + (tab === 'likes' ? 'いいねした人' : tab === 'passed' ? 'よくないねした人' : 'あなたの参加状態') + 'が出ます。'}</p></section>
 {:else if tab === 'discover'}
-	<SearchBar {turns} reading={deckLoading} ondrop={dropTurn} />
+	<SearchBar {turns} reading={deckLoading} {ondrop} />
 	{#if deckLoading && cards.length === 0}
-		<div class="loading"><Spinner label="カードを集めています" /><p class="muted">{turns.length ? 'Clef で読み取り中' : 'カードを集めています'}</p></div>
+		<div class="loading"><Spinner label="カードを集めています" /><p class="muted">Clef で読み取り中</p></div>
 	{:else if deckError}
 		<p class="banner">カードを取得できません（{deckError}）。<button class="link" onclick={loadDeck}>再試行</button></p>
 	{:else if refused}
-		<div class="panel block"><p>この言葉では探せません。話題や趣味、話し方を手がかりにしてください。</p><button class="btn secondary" onclick={() => { turns = []; refused = false; loadDeck(); }}>言葉を消す</button></div>
+		<div class="panel block"><p>この言葉では探せません。話題や趣味、話し方を手がかりにしてください。</p><button class="btn secondary" onclick={onclear}>言葉を消す</button></div>
 	{:else}
 		{#key deckGen}
 			<Discover
@@ -317,12 +320,12 @@
 				onundo={(c, action) => (action === 'like' ? peopleStore.unlike(c.acct) : peopleStore.restore(c.acct))}
 				onexhausted={loadDeck}
 				onsettings={loadDeck}
-				emptyTitle={status.count <= 1 ? 'まだあなただけです' : turns.length ? 'この言葉に合う人はいまはいません' : '今日のカードは見終わりました'}
+				emptyTitle={status.count <= 1 ? 'まだあなただけです' : 'この言葉に合う人はいまはいません'}
 				emptyHint={status.count <= 1 ? '参加する人が増えると、ここにカードが出ます。' : 'いいねした人は いいね タブから Misskey でフォローできます。'}
 				doneTitle="今日のカードは見終わりました"
 				doneHint="いいねした人は いいね タブから Misskey でフォローできます。"
 				settingsLabel="もう一度集める"
-				busy={deckLoading && turns.length ? (turns.at(-1) ?? '') : ''}
+				busy={deckLoading ? (allTurns.at(-1) ?? '') : ''}
 			>
 				{#snippet card(c, eager)}<PersonCard card={c} {eager} />{/snippet}
 				{#snippet details(c, full, like)}

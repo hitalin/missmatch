@@ -70,11 +70,14 @@
 	}
 	// 何とマッチングするか（サーバー / 人）。ChatGPT の Chat / Work と同じ上部の切替。URL の ?mode=people でも開ける
 	let mode = $state<'server' | 'people'>(page.url.searchParams.get('mode') === 'people' ? 'people' : 'server');
-	let peopleReset = $state(0); // 「新しくさがす」で人モードのデッキをランディングに戻す
 	function setMode(m: 'server' | 'people') {
 		mode = m;
 		peopleStore.setMode(m);
 		replaceState(m === 'people' ? '/?mode=people' : '/', {});
+		if (search.mode !== m) {
+			const rest = { ...profile, searches: profile.searches.filter((s) => s.query) };
+			profile = selectSearch(rest, newSearch('', m));
+		}
 	}
 	// /auth/callback で失敗したときの理由（URL に載って戻ってくる）
 	let loginError = $state(page.url.searchParams.get('login_error') ?? '');
@@ -138,13 +141,22 @@
 		if (!page.url.searchParams.has('mode') && peopleStore.mode === 'people') mode = 'people';
 		const saved = loadSavedProfile();
 		const cur = currentSearch(saved);
-		profile = cur ? saved : selectSearch(saved, newSearch());
+		if (cur && cur.mode !== mode) {
+			if (page.url.searchParams.has('mode')) profile = selectSearch(saved, newSearch('', mode));
+			else {
+				mode = cur.mode;
+				peopleStore.setMode(mode);
+				profile = saved;
+			}
+		} else profile = cur ? saved : selectSearch(saved, newSearch('', mode));
 		onboarding = !isComplete(saved.prefs);
 		hydrated = true;
 		loadProfiles();
 		if (cur && needsRead(cur)) readSearch();
 	});
-	const needsRead = (s: Search) => searchText(s).length >= 2 && !hasAffinity(s);
+	// 人探しの検索は Clef の読み取り（サーバーの噛み合い）を使わない
+	const needsRead = (s: Search) =>
+		s.mode === 'server' && searchText(s).length >= 2 && !hasAffinity(s);
 
 	// 保存（入力のたびに書かず、少し待ってまとめる）。
 	// ページを離れるときは待たずに確定させる。でないと読み取り直後の移動で検索結果が消える
@@ -328,11 +340,18 @@
 		profile = selectSearch(profile, existing ?? refineSearch(search, text));
 		if (needsRead(search)) readSearch();
 	}
+	// 人探しの言葉。サーバー探しと同じく言葉ごとのセッションにし、同じ言葉ならそれに戻る
+	function startPeople(text: string) {
+		const existing = profile.searches.find((s) => s.mode === 'people' && s.query === text);
+		profile = selectSearch(profile, existing ?? newSearch(text, 'people'));
+	}
+	function refinePeople(text: string) {
+		profile = patchSearch(profile, { turns: [...search.turns, text].slice(-4) });
+	}
 	// 新しくさがす: 言葉の無い検索（＝ランディング）に戻る
 	function startNew() {
-		if (mode === 'people') peopleReset += 1;
 		const rest = { ...profile, searches: profile.searches.filter((s) => s.query) };
-		profile = selectSearch(rest, newSearch());
+		profile = selectSearch(rest, newSearch('', mode));
 		draft = '';
 		go('discover');
 	}
@@ -349,6 +368,11 @@
 	function openSearch(id: string) {
 		const s = profile.searches.find((x) => x.id === id);
 		if (!s) return;
+		if (s.mode !== mode) {
+			mode = s.mode;
+			peopleStore.setMode(s.mode);
+			replaceState(s.mode === 'people' ? '/?mode=people' : '/', {});
+		}
 		profile = selectSearch(profile, s);
 		go('discover');
 		if (needsRead(s)) readSearch();
@@ -433,7 +457,19 @@
 			{#if loginOpen}
 				<LoginSheet onclose={() => openLogin(false)} next={mode === 'people' ? '/?mode=people' : '/'} />
 			{:else if mode === 'people'}
-				<People {tab} user={data.user} onlogin={() => openLogin(true)} {mode} onmode={setMode} reset={peopleReset} />
+				<People
+					{tab}
+					user={data.user}
+					onlogin={() => openLogin(true)}
+					{mode}
+					onmode={setMode}
+					query={search.mode === 'people' ? search.query : ''}
+					turns={search.mode === 'people' ? search.turns : []}
+					onsearch={startPeople}
+					onrefine={refinePeople}
+					ondrop={dropTurn}
+					onclear={startNew}
+				/>
 			{:else if tab === 'discover'}
 				<div class="discover-tab">
 					{#if !search.query}

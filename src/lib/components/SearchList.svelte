@@ -63,6 +63,7 @@
 					/>
 				{:else}
 					<button class="open-btn" onclick={() => onselect(s.id)}>
+						<span class="kind" aria-label={s.mode === 'people' ? '人' : 'サーバー'}><Icon name={s.mode === 'people' ? 'user' : 'flame'} size={13} /></span>
 						<span class="title" class:muted={!s.query && !s.title}>{searchTitle(s)}</span>
 					</button>
 					<div class="menu-wrap" data-menu>
@@ -156,6 +157,11 @@
 		font-weight: 700;
 		text-align: left;
 		cursor: pointer;
+	}
+	.kind {
+		display: inline-flex;
+		flex-shrink: 0;
+		color: var(--fg-muted);
 	}
 	.title {
 		flex: 1;

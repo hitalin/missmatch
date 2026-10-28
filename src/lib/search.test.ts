@@ -53,6 +53,10 @@ describe('search', () => {
 		expect(s.id).not.toBe(newSearch().id);
 	});
 
+	it('newSearch はサーバー探しが既定で、人探しのセッションも同じ形で持てる', () => {
+		expect(newSearch('病み垢').mode).toBe('server');
+		expect(newSearch('ジャズの話ができる人', 'people').mode).toBe('people');
+	});
 	it('searchTurns は最初の言葉と絞り込みを順に並べ、空の言葉は飛ばす', () => {
 		expect(searchTurns(newSearch())).toEqual([]);
 		expect(searchTurns({ ...newSearch('病み垢'), turns: ['小さめ', '広告なし'] })).toEqual([

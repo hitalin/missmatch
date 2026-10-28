@@ -73,6 +73,7 @@ describe('parseSavedProfile', () => {
 		expect(p.searches).toEqual([
 			{
 				id: 's1',
+				mode: 'server',
 				query: '病み垢',
 				title: '弱音用',
 				turns: ['小さめ'],
@@ -177,6 +178,18 @@ describe('parseSavedProfile', () => {
 		expect(age({})).toBeNull();
 	});
 
+	it('検索の mode を読み、無いか知らない値ならサーバー探しにする', () => {
+		const p = parseSavedProfile(
+			JSON.stringify({
+				searches: [
+					{ id: 'a', query: 'x', mode: 'people' },
+					{ id: 'b', query: 'y' },
+					{ id: 'c', query: 'z', mode: 'other' }
+				]
+			})
+		);
+		expect(p.searches.map((s) => s.mode)).toEqual(['people', 'server', 'server']);
+	});
 	it('current が無い・存在しない id なら先頭の検索を指す', () => {
 		const p = parseSavedProfile(
 			JSON.stringify({

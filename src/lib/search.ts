@@ -5,8 +5,10 @@ import type { ClefAnswer } from './vibe';
 
 // 探す言葉ごとのセッション。いいね / よくないねは言葉ごとに分ける
 // （別の目的で外した鯖が、次の目的のときも消えたままにならないように）
+export type SearchMode = 'server' | 'people';
 export interface Search {
 	id: string;
+	mode: SearchMode; // サーバー探しか人探しか。一覧は分けず、開くとそのモードに切り替わる
 	query: string; // 最初の言葉。空 = 条件だけで並べる
 	title: string; // 付けた名前（空なら query を題名にする）
 	turns: string[]; // そのあと足した絞り込みの言葉（順序あり）
@@ -24,9 +26,10 @@ export interface Search {
 	at: number; // 最後に使った時刻
 }
 
-export function newSearch(query = ''): Search {
+export function newSearch(query = '', mode: SearchMode = 'server'): Search {
 	return {
 		id: crypto.randomUUID(),
+		mode,
 		query,
 		title: '',
 		turns: [],
