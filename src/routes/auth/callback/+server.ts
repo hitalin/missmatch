@@ -16,8 +16,7 @@ export const GET: RequestHandler = async ({ url, cookies, platform }) => {
 	cookies.delete(PENDING_COOKIE, { path: '/' });
 	if (!session || !pending)
 		return fail('ログインの途中の情報が見つかりません。もう一度お試しください');
-	const sep = pending.indexOf(':');
-	const [pendingSession, host] = [pending.slice(0, sep), pending.slice(sep + 1)];
+	const [pendingSession, host, next = '/'] = pending.split(':');
 	if (pendingSession !== session || !host)
 		return fail('ログインの照合に失敗しました。もう一度お試しください');
 
@@ -39,5 +38,5 @@ export const GET: RequestHandler = async ({ url, cookies, platform }) => {
 
 	const id = await createSession(sessionKv(platform), result.user, result.token);
 	cookies.set(SESSION_COOKIE, id, { path: '/', maxAge: SESSION_COOKIE_SECONDS });
-	redirect(303, '/');
+	redirect(303, next.startsWith('/') ? next : '/');
 };

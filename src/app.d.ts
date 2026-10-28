@@ -13,6 +13,7 @@ declare global {
 				AI: Ai;
 				VIBE_KV: KVNamespace;
 				WARM_SECRET?: string;
+				TOKEN_KEY?: string; // 参加者のトークンを KV に置くときの暗号化の鍵（wrangler secret put TOKEN_KEY）
 			};
 			context: ExecutionContext;
 		}

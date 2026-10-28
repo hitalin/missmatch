@@ -34,7 +34,7 @@ async function isMisskey(host: string): Promise<{ ok: true } | { ok: false; erro
 
 // MiAuth を始める。戻り先で照合するため、セッション id とホストを短命の Cookie に残す
 export const POST: RequestHandler = async ({ request, url, cookies, platform }) => {
-	let body: { host?: unknown };
+	let body: { host?: unknown; next?: unknown };
 	try {
 		body = (await request.json()) as typeof body;
 	} catch {
@@ -60,7 +60,9 @@ export const POST: RequestHandler = async ({ request, url, cookies, platform }) 
 	const check = await isMisskey(host);
 	if (!check.ok) return json({ error: check.error }, { status: 400 });
 
+	// 戻り先はサイト内のパスだけ（既定はトップ）
+	const next = typeof body.next === 'string' && /^\/[^/\\]/.test(body.next) ? body.next : '/';
 	const session = crypto.randomUUID();
-	cookies.set(PENDING_COOKIE, `${session}:${host}`, { path: '/', maxAge: PENDING_SECONDS });
+	cookies.set(PENDING_COOKIE, `${session}:${host}:${next}`, { path: '/', maxAge: PENDING_SECONDS });
 	return json({ url: miauthUrl(host, session, url.origin) });
 };

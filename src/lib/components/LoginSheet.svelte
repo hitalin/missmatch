@@ -3,7 +3,7 @@
 	import Spinner from './Spinner.svelte';
 
 	// Misskey のサーバーを入れて MiAuth に送る。許可後は /auth/callback に戻ってきてログイン状態になる
-	let { onclose }: { onclose: () => void } = $props();
+	let { onclose, next = '/' }: { onclose: () => void; next?: string } = $props();
 
 	let host = $state('');
 	let busy = $state(false);
@@ -18,7 +18,7 @@
 			const res = await fetch('/api/auth/login', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ host })
+				body: JSON.stringify({ host, next })
 			});
 			const data = (await res.json()) as { url?: string; error?: string };
 			if (!res.ok || !data.url) {
